@@ -1,4 +1,5 @@
 use bevy::{
+    asset::AssetServerSettings,
     ecs::system::{lifetimeless::SRes, SystemParamItem},
     pbr::MaterialPipeline,
     prelude::*,
@@ -18,9 +19,27 @@ use bevy::{
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
+        .insert_resource(AssetServerSettings {
+            // If you want to hot reload shaders you need to set this to true.
+            // This is to make sure the files get properly registered when loaded
+            // through the [`AssetServer`]. This only works if you use the [`AssetServer`]
+            // when you are loading the file in the [`Material`] impl.
+            watch_for_changes: true,
+            ..Default::default()
+        })
         .add_plugin(MaterialPlugin::<CustomMaterial>::default())
         .add_startup_system(setup)
+        // .add_startup_system(hot_reload)
         .run();
+}
+
+// Initialize the hot reloading
+fn hot_reload(asset_server: Res<AssetServer>) {
+    // You need to call this in a startup_system to enable the hot reload feature,
+    // otherwise it will not work.
+    asset_server
+        .watch_for_changes()
+        .expect("Failed to start hot reload");
 }
 
 /// set up a simple 3D scene

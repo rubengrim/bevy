@@ -6,5 +6,6 @@ var<uniform> material: CustomMaterial;
 
 [[stage(fragment)]]
 fn fragment() -> [[location(0)]] vec4<f32> {
-    return material.color;
+    return vec4<f32>(1.0, 0.0, 0.0, 1.0);
+    // return material.color;
 }
