@@ -49,7 +49,7 @@ pub struct Wireframe;
 
 /// Sets the color of the [`Wireframe`] of the entity it is attached to.
 ///
-/// This overrides the [`WireframeConfig::default_color`].
+/// This overrides the [`WireframeConfig::color`].
 #[derive(Component, Debug, Clone, Default, Reflect)]
 #[reflect(Component, Default)]
 pub struct WireframeColor {
@@ -69,8 +69,8 @@ pub struct WireframeConfig {
     pub color: Color,
 }
 
-/// Apply the wireframe material to any mesh with a `Wireframe` component.
-/// Uses `WireframeConfig::color` as a fallback if no `WireframeColor` component is found
+/// Apply the wireframe material to any mesh with a [`Wireframe`] component.
+/// Uses [`WireframeConfig::color`] as a fallback if no [`WireframeColor`] component is found
 #[allow(clippy::type_complexity)]
 fn apply_material(
     mut commands: Commands,
@@ -92,7 +92,7 @@ fn apply_material(
     }
 }
 
-/// Updates the wireframe material when the color in `WireframeColor` changes
+/// Updates the wireframe material when the color in [`WireframeColor`] changes
 #[allow(clippy::type_complexity)]
 fn wireframe_color_changed(
     mut materials: ResMut<Assets<WireframeMaterial>>,
@@ -108,7 +108,7 @@ fn wireframe_color_changed(
     }
 }
 
-/// Updates the wireframe material of all entities without a specified color or without a `Wireframe` component
+/// Updates the wireframe material of all entities without a specified color or without a [`Wireframe`] component
 fn global_color_changed(
     config: Res<WireframeConfig>,
     mut materials: ResMut<Assets<WireframeMaterial>>,
@@ -125,7 +125,7 @@ fn global_color_changed(
     }
 }
 
-/// Applies or remove a wireframe material on any mesh without a `Wireframe` component.
+/// Applies or remove a wireframe material on any mesh without a [`Wireframe`] component.
 #[allow(clippy::type_complexity)]
 fn apply_global(
     mut commands: Commands,
@@ -173,6 +173,7 @@ fn apply_global(
     }
 }
 
+/// The material used to render wireframes
 #[derive(Default, AsBindGroup, TypeUuid, Debug, Clone)]
 #[uuid = "9e694f70-9963-4418-8bc1-3474c66b13b8"]
 struct WireframeMaterial {
