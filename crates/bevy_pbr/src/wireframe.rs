@@ -15,33 +15,6 @@ use bevy_render::{
 pub const WIREFRAME_MATERIAL_SHADER_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 192598014480025766);
 
-/// Configuration resource for [`WireframePlugin`].
-#[derive(Debug, Clone, Default, ExtractResource, Reflect)]
-#[reflect(Resource)]
-pub struct WireframeConfig {
-    /// Whether to show wireframes for all meshes.
-    /// If `false`, only meshes with a [Wireframe] component will be rendered.
-    pub global: bool,
-    /// If [`Self::global`] is set, any [`Entity`] that does not have a [`Wireframe`] component attached to it will have
-    /// wireframes in this color. Otherwise, this will be the fallback color for any entity that has a [`Wireframe`],
-    /// but no [`WireframeColor`].
-    pub color: Color,
-}
-
-/// Toggles wireframe rendering for any entity it is attached to.
-///
-/// This requires the [`WireframePlugin`] to be enabled.
-#[derive(Component)]
-pub struct Wireframe;
-
-/// Sets the color of the [`Wireframe`] of the entity it is attached to.
-///
-/// This overrides the [`WireframeConfig::default_color`].
-#[derive(Component)]
-pub struct WireframeColor {
-    pub color: Color,
-}
-
 /// A [`Plugin`] that draws wireframes.
 pub struct WireframePlugin;
 impl Plugin for WireframePlugin {
@@ -64,6 +37,33 @@ impl Plugin for WireframePlugin {
             .add_system(wireframe_color_changed)
             .add_system(global_color_changed);
     }
+}
+
+/// Toggles wireframe rendering for any entity it is attached to.
+///
+/// This requires the [`WireframePlugin`] to be enabled.
+#[derive(Component)]
+pub struct Wireframe;
+
+/// Sets the color of the [`Wireframe`] of the entity it is attached to.
+///
+/// This overrides the [`WireframeConfig::default_color`].
+#[derive(Component)]
+pub struct WireframeColor {
+    pub color: Color,
+}
+
+/// Configuration resource for [`WireframePlugin`].
+#[derive(Debug, Clone, Default, ExtractResource, Reflect)]
+#[reflect(Resource)]
+pub struct WireframeConfig {
+    /// Whether to show wireframes for all meshes.
+    /// If `false`, only meshes with a [Wireframe] component will be rendered.
+    pub global: bool,
+    /// If [`Self::global`] is set, any [`Entity`] that does not have a [`Wireframe`] component attached to it will have
+    /// wireframes in this color. Otherwise, this will be the fallback color for any entity that has a [`Wireframe`],
+    /// but no [`WireframeColor`].
+    pub color: Color,
 }
 
 /// Apply the wireframe material to any mesh with a `Wireframe` component.
