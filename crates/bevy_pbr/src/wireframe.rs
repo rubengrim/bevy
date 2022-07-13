@@ -2,7 +2,7 @@ use crate::{Material, MaterialPipeline, MaterialPipelineKey, MaterialPlugin};
 use bevy_app::Plugin;
 use bevy_asset::{load_internal_asset, Assets, Handle, HandleUntyped};
 use bevy_ecs::prelude::*;
-use bevy_reflect::{Reflect, TypeUuid};
+use bevy_reflect::{std_traits::ReflectDefault, Reflect, TypeUuid};
 use bevy_render::{
     extract_resource::{ExtractResource, ExtractResourcePlugin},
     mesh::{Mesh, MeshVertexBufferLayout},
@@ -16,6 +16,7 @@ pub const WIREFRAME_MATERIAL_SHADER_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 192598014480025766);
 
 /// A [`Plugin`] that draws wireframes.
+#[derive(Debug, Default)]
 pub struct WireframePlugin;
 impl Plugin for WireframePlugin {
     fn build(&self, app: &mut bevy_app::App) {
@@ -42,13 +43,15 @@ impl Plugin for WireframePlugin {
 /// Toggles wireframe rendering for any entity it is attached to.
 ///
 /// This requires the [`WireframePlugin`] to be enabled.
-#[derive(Component)]
+#[derive(Component, Debug, Clone, Default, Reflect)]
+#[reflect(Component, Default)]
 pub struct Wireframe;
 
 /// Sets the color of the [`Wireframe`] of the entity it is attached to.
 ///
 /// This overrides the [`WireframeConfig::default_color`].
-#[derive(Component)]
+#[derive(Component, Debug, Clone, Default, Reflect)]
+#[reflect(Component, Default)]
 pub struct WireframeColor {
     pub color: Color,
 }
