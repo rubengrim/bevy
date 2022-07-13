@@ -12,7 +12,7 @@ use bevy_render::{
     },
 };
 
-pub const WIREFRAME_MATERIAL_SHADER_HANDLE: HandleUntyped =
+pub const WIREFRAME_SHADER_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 192598014480025766);
 
 /// A [`Plugin`] that draws wireframes.
@@ -22,7 +22,7 @@ impl Plugin for WireframePlugin {
     fn build(&self, app: &mut bevy_app::App) {
         load_internal_asset!(
             app,
-            WIREFRAME_MATERIAL_SHADER_HANDLE,
+            WIREFRAME_SHADER_HANDLE,
             "render/wireframe.wgsl",
             Shader::from_wgsl
         );
@@ -183,7 +183,7 @@ struct WireframeMaterial {
 
 impl Material for WireframeMaterial {
     fn fragment_shader() -> ShaderRef {
-        WIREFRAME_MATERIAL_SHADER_HANDLE.typed().into()
+        WIREFRAME_SHADER_HANDLE.typed().into()
     }
 
     fn specialize(
