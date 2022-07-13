@@ -27,13 +27,11 @@ impl Plugin for WireframePlugin {
             Shader::from_wgsl
         );
 
-        app.add_plugin(MaterialPlugin::<WireframeMaterial>::default());
-
         app.register_type::<WireframeConfig>()
             .init_resource::<WireframeConfig>()
-            .add_plugin(ExtractResourcePlugin::<WireframeConfig>::default());
-
-        app.add_system(apply_global)
+            .add_plugin(ExtractResourcePlugin::<WireframeConfig>::default())
+            .add_plugin(MaterialPlugin::<WireframeMaterial>::default())
+            .add_system(apply_global)
             .add_system(apply_material)
             .add_system(wireframe_color_changed)
             .add_system(global_color_changed);
