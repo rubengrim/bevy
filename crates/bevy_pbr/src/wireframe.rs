@@ -71,7 +71,7 @@ fn apply_global(
     mut commands: Commands,
     config: Res<WireframeConfig>,
     mut materials: ResMut<Assets<WireframeMaterial>>,
-    mut meshes_without_material: Query<
+    meshes_without_material: Query<
         Entity,
         (
             With<Handle<Mesh>>,
@@ -79,7 +79,7 @@ fn apply_global(
             Without<Handle<WireframeMaterial>>,
         ),
     >,
-    mut meshes_with_material: Query<
+    meshes_with_material: Query<
         Entity,
         (
             With<Handle<Mesh>>,
@@ -94,11 +94,11 @@ fn apply_global(
 
     if config.global {
         let global_material = materials.add(WireframeMaterial {});
-        for e in &mut meshes_without_material {
+        for e in &meshes_without_material {
             commands.entity(e).insert(global_material.clone());
         }
     } else if !config.global {
-        for e in &mut meshes_with_material {
+        for e in &meshes_with_material {
             commands.entity(e).remove::<Handle<WireframeMaterial>>();
         }
     }
