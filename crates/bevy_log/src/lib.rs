@@ -13,6 +13,8 @@
 
 #[cfg(feature = "trace")]
 use std::panic;
+#[cfg(feature = "tracing-appender")]
+use std::path::PathBuf;
 
 #[cfg(target_os = "android")]
 mod android_tracing;
@@ -90,6 +92,48 @@ use tracing_subscriber::{prelude::*, registry::Registry, EnvFilter};
 #[derive(Default)]
 pub struct LogPlugin;
 
+/// Enum to control how often a new log file will be created
+#[cfg(feature = "tracing-appender")]
+#[derive(Debug, Clone)]
+pub enum Rolling {
+    /// Creates a new file every minute and appends the date to the file name
+    /// Date format: YYYY-MM-DD-HH-mm
+    Minutely,
+    /// Creates a new file every hour and appends the date to the file name
+    /// Date format: YYYY-MM-DD-HH
+    Hourly,
+    /// Creates a new file every day and appends the date to the file name
+    /// Date format: YYYY-MM-DD
+    Daily,
+    /// Never creates a new file
+    Never,
+}
+
+/// Settings to control the `log_to_file` feature
+#[cfg(feature = "tracing-appender")]
+#[derive(Debug, Clone)]
+pub struct FileAppenderSettings {
+    /// Controls how often a new file will be created
+    rolling: Rolling,
+    /// The path of the directory where the log files will be added
+    ///
+    /// Defaults to the local directory
+    path: PathBuf,
+    /// The prefix added when creating a file
+    prefix: String,
+}
+
+#[cfg(feature = "tracing-appender")]
+impl Default for FileAppenderSettings {
+    fn default() -> Self {
+        Self {
+            rolling: Rolling::Daily,
+            path: PathBuf::from("."),
+            prefix: String::from("log"),
+        }
+    }
+}
+
 /// `LogPlugin` settings
 #[derive(Resource)]
 pub struct LogSettings {
@@ -99,6 +143,10 @@ pub struct LogSettings {
     /// Filters out logs that are "less than" the given level.
     /// This can be further filtered using the `filter` setting.
     pub level: Level,
+
+    /// ConfigureFileLogging
+    #[cfg(feature = "tracing-appender")]
+    pub file_appender: FileAppenderSettings,
 }
 
 impl Default for LogSettings {
@@ -106,6 +154,8 @@ impl Default for LogSettings {
         Self {
             filter: "wgpu=error".to_string(),
             level: Level::INFO,
+            #[cfg(feature = "tracing-appender")]
+            file_appender: FileAppenderSettings::default(),
         }
     }
 }
@@ -170,6 +220,34 @@ impl Plugin for LogPlugin {
             );
 
             let subscriber = subscriber.with(fmt_layer);
+
+            #[cfg(feature = "tracing-appender")]
+            let subscriber = {
+                let file_output = {
+                    let settings = app.world.get_resource_or_insert_with(LogSettings::default);
+                    settings.file_appender.clone()
+                };
+
+                let file_appender = tracing_appender::rolling::RollingFileAppender::new(
+                    match file_output.rolling {
+                        Rolling::Minutely => tracing_appender::rolling::Rotation::MINUTELY,
+                        Rolling::Hourly => tracing_appender::rolling::Rotation::HOURLY,
+                        Rolling::Daily => tracing_appender::rolling::Rotation::DAILY,
+                        Rolling::Never => tracing_appender::rolling::Rotation::NEVER,
+                    },
+                    file_output.path,
+                    file_output.prefix,
+                );
+
+                let (non_blocking, worker_guard) = tracing_appender::non_blocking(file_appender);
+                let file_fmt_layer = tracing_subscriber::fmt::Layer::default()
+                    .with_ansi(false)
+                    .with_writer(non_blocking);
+                // We need to keep this somewhere so it doesn't get dropped. If it gets dropped then it will silently stop writing to the file
+                app.insert_resource(worker_guard);
+
+                subscriber.with(file_fmt_layer)
+            };
 
             #[cfg(feature = "tracing-chrome")]
             let subscriber = subscriber.with(chrome_layer);

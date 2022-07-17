@@ -16,12 +16,13 @@ trace = [
     "bevy_ecs/trace",
     "bevy_log/trace",
     "bevy_render?/trace",
-    "bevy_hierarchy/trace"
+    "bevy_hierarchy/trace",
 ]
-trace_chrome = [ "bevy_log/tracing-chrome" ]
-trace_tracy = ["bevy_render?/tracing-tracy", "bevy_log/tracing-tracy" ]
+trace_chrome = ["bevy_log/tracing-chrome"]
+trace_tracy = ["bevy_render?/tracing-tracy", "bevy_log/tracing-tracy"]
 wgpu_trace = ["bevy_render/wgpu_trace"]
 debug_asset_server = ["bevy_asset/debug_asset_server"]
+log_to_file = ["bevy_log/tracing-appender"]
 
 # Image format support for texture loading (PNG and HDR are enabled by default)
 hdr = ["bevy_render/hdr"]
@@ -100,4 +101,4 @@ bevy_gilrs = { path = "../bevy_gilrs", optional = true, version = "0.9.0-dev" }
 [target.'cfg(target_os = "android")'.dependencies]
 # This version *must* be the same as the version used by winit,
 # or Android will break: https://github.com/rust-windowing/winit#android
-ndk-glue = {version = "0.5", features = ["logger"]}
+ndk-glue = { version = "0.5", features = ["logger"] }
