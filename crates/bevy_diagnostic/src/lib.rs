@@ -9,7 +9,6 @@ pub use frame_time_diagnostics_plugin::FrameTimeDiagnosticsPlugin;
 pub use log_diagnostics_plugin::LogDiagnosticsPlugin;
 
 use bevy_app::prelude::*;
-use sysinfo::{CpuExt, SystemExt};
 
 /// Adds core diagnostics resources to an App.
 #[derive(Default)]
@@ -18,7 +17,7 @@ pub struct DiagnosticsPlugin;
 impl Plugin for DiagnosticsPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Diagnostics>()
-            .add_startup_system(log_system_information);
+            .add_startup_system(log_system_info);
     }
 }
 
@@ -37,7 +36,9 @@ struct SystemInfo {
     memory: String,
 }
 
-fn log_system_information() {
+fn log_system_info() {
+    use sysinfo::{CpuExt, SystemExt};
+
     let mut sys = sysinfo::System::new();
     sys.refresh_cpu();
     sys.refresh_memory();
