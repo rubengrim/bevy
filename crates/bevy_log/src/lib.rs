@@ -109,6 +109,10 @@ pub enum Rolling {
     Never,
 }
 
+#[cfg(feature = "tracing-appender")]
+#[derive(Resource)]
+struct GuardRes(tracing_appender::non_blocking::WorkerGuard);
+
 /// Settings to control the `log_to_file` feature
 #[cfg(feature = "tracing-appender")]
 #[derive(Debug, Clone)]
@@ -244,7 +248,7 @@ impl Plugin for LogPlugin {
                     .with_ansi(false)
                     .with_writer(non_blocking);
                 // We need to keep this somewhere so it doesn't get dropped. If it gets dropped then it will silently stop writing to the file
-                app.insert_resource(worker_guard);
+                app.insert_resource(GuardRes(worker_guard));
 
                 subscriber.with(file_fmt_layer)
             };
