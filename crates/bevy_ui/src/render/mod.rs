@@ -5,7 +5,9 @@ use bevy_core_pipeline::{core_2d::Camera2d, core_3d::Camera3d};
 pub use pipeline::*;
 pub use render_pass::*;
 
-use crate::{prelude::UiCameraConfig, CalculatedClip, Node, UiColor, UiImage};
+use crate::{
+    prelude::UiCameraConfig, wireframe::UiWireframePlugin, CalculatedClip, Node, UiColor, UiImage,
+};
 use bevy_app::prelude::*;
 use bevy_asset::{load_internal_asset, AssetEvent, Assets, Handle, HandleUntyped};
 use bevy_ecs::prelude::*;
@@ -46,6 +48,8 @@ pub mod draw_ui_graph {
     }
 }
 
+pub mod wireframe;
+
 pub const UI_SHADER_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 13012847047162779583);
 
@@ -56,6 +60,8 @@ pub enum RenderUiSystem {
 
 pub fn build_ui_render(app: &mut App) {
     load_internal_asset!(app, UI_SHADER_HANDLE, "ui.wgsl", Shader::from_wgsl);
+
+    app.add_plugin(UiWireframePlugin);
 
     let render_app = match app.get_sub_app_mut(RenderApp) {
         Ok(render_app) => render_app,
