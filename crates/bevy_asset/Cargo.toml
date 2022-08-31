@@ -19,9 +19,13 @@ bevy_app = { path = "../bevy_app", version = "0.9.0-dev" }
 bevy_diagnostic = { path = "../bevy_diagnostic", version = "0.9.0-dev" }
 bevy_ecs = { path = "../bevy_ecs", version = "0.9.0-dev" }
 bevy_log = { path = "../bevy_log", version = "0.9.0-dev" }
-bevy_reflect = { path = "../bevy_reflect", version = "0.9.0-dev", features = ["bevy"] }
+bevy_reflect = { path = "../bevy_reflect", version = "0.9.0-dev", features = [
+    "bevy",
+] }
 bevy_tasks = { path = "../bevy_tasks", version = "0.9.0-dev" }
 bevy_utils = { path = "../bevy_utils", version = "0.9.0-dev" }
+# TODO add feature flag
+bevy_window = { path = "../bevy_window", version = "0.9.0-dev" }
 
 # other
 serde = { version = "1", features = ["derive"] }

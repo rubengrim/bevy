@@ -22,7 +22,7 @@ pub struct CreateWindow {
 
 /// An event that indicates the window should redraw, even if its control flow is set to `Wait` and
 /// there have been no window events.
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct RequestRedraw;
 
 /// An event that is sent whenever a new window is created.
@@ -38,7 +38,7 @@ pub struct WindowCreated {
 /// be closed. This will be sent when the close button of the window is pressed.
 ///
 /// If the default [`WindowPlugin`] is used, these events are handled
-/// by [closing] the corresponding [`Window`].  
+/// by [closing] the corresponding [`Window`].
 /// To disable this behaviour, set `close_when_requested` on the [`WindowPlugin`]
 /// to `false`.
 ///

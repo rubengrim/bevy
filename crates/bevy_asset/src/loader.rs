@@ -4,9 +4,11 @@ use crate::{
 };
 use anyhow::Error;
 use anyhow::Result;
+use bevy_ecs::prelude::EventWriter;
 use bevy_ecs::system::{Res, ResMut};
 use bevy_reflect::{TypeUuid, TypeUuidDynamic};
 use bevy_utils::{BoxedFuture, HashMap};
+use bevy_window::RequestRedraw;
 use crossbeam_channel::{Receiver, Sender};
 use downcast_rs::{impl_downcast, Downcast};
 use std::path::Path;
@@ -267,6 +269,7 @@ impl<T> Default for AssetLifecycleChannel<T> {
 pub fn update_asset_storage_system<T: Asset + AssetDynamic>(
     asset_server: Res<AssetServer>,
     assets: ResMut<Assets<T>>,
+    request_redraw_event: EventWriter<RequestRedraw>,
 ) {
-    asset_server.update_asset_storage(assets);
+    asset_server.update_asset_storage(assets, request_redraw_event);
 }

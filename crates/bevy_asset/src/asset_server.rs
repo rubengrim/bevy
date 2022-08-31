@@ -5,10 +5,14 @@ use crate::{
     RefChange, RefChangeChannel, SourceInfo, SourceMeta,
 };
 use anyhow::Result;
-use bevy_ecs::system::{Res, ResMut, Resource};
+use bevy_ecs::{
+    prelude::EventWriter,
+    system::{Res, ResMut, Resource},
+};
 use bevy_log::warn;
 use bevy_tasks::IoTaskPool;
 use bevy_utils::{Entry, HashMap, Uuid};
+use bevy_window::RequestRedraw;
 use crossbeam_channel::TryRecvError;
 use parking_lot::{Mutex, RwLock};
 use std::{path::Path, sync::Arc};
@@ -584,13 +588,24 @@ impl AssetServer {
 
     // Note: this takes a `ResMut<Assets<T>>` to ensure change detection does not get
     // triggered unless the `Assets` collection is actually updated.
-    pub(crate) fn update_asset_storage<T: Asset>(&self, mut assets: ResMut<Assets<T>>) {
+    pub(crate) fn update_asset_storage<T: Asset>(
+        &self,
+        mut assets: ResMut<Assets<T>>,
+        mut request_redraw_event: EventWriter<RequestRedraw>,
+    ) {
         let asset_lifecycles = self.server.asset_lifecycles.read();
         let asset_lifecycle = asset_lifecycles.get(&T::TYPE_UUID).unwrap();
         let mut asset_sources_guard = None;
         let channel = asset_lifecycle
             .downcast_ref::<AssetLifecycleChannel<T>>()
             .unwrap();
+
+        if assets
+            .iter()
+            .any(|x| matches!(self.get_load_state(x.0), LoadState::Loading))
+        {
+            request_redraw_event.send_default();
+        }
 
         loop {
             match channel.receiver.try_recv() {
