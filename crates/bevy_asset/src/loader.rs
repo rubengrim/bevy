@@ -6,6 +6,7 @@ use anyhow::Error;
 use anyhow::Result;
 use bevy_ecs::prelude::EventWriter;
 use bevy_ecs::system::{Res, ResMut};
+use bevy_log::info;
 use bevy_reflect::{TypeUuid, TypeUuidDynamic};
 use bevy_utils::{BoxedFuture, HashMap};
 use bevy_window::RequestRedraw;
@@ -271,5 +272,6 @@ pub fn update_asset_storage_system<T: Asset + AssetDynamic>(
     assets: ResMut<Assets<T>>,
     request_redraw_event: EventWriter<RequestRedraw>,
 ) {
+    info!("update_asset_storage");
     asset_server.update_asset_storage(assets, request_redraw_event);
 }
