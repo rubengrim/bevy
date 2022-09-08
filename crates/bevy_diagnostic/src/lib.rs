@@ -55,8 +55,8 @@ fn log_system_info() {
             .physical_core_count()
             .map(|x| x.to_string())
             .unwrap_or_else(|| String::from("not available")),
-        // Convert to GibiByte since it's probably what people expect most of the time
-        memory: format!("{:.1} GiB", sys.total_memory() as f64 * 9.31323e-7),
+        // Convert from Bytes to GibiBytes since it's probably what people expect most of the time
+        memory: format!("{:.1} GiB", sys.total_memory() as f64 * 9.31323e-10),
     };
 
     info!("{:?}", info);
