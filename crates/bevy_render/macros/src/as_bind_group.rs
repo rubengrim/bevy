@@ -930,7 +930,7 @@ fn get_storage_binding_attr(metas: Vec<NestedMeta>) -> Result<StorageAttrs> {
             _ => {
                 return Err(Error::new_spanned(
                     meta,
-                    "Not a valid attribute. Available attribute: `read_only`",
+                    "Not a valid attribute. Available attributes: `read_only`, `visibility`",
                 ));
             }
         }
