@@ -62,6 +62,4 @@ pub struct CustomMaterial {
     #[sampler(2)]
     color_texture: Option<Handle<Image>>,
     alpha_mode: AlphaMode,
-    #[storage(3, read_only)]
-    values: Vec<f32>,
 }
