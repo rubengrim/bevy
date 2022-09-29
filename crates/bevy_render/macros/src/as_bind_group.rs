@@ -57,7 +57,6 @@ pub fn derive_as_bind_group(ast: syn::DeriveInput) -> Result<TokenStream> {
                 }
             } else if attr_ident == UNIFORM_ATTRIBUTE_NAME {
                 let (binding_index, converted_shader_type) = get_uniform_binding_attr(attr)?;
-
                 binding_impls.push(quote! {{
                     use #render_path::render_resource::AsBindGroupShaderType;
                     let mut buffer = #render_path::render_resource::encase::UniformBuffer::new(Vec::new());
@@ -196,7 +195,8 @@ pub fn derive_as_bind_group(ast: syn::DeriveInput) -> Result<TokenStream> {
             }
 
             match binding_type {
-                BindingType::Uniform => { /* uniform codegen is deferred to account for combined uniform bindings */
+                BindingType::Uniform => {
+                    // uniform codegen is deferred to account for combined uniform bindings
                 }
                 BindingType::Storage => {
                     let StorageAttrs {
@@ -206,6 +206,22 @@ pub fn derive_as_bind_group(ast: syn::DeriveInput) -> Result<TokenStream> {
                     let visibility =
                         visibility.hygenic_quote(&quote! { #render_path::render_resource });
 
+                    let field_name = field.ident.as_ref().unwrap();
+                    let field_ty = &field.ty;
+
+                    binding_impls.push(quote! {{
+                        use #render_path::render_resource::AsBindGroupShaderType;
+                        let mut buffer = #render_path::render_resource::encase::StorageBuffer::new(Vec::new());
+                        buffer.write(&self.#field_name).unwrap();
+                        #render_path::render_resource::OwnedBindingResource::Buffer(render_device.create_buffer_with_data(
+                            &#render_path::render_resource::BufferInitDescriptor {
+                                label: None,
+                                usage: #render_path::render_resource::BufferUsages::COPY_DST | #render_path::render_resource::BufferUsages::STORAGE,
+                                contents: buffer.as_ref(),
+                            },
+                        ))
+                    }});
+
                     binding_layouts.push(quote! {
                         #render_path::render_resource::BindGroupLayoutEntry {
                             binding: #binding_index,
@@ -213,7 +229,7 @@ pub fn derive_as_bind_group(ast: syn::DeriveInput) -> Result<TokenStream> {
                             ty: #render_path::render_resource::BindingType::Buffer {
                                 ty: #render_path::render_resource::BufferBindingType::Storage { read_only: #read_only },
                                 has_dynamic_offset: false,
-                                min_binding_size: None,
+                                min_binding_size: Some(<#field_ty as #render_path::render_resource::ShaderType>::min_size()),
                             },
                             count: None,
                         }
@@ -904,7 +920,7 @@ fn get_storage_binding_attr(metas: Vec<NestedMeta>) -> Result<StorageAttrs> {
     for meta in metas {
         use syn::{Meta::List, Meta::Path, NestedMeta::Meta};
         match meta {
-            // Parse #[sampler(0, visibility(...))].
+            // Parse #[storage(0, visibility(...))].
             Meta(List(m)) if m.path == VISIBILITY => {
                 visibility = get_visibility_flag_value(&m.nested)?;
             }
