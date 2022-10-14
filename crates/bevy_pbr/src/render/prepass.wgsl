@@ -1,14 +1,15 @@
 #import bevy_pbr::mesh_view_types
 #import bevy_pbr::mesh_types
+#import bevy_pbr::pbr_bindings
 
 @group(0) @binding(0)
 var<uniform> view: View;
 
-@group(1) @binding(0)
+@group(2) @binding(0)
 var<uniform> mesh: Mesh;
 
 #ifdef SKINNED
-@group(1) @binding(1)
+@group(2) @binding(1)
 var<uniform> joint_matrices: SkinnedMesh;
 #import bevy_pbr::skinning
 #endif
@@ -37,7 +38,6 @@ struct Vertex {
 
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
-
 #ifdef OUTPUT_NORMALS
     @location(0) world_normal: vec3<f32>,
 #ifdef VERTEX_UVS

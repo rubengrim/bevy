@@ -48,7 +48,7 @@ use bevy_utils::{
 
 use crate::{
     AlphaMode, DrawMesh, Material, MeshPipeline, MeshPipelineKey, MeshUniform, RenderMaterials,
-    SetMeshBindGroup,
+    SetMaterialBindGroup, SetMeshBindGroup,
 };
 
 use std::{hash::Hash, marker::PhantomData};
@@ -107,8 +107,8 @@ where
 
         let prepass_node = PrepassNode::new(&mut render_app.world);
         render_app
-            .add_render_command::<OpaquePrepass, DrawPrepass>()
-            .add_render_command::<AlphaMaskPrepass, DrawPrepass>();
+            .add_render_command::<OpaquePrepass, DrawPrepass<M>>()
+            .add_render_command::<AlphaMaskPrepass, DrawPrepass<M>>();
         let mut graph = render_app.world.resource_mut::<RenderGraph>();
         let draw_3d_graph = graph
             .get_sub_graph_mut(bevy_core_pipeline::core_3d::graph::NAME)
@@ -198,10 +198,13 @@ impl<M: Material> SpecializedMeshPipeline for PrepassPipeline<M> {
         let mut bind_group_layout = vec![self.view_layout.clone()];
         let mut shader_defs = Vec::new();
 
+        if self.material_fragment_shader.is_some() || self.material_vertex_shader.is_some() {
+            bind_group_layout.insert(1, self.material_layout.clone());
+        }
+
         if key.contains(MeshPipelineKey::ALPHA_MASK) {
             shader_defs.push(String::from("ALPHA_MASK"));
             // FIXME: This needs to be implemented per-material!
-            bind_group_layout.push(self.material_layout.clone());
         }
 
         let mut vertex_attributes = vec![Mesh::ATTRIBUTE_POSITION.at_shader_location(0)];
@@ -231,7 +234,7 @@ impl<M: Material> SpecializedMeshPipeline for PrepassPipeline<M> {
         } else {
             bind_group_layout.push(self.mesh_layout.clone());
         }
-
+        println!("{bind_group_layout:#?}");
         let vertex_buffer_layout = layout.get_layout(&vertex_attributes)?;
 
         let fragment = if key.contains(MeshPipelineKey::PREPASS_NORMALS)
@@ -459,11 +462,11 @@ pub fn queue_prepass_material_meshes<M: Material>(
 {
     let opaque_draw_prepass = opaque_draw_functions
         .read()
-        .get_id::<DrawPrepass>()
+        .get_id::<DrawPrepass<M>>()
         .unwrap();
     let alpha_mask_draw_prepass = alpha_mask_draw_functions
         .read()
-        .get_id::<DrawPrepass>()
+        .get_id::<DrawPrepass<M>>()
         .unwrap();
     for (view, visible_entities, prepass_settings, mut opaque_phase, mut alpha_mask_phase) in
         &mut views
@@ -739,10 +742,11 @@ impl Node for PrepassNode {
     }
 }
 
-pub type DrawPrepass = (
+pub type DrawPrepass<M> = (
     SetItemPipeline,
     SetDepthViewBindGroup<0>,
-    SetMeshBindGroup<1>,
+    SetMaterialBindGroup<M, 1>,
+    SetMeshBindGroup<2>,
     DrawMesh,
 );
 
