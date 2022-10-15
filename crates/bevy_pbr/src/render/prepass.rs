@@ -195,16 +195,22 @@ impl<M: Material> SpecializedMeshPipeline for PrepassPipeline<M> {
         key: Self::Key,
         layout: &MeshVertexBufferLayout,
     ) -> Result<RenderPipelineDescriptor, SpecializedMeshPipelineError> {
+        // TODO I need to figure out a way to specialize the Material to get the correct cull_mode
+        // or any other desciptor specialization from the Material
+        // let desc = M::specialize(pipeline, descriptor, layout, key);
+
         let mut bind_group_layout = vec![self.view_layout.clone()];
         let mut shader_defs = Vec::new();
 
-        if self.material_fragment_shader.is_some() || self.material_vertex_shader.is_some() {
-            bind_group_layout.insert(1, self.material_layout.clone());
-        }
+        // TODO figure out a way to only add it when necessary
+        // right now the issue is that the group is hardcoded to one in the pbr_bindings
+        // but when it's not present then the mesh bind group is now group 1 and everything breaks
+        // if self.material_fragment_shader.is_some() || self.material_vertex_shader.is_some() {
+        bind_group_layout.insert(1, self.material_layout.clone());
+        // }
 
         if key.contains(MeshPipelineKey::ALPHA_MASK) {
             shader_defs.push(String::from("ALPHA_MASK"));
-            // FIXME: This needs to be implemented per-material!
         }
 
         let mut vertex_attributes = vec![Mesh::ATTRIBUTE_POSITION.at_shader_location(0)];
@@ -230,11 +236,11 @@ impl<M: Material> SpecializedMeshPipeline for PrepassPipeline<M> {
             shader_defs.push(String::from("SKINNED"));
             vertex_attributes.push(Mesh::ATTRIBUTE_JOINT_INDEX.at_shader_location(4));
             vertex_attributes.push(Mesh::ATTRIBUTE_JOINT_WEIGHT.at_shader_location(5));
-            bind_group_layout.push(self.skinned_mesh_layout.clone());
+            bind_group_layout.insert(2, self.skinned_mesh_layout.clone());
         } else {
-            bind_group_layout.push(self.mesh_layout.clone());
+            bind_group_layout.insert(2, self.mesh_layout.clone());
         }
-        println!("{bind_group_layout:#?}");
+
         let vertex_buffer_layout = layout.get_layout(&vertex_attributes)?;
 
         let fragment = if key.contains(MeshPipelineKey::PREPASS_NORMALS)

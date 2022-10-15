@@ -183,6 +183,7 @@ mod fly_cam {
         mut velocity: Local<Vec3>,
     ) {
         if !mouse_input.pressed(MouseButton::Right) {
+            mouse_motion.clear();
             return;
         }
 
