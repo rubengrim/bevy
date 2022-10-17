@@ -86,7 +86,7 @@ fn setup(
     commands.spawn(MaterialMeshBundle {
         mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
         material: materials.add(CustomMaterial {
-            color: Vec3::ONE,
+            color: Color::WHITE,
             color_texture: Some(asset_server.load("branding/icon.png")),
             alpha_mode: AlphaMode::Blend,
         }),
@@ -121,7 +121,7 @@ fn setup(
 #[uuid = "f690fdae-d598-45ab-8225-97e2a3f056e0"]
 pub struct CustomMaterial {
     #[uniform(0)]
-    color: Vec3,
+    color: Color,
     #[texture(1)]
     #[sampler(2)]
     color_texture: Option<Handle<Image>>,
@@ -129,7 +129,11 @@ pub struct CustomMaterial {
 }
 
 /// The Material trait is very configurable, but comes with sensible defaults for all methods.
-/// You only need to implement functions for features that need non-default behavior. See the Material api docs for details!
+/// You only need to implement functions for features that need non-default behavior.
+/// See the Material api docs for details!
+///
+/// Not shown in this example, but if you need to specialize your material, the specialize
+/// function will also be used in the prepass
 impl Material for CustomMaterial {
     fn fragment_shader() -> ShaderRef {
         "shaders/custom_material.wgsl".into()
@@ -139,9 +143,11 @@ impl Material for CustomMaterial {
         self.alpha_mode
     }
 
-    fn prepass_fragment_shader() -> ShaderRef {
-        "shaders/red.wgsl".into()
-    }
+    // You can override the default shaders used in the prepass if your material does
+    // anything not supported by default
+    // fn prepass_fragment_shader() -> ShaderRef {
+    //     "shaders/custom_material.wgsl".into()
+    // }
 }
 
 #[derive(Component)]
