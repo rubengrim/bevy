@@ -1182,7 +1182,7 @@ path = "examples/shader/shader_prepass.rs"
 
 [package.metadata.example.shader_prepass]
 name = "Material"
-description = "A shader using a depth prepass"
+description = "A shader that uses the depth texture generated in a prepass"
 category = "Shaders"
 wasm = true
 
