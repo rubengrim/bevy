@@ -432,10 +432,6 @@ impl Material for StandardMaterial {
         PBR_PREPASS_SHADER_HANDLE.typed().into()
     }
 
-    // fn prepass_vertex_shader() -> ShaderRef {
-    //     MESH_SHADER_HANDLE.typed().into()
-    // }
-
     fn fragment_shader() -> ShaderRef {
         PBR_SHADER_HANDLE.typed().into()
     }
@@ -448,5 +444,9 @@ impl Material for StandardMaterial {
     #[inline]
     fn depth_bias(&self) -> f32 {
         self.depth_bias
+    }
+
+    fn prepass_enabled() -> bool {
+        true
     }
 }

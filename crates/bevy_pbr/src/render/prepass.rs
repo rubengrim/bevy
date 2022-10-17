@@ -41,10 +41,7 @@ use bevy_render::{
     },
     Extract, RenderApp, RenderStage,
 };
-use bevy_utils::{
-    tracing::{error, warn},
-    FloatOrd, HashMap,
-};
+use bevy_utils::{tracing::error, FloatOrd, HashMap};
 
 use crate::{
     AlphaMode, DrawMesh, Material, MaterialPipeline, MaterialPipelineKey, MeshPipeline,
@@ -62,7 +59,10 @@ pub mod draw_3d_graph {
 pub const PREPASS_FORMAT: TextureFormat = TextureFormat::Depth32Float;
 
 pub const PREPASS_SHADER_HANDLE: HandleUntyped =
-    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 17179930919397780179);
+    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 921124473254008983);
+
+pub const PREPASS_BINDINGS_SHADER_HANDLE: HandleUntyped =
+    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 5533152893177403494);
 
 pub struct PrepassPlugin<M: Material>(PhantomData<M>);
 
@@ -81,6 +81,13 @@ where
             app,
             PREPASS_SHADER_HANDLE,
             "prepass.wgsl",
+            Shader::from_wgsl
+        );
+
+        load_internal_asset!(
+            app,
+            PREPASS_BINDINGS_SHADER_HANDLE,
+            "prepass_bindings.wgsl",
             Shader::from_wgsl
         );
 
@@ -203,8 +210,8 @@ where
         let mut bind_group_layout = vec![self.view_layout.clone()];
         let mut shader_defs = Vec::new();
 
-        // TODO figure out a way to only add it when necessary
-        // right now the issue is that the group is hardcoded to one in the pbr_bindings
+        // FIXME figure out a way to only add it when necessary
+        // right now the issue is that the group is hardcoded to 1 in the pbr_bindings
         // but when it's not present then the mesh bind group is now group 1 and everything breaks
         // if self.material_fragment_shader.is_some() || self.material_vertex_shader.is_some() {
         bind_group_layout.insert(1, self.material_layout.clone());
@@ -250,7 +257,6 @@ where
             let frag_shader_handle = if let Some(handle) = &self.material_fragment_shader {
                 handle.clone()
             } else {
-                warn!("Missing Material::prepass_fragment_shader() for material with UUID {}. Rendering may be incorrect.", M::TYPE_UUID);
                 PREPASS_SHADER_HANDLE.typed::<Shader>()
             };
 
@@ -271,7 +277,6 @@ where
         let vert_shader_handle = if let Some(handle) = &self.material_vertex_shader {
             handle.clone()
         } else {
-            warn!("Missing Material::prepass_vertex_shader() for material with UUID {}. Rendering may be incorrect.", M::TYPE_UUID);
             PREPASS_SHADER_HANDLE.typed::<Shader>()
         };
 
@@ -294,7 +299,6 @@ where
                 conservative: false,
             },
             depth_stencil: Some(DepthStencilState {
-                // FIXME: Same as main pass
                 format: PREPASS_FORMAT,
                 depth_write_enabled: true,
                 depth_compare: CompareFunction::GreaterEqual,
