@@ -900,10 +900,9 @@ pub fn queue_mesh_view_bind_groups(
                 }
             };
             let fallback_view = match maybe_prepass_textures {
-                Some(ViewPrepassTextures {
-                    normals: None,
-                    velocities: None,
-                    ..
+                Some(ViewPrepassTextures { normals: None, .. })
+                | Some(ViewPrepassTextures {
+                    velocities: None, ..
                 })
                 | None => Some(
                     &fallback_images
