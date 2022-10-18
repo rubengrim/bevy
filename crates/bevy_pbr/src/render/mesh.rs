@@ -399,7 +399,7 @@ impl FromWorld for MeshPipeline {
                 },
                 count: None,
             },
-            // depth texture
+            // Depth prepass texture
             BindGroupLayoutEntry {
                 binding: 10,
                 visibility: ShaderStages::FRAGMENT,
@@ -410,7 +410,7 @@ impl FromWorld for MeshPipeline {
                 },
                 count: None,
             },
-            // normal texture
+            // Normal prepass texture
             BindGroupLayoutEntry {
                 binding: 11,
                 visibility: ShaderStages::FRAGMENT,
