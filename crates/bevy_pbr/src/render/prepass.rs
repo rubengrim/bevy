@@ -721,7 +721,7 @@ impl Node for PrepassNode {
                 }
 
                 {
-                    // Run the depth prepass, sorted front-to-back
+                    // Run the prepass, sorted front-to-back
                     #[cfg(feature = "trace")]
                     let _opaque_prepass_span = info_span!("opaque_prepass").entered();
                     let draw_functions = world.resource::<DrawFunctions<OpaquePrepass>>();
@@ -734,7 +734,7 @@ impl Node for PrepassNode {
                 }
 
                 {
-                    // Run the depth prepass, sorted front-to-back
+                    // Run the prepass, sorted front-to-back
                     #[cfg(feature = "trace")]
                     let _alpha_mask_prepass_span = info_span!("alpha_mask_prepass").entered();
                     let draw_functions = world.resource::<DrawFunctions<AlphaMaskPrepass>>();
