@@ -421,6 +421,17 @@ impl FromWorld for MeshPipeline {
                 },
                 count: None,
             },
+            // Velocity prepass texture
+            BindGroupLayoutEntry {
+                binding: 12,
+                visibility: ShaderStages::FRAGMENT,
+                ty: BindingType::Texture {
+                    multisampled: false,
+                    sample_type: TextureSampleType::Float { filterable: true },
+                    view_dimension: TextureViewDimension::D2,
+                },
+                count: None,
+            },
         ];
 
         let view_layout = render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
@@ -436,6 +447,11 @@ impl FromWorld for MeshPipeline {
             view_dimension: TextureViewDimension::D2,
         };
         layout_entries[11].ty = BindingType::Texture {
+            multisampled: true,
+            sample_type: TextureSampleType::Float { filterable: true },
+            view_dimension: TextureViewDimension::D2,
+        };
+        layout_entries[12].ty = BindingType::Texture {
             multisampled: true,
             sample_type: TextureSampleType::Float { filterable: true },
             view_dimension: TextureViewDimension::D2,
@@ -568,7 +584,8 @@ bitflags::bitflags! {
         const TRANSPARENT_MAIN_PASS       = (1 << 0);
         const PREPASS_DEPTH               = (1 << 1);
         const PREPASS_NORMALS             = (1 << 2);
-        const ALPHA_MASK                  = (1 << 3);
+        const PREPASS_VELOCITIES          = (1 << 3);
+        const ALPHA_MASK                  = (1 << 4);
         const MSAA_RESERVED_BITS          = MeshPipelineKey::MSAA_MASK_BITS << MeshPipelineKey::MSAA_SHIFT_BITS;
         const PRIMITIVE_TOPOLOGY_RESERVED_BITS = MeshPipelineKey::PRIMITIVE_TOPOLOGY_MASK_BITS << MeshPipelineKey::PRIMITIVE_TOPOLOGY_SHIFT_BITS;
     }
@@ -865,28 +882,42 @@ pub fn queue_mesh_view_bind_groups(
     ) {
         for (entity, view_shadow_bindings, view_cluster_bindings, maybe_prepass_textures) in &views
         {
-            let depth_view = if let Some(ViewPrepassTextures {
-                depth: Some(prepass_depth_texture),
-                ..
-            }) = &maybe_prepass_textures
-            {
-                &prepass_depth_texture.default_view
-            } else {
-                &fallback_depths
-                    .image_for_samplecount(msaa.samples)
-                    .texture_view
+            let depth_view = match &maybe_prepass_textures {
+                Some(ViewPrepassTextures {
+                    depth: Some(prepass_depth_texture),
+                    ..
+                }) => &prepass_depth_texture.default_view,
+                _ => {
+                    &fallback_depths
+                        .image_for_samplecount(msaa.samples)
+                        .texture_view
+                }
             };
-
-            let normal_view = if let Some(ViewPrepassTextures {
-                normals: Some(prepass_normals_texture),
-                ..
-            }) = &maybe_prepass_textures
-            {
-                &prepass_normals_texture.default_view
-            } else {
-                &fallback_images
-                    .image_for_samplecount(msaa.samples)
-                    .texture_view
+            let fallback_view = match maybe_prepass_textures {
+                Some(ViewPrepassTextures {
+                    normals,
+                    velocities,
+                    ..
+                }) if normals.is_none() || velocities.is_none() => Some(
+                    &fallback_images
+                        .image_for_samplecount(msaa.samples)
+                        .texture_view,
+                ),
+                _ => None,
+            };
+            let normal_view = match &maybe_prepass_textures {
+                Some(ViewPrepassTextures {
+                    normals: Some(prepass_normals_texture),
+                    ..
+                }) => &prepass_normals_texture.default_view,
+                _ => fallback_view.unwrap(),
+            };
+            let velocity_view = match &maybe_prepass_textures {
+                Some(ViewPrepassTextures {
+                    velocities: Some(prepass_velocities_texture),
+                    ..
+                }) => &prepass_velocities_texture.default_view,
+                _ => fallback_view.unwrap(),
             };
 
             let layout = if msaa.samples > 1 {
@@ -950,6 +981,10 @@ pub fn queue_mesh_view_bind_groups(
                     BindGroupEntry {
                         binding: 11,
                         resource: BindingResource::TextureView(normal_view),
+                    },
+                    BindGroupEntry {
+                        binding: 12,
+                        resource: BindingResource::TextureView(velocity_view),
                     },
                 ],
                 label: Some("mesh_view_bind_group"),
