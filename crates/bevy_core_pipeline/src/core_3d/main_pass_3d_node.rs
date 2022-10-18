@@ -22,7 +22,7 @@ pub struct PrepassSettings {
     pub output_depth: bool,
     /// If true then vertex world normals will be copied to a separate texture available to the main pass.
     pub output_normals: bool,
-    /// If true then velocity values will be copied to a separate texture available to the main pass
+    /// If true then velocity values will be copied to a separate texture available to the main pass.
     pub output_velocity: bool,
 }
 

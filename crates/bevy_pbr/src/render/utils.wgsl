@@ -53,7 +53,7 @@ fn prepass_normal(frag_coord: vec4<f32>, sample_index: u32) -> vec3<f32> {
 #endif
 
 #ifndef PREPASS_VELOCITIES
-fn prepass_depth(frag_coord: vec4<f32>, sample_index: u32) -> f32 {
+fn prepass_velocity(frag_coord: vec4<f32>, sample_index: u32) -> vec2<f32> {
 #ifdef MULTISAMPLED
     let velocity_sample: vec4<f32> = textureLoad(velocity_prepass_texture, vec2<i32>(frag_coord.xy), i32(sample_index));
 #else
