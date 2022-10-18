@@ -1,7 +1,7 @@
 use crate::{
     GlobalLightMeta, GpuLights, GpuPointLights, LightMeta, NotShadowCaster, NotShadowReceiver,
-    ShadowPipeline, ViewClusterBindings, ViewLightsUniformOffset, ViewPrepassTextures,
-    ViewShadowBindings, CLUSTERED_FORWARD_STORAGE_BUFFER_COUNT,
+    PreviousGlobalTransform, ShadowPipeline, ViewClusterBindings, ViewLightsUniformOffset,
+    ViewPrepassTextures, ViewShadowBindings, CLUSTERED_FORWARD_STORAGE_BUFFER_COUNT,
 };
 use bevy_app::Plugin;
 use bevy_asset::{load_internal_asset, Assets, Handle, HandleUntyped};
@@ -111,6 +111,7 @@ impl Plugin for MeshRenderPlugin {
 #[derive(Component, ShaderType, Clone)]
 pub struct MeshUniform {
     pub transform: Mat4,
+    pub previous_transform: Mat4,
     pub inverse_transpose_model: Mat4,
     pub flags: u32,
 }
@@ -137,6 +138,7 @@ pub fn extract_meshes(
             Entity,
             &ComputedVisibility,
             &GlobalTransform,
+            Option<&PreviousGlobalTransform>,
             &Handle<Mesh>,
             Option<With<NotShadowReceiver>>,
             Option<With<NotShadowCaster>>,
@@ -147,8 +149,11 @@ pub fn extract_meshes(
     let mut not_caster_commands = Vec::with_capacity(*prev_not_caster_commands_len);
     let visible_meshes = meshes_query.iter().filter(|(_, vis, ..)| vis.is_visible());
 
-    for (entity, _, transform, handle, not_receiver, not_caster) in visible_meshes {
+    for (entity, _, transform, previous_transform, handle, not_receiver, not_caster) in
+        visible_meshes
+    {
         let transform = transform.compute_matrix();
+        let previous_transform = previous_transform.map(|t| t.0).unwrap_or(transform);
         let mut flags = if not_receiver.is_some() {
             MeshFlags::empty()
         } else {
@@ -160,6 +165,7 @@ pub fn extract_meshes(
         let uniform = MeshUniform {
             flags: flags.bits,
             transform,
+            previous_transform,
             inverse_transpose_model: transform.inverse().transpose(),
         };
         if not_caster.is_some() {

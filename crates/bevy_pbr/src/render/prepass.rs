@@ -1,4 +1,4 @@
-use bevy_app::Plugin;
+use bevy_app::{App, CoreStage, Plugin};
 use bevy_asset::{load_internal_asset, AssetServer, Handle, HandleUntyped};
 use bevy_core_pipeline::{core_3d::PrepassSettings, prelude::Camera3d};
 use bevy_ecs::{
@@ -10,6 +10,7 @@ use bevy_ecs::{
     },
     world::{FromWorld, World},
 };
+use bevy_math::Mat4;
 use bevy_reflect::TypeUuid;
 use bevy_render::{
     camera::ExtractedCamera,
@@ -26,14 +27,14 @@ use bevy_render::{
         BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
         BindGroupLayoutEntry, BindingType, BlendState, BufferBindingType, CachedRenderPipelineId,
         ColorTargetState, ColorWrites, CompareFunction, DepthBiasState, DepthStencilState,
-        Extent3d, FragmentState, FrontFace, LoadOp, MultisampleState, Operations, PipelineCache,
-        PolygonMode, PrimitiveState, RenderPassColorAttachment, RenderPassDepthStencilAttachment,
-        RenderPassDescriptor, RenderPipelineDescriptor, Shader, ShaderRef, ShaderStages,
-        ShaderType, SpecializedMeshPipeline, SpecializedMeshPipelineError,
+        DynamicUniformBuffer, Extent3d, FragmentState, FrontFace, LoadOp, MultisampleState,
+        Operations, PipelineCache, PolygonMode, PrimitiveState, RenderPassColorAttachment,
+        RenderPassDepthStencilAttachment, RenderPassDescriptor, RenderPipelineDescriptor, Shader,
+        ShaderRef, ShaderStages, ShaderType, SpecializedMeshPipeline, SpecializedMeshPipelineError,
         SpecializedMeshPipelines, StencilFaceState, StencilState, TextureDescriptor,
         TextureDimension, TextureFormat, TextureUsages, VertexState,
     },
-    renderer::{RenderContext, RenderDevice},
+    renderer::{RenderContext, RenderDevice, RenderQueue},
     texture::{CachedTexture, TextureCache},
     view::{
         ExtractedView, Msaa, ViewDepthTexture, ViewUniform, ViewUniformOffset, ViewUniforms,
@@ -41,6 +42,7 @@ use bevy_render::{
     },
     Extract, RenderApp, RenderStage,
 };
+use bevy_transform::prelude::GlobalTransform;
 use bevy_utils::{tracing::error, FloatOrd, HashMap};
 
 use crate::{
@@ -76,20 +78,22 @@ impl<M: Material> Plugin for PrepassPlugin<M>
 where
     M::Data: PartialEq + Eq + Hash + Clone,
 {
-    fn build(&self, app: &mut bevy_app::App) {
+    fn build(&self, app: &mut App) {
         load_internal_asset!(
             app,
             PREPASS_SHADER_HANDLE,
             "prepass.wgsl",
             Shader::from_wgsl
         );
-
         load_internal_asset!(
             app,
             PREPASS_BINDINGS_SHADER_HANDLE,
             "prepass_bindings.wgsl",
             Shader::from_wgsl
         );
+
+        app.add_system_to_stage(CoreStage::PreUpdate, update_previous_view_projections)
+            .add_system_to_stage(CoreStage::PreUpdate, update_previous_global_transforms);
 
         let render_app = match app.get_sub_app_mut(RenderApp) {
             Ok(render_app) => render_app,
@@ -99,6 +103,10 @@ where
         render_app
             .add_system_to_stage(RenderStage::Extract, extract_core_3d_camera_prepass_phase)
             .add_system_to_stage(RenderStage::Prepare, prepare_core_3d_prepass_textures)
+            .add_system_to_stage(
+                RenderStage::Prepare,
+                prepare_previous_view_projection_uniforms,
+            )
             .add_system_to_stage(RenderStage::Queue, queue_prepass_view_bind_group::<M>)
             .add_system_to_stage(RenderStage::Queue, queue_prepass_material_meshes::<M>)
             .add_system_to_stage(RenderStage::PhaseSort, sort_phase_system::<OpaquePrepass>)
@@ -107,10 +115,11 @@ where
                 sort_phase_system::<AlphaMaskPrepass>,
             )
             .init_resource::<PrepassPipeline<M>>()
+            .init_resource::<SpecializedMeshPipelines<PrepassPipeline<M>>>()
             .init_resource::<DrawFunctions<OpaquePrepass>>()
             .init_resource::<DrawFunctions<AlphaMaskPrepass>>()
-            .init_resource::<PrepassViewBindGroup>()
-            .init_resource::<SpecializedMeshPipelines<PrepassPipeline<M>>>();
+            .init_resource::<PreviousViewProjectionUniforms>()
+            .init_resource::<PrepassViewBindGroup>();
 
         let prepass_node = PrepassNode::new(&mut render_app.world);
         render_app
@@ -135,6 +144,36 @@ where
                 PrepassNode::IN_VIEW,
             )
             .unwrap();
+    }
+}
+
+#[derive(Component, ShaderType, Clone)]
+pub struct PreviousViewProjection {
+    pub view_proj: Mat4,
+}
+
+pub fn update_previous_view_projections(
+    mut commands: Commands,
+    query: Query<(Entity, &ExtractedView), (With<Camera3d>, With<PrepassSettings>)>,
+) {
+    for (entity, camera) in &query {
+        commands.entity(entity).insert(PreviousViewProjection {
+            view_proj: camera.projection * camera.transform.compute_matrix().inverse(),
+        });
+    }
+}
+
+#[derive(Component)]
+pub struct PreviousGlobalTransform(pub Mat4);
+
+pub fn update_previous_global_transforms(
+    mut commands: Commands,
+    query: Query<(Entity, &GlobalTransform)>,
+) {
+    for (entity, transform) in &query {
+        commands
+            .entity(entity)
+            .insert(PreviousGlobalTransform(transform.compute_matrix()));
     }
 }
 
@@ -165,6 +204,17 @@ impl<M: Material> FromWorld for PrepassPipeline<M> {
                         ty: BufferBindingType::Uniform,
                         has_dynamic_offset: true,
                         min_binding_size: Some(ViewUniform::min_size()),
+                    },
+                    count: None,
+                },
+                // Previous view projection
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
+                        has_dynamic_offset: true,
+                        min_binding_size: Some(PreviousViewProjection::min_size()),
                     },
                     count: None,
                 },
@@ -277,7 +327,7 @@ where
             }
             if key.contains(MeshPipelineKey::PREPASS_VELOCITIES) {
                 targets.push(Some(ColorTargetState {
-                    format: TextureFormat::Rg16Float,
+                    format: TextureFormat::Rg32Float,
                     blend: Some(BlendState::REPLACE),
                     write_mask: ColorWrites::ALL,
                 }));
@@ -349,15 +399,31 @@ where
 
 pub fn extract_core_3d_camera_prepass_phase(
     mut commands: Commands,
-    cameras_3d: Extract<Query<(Entity, &Camera, &PrepassSettings), With<Camera3d>>>,
+    cameras_3d: Extract<
+        Query<
+            (
+                Entity,
+                &Camera,
+                &PrepassSettings,
+                Option<&PreviousViewProjection>,
+            ),
+            With<Camera3d>,
+        >,
+    >,
 ) {
-    for (entity, camera, prepass_settings) in cameras_3d.iter() {
+    for (entity, camera, prepass_settings, maybe_previous_view_proj) in cameras_3d.iter() {
         if camera.is_active {
-            commands.get_or_spawn(entity).insert((
+            let mut commands = commands.get_or_spawn(entity);
+
+            commands.insert((
                 RenderPhase::<OpaquePrepass>::default(),
                 RenderPhase::<AlphaMaskPrepass>::default(),
                 prepass_settings.clone(),
             ));
+
+            if let Some(previous_view) = maybe_previous_view_proj {
+                commands.insert(previous_view.clone());
+            }
         }
     }
 }
@@ -454,7 +520,7 @@ pub fn prepare_core_3d_prepass_textures(
                                     mip_level_count: 1,
                                     sample_count: msaa.samples,
                                     dimension: TextureDimension::D2,
-                                    format: TextureFormat::Rg16Float,
+                                    format: TextureFormat::Rg32Float,
                                     usage: TextureUsages::RENDER_ATTACHMENT
                                         | TextureUsages::TEXTURE_BINDING,
                                 },
@@ -474,6 +540,44 @@ pub fn prepare_core_3d_prepass_textures(
     }
 }
 
+#[derive(Resource, Default)]
+pub struct PreviousViewProjectionUniforms {
+    pub uniforms: DynamicUniformBuffer<PreviousViewProjection>,
+}
+
+#[derive(Component)]
+pub struct PreviousViewProjectionUniformOffset {
+    pub offset: u32,
+}
+
+pub fn prepare_previous_view_projection_uniforms(
+    mut commands: Commands,
+    render_device: Res<RenderDevice>,
+    render_queue: Res<RenderQueue>,
+    mut view_uniforms: ResMut<PreviousViewProjectionUniforms>,
+    views: Query<(Entity, &ExtractedView, Option<&PreviousViewProjection>)>,
+) {
+    view_uniforms.uniforms.clear();
+
+    for (entity, camera, maybe_previous_view_proj) in &views {
+        let view_projection = match maybe_previous_view_proj {
+            Some(previous_view) => previous_view.clone(),
+            None => PreviousViewProjection {
+                view_proj: camera.projection * camera.transform.compute_matrix().inverse(),
+            },
+        };
+        commands
+            .entity(entity)
+            .insert(PreviousViewProjectionUniformOffset {
+                offset: view_uniforms.uniforms.push(view_projection),
+            });
+    }
+
+    view_uniforms
+        .uniforms
+        .write_buffer(&render_device, &render_queue);
+}
+
 #[derive(Default, Resource)]
 pub struct PrepassViewBindGroup {
     bind_group: Option<BindGroup>,
@@ -483,15 +587,25 @@ pub fn queue_prepass_view_bind_group<M: Material>(
     render_device: Res<RenderDevice>,
     prepass_pipeline: Res<PrepassPipeline<M>>,
     view_uniforms: Res<ViewUniforms>,
+    previous_view_uniforms: Res<PreviousViewProjectionUniforms>,
     mut prepass_view_bind_group: ResMut<PrepassViewBindGroup>,
 ) {
-    if let Some(view_binding) = view_uniforms.uniforms.binding() {
+    if let (Some(view_binding), Some(previous_view_binding)) = (
+        view_uniforms.uniforms.binding(),
+        previous_view_uniforms.uniforms.binding(),
+    ) {
         prepass_view_bind_group.bind_group =
             Some(render_device.create_bind_group(&BindGroupDescriptor {
-                entries: &[BindGroupEntry {
-                    binding: 0,
-                    resource: view_binding,
-                }],
+                entries: &[
+                    BindGroupEntry {
+                        binding: 0,
+                        resource: view_binding,
+                    },
+                    BindGroupEntry {
+                        binding: 1,
+                        resource: previous_view_binding,
+                    },
+                ],
                 label: Some("prepass_view_bind_group"),
                 layout: &prepass_pipeline.view_layout,
             }));
@@ -827,7 +941,14 @@ pub type DrawPrepass<M> = (
 
 pub struct SetDepthViewBindGroup<const I: usize>;
 impl<const I: usize> EntityRenderCommand for SetDepthViewBindGroup<I> {
-    type Param = (SRes<PrepassViewBindGroup>, SQuery<Read<ViewUniformOffset>>);
+    type Param = (
+        SRes<PrepassViewBindGroup>,
+        SQuery<(
+            Read<ViewUniformOffset>,
+            Read<PreviousViewProjectionUniformOffset>,
+        )>,
+    );
+
     #[inline]
     fn render<'w>(
         view: Entity,
@@ -835,12 +956,15 @@ impl<const I: usize> EntityRenderCommand for SetDepthViewBindGroup<I> {
         (prepass_view_bind_group, view_query): SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
-        let view_uniform_offset = view_query.get(view).unwrap();
+        let (view_uniform_offset, previous_view_uniform_offset) = view_query.get(view).unwrap();
         let prepass_view_bind_group = prepass_view_bind_group.into_inner();
         pass.set_bind_group(
             I,
             prepass_view_bind_group.bind_group.as_ref().unwrap(),
-            &[view_uniform_offset.offset],
+            &[
+                view_uniform_offset.offset,
+                previous_view_uniform_offset.offset,
+            ],
         );
 
         RenderCommandResult::Success
