@@ -14,7 +14,6 @@
 struct FragmentInput {
     @builtin(front_facing) is_front: bool,
     @builtin(position) frag_coord: vec4<f32>,
-    @builtin(sample_index) sample_index: u32,
 #ifdef OUTPUT_NORMALS
     @location(0) world_normal: vec3<f32>,
 #ifdef VERTEX_UVS
