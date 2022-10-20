@@ -47,8 +47,8 @@ use bevy_utils::{
 };
 
 use crate::{
-    AlphaMode, DrawMesh, Material, MeshPipeline, MeshPipelineKey, MeshUniform, RenderMaterials,
-    SetMaterialBindGroup, SetMeshBindGroup,
+    AlphaMode, DrawMesh, Material, MaterialPipeline, MaterialPipelineKey, MeshPipeline,
+    MeshPipelineKey, MeshUniform, RenderMaterials, SetMaterialBindGroup, SetMeshBindGroup,
 };
 
 use std::{hash::Hash, marker::PhantomData};
@@ -139,6 +139,7 @@ pub struct PrepassPipeline<M: Material> {
     pub material_layout: BindGroupLayout,
     pub material_vertex_shader: Option<Handle<Shader>>,
     pub material_fragment_shader: Option<Handle<Shader>>,
+    pub material_pipeline: MaterialPipeline<M>,
     _marker: PhantomData<M>,
 }
 
@@ -167,7 +168,7 @@ impl<M: Material> FromWorld for PrepassPipeline<M> {
         let mesh_pipeline = world.resource::<MeshPipeline>();
         let skinned_mesh_layout = mesh_pipeline.skinned_mesh_layout.clone();
 
-        Self {
+        PrepassPipeline {
             view_layout,
             mesh_layout: mesh_pipeline.mesh_layout.clone(),
             skinned_mesh_layout,
@@ -182,23 +183,23 @@ impl<M: Material> FromWorld for PrepassPipeline<M> {
                 ShaderRef::Path(path) => Some(asset_server.load(path)),
             },
             material_layout: M::bind_group_layout(render_device),
+            material_pipeline: world.resource::<MaterialPipeline<M>>().clone(),
             _marker: PhantomData,
         }
     }
 }
 
-impl<M: Material> SpecializedMeshPipeline for PrepassPipeline<M> {
-    type Key = MeshPipelineKey;
+impl<M: Material> SpecializedMeshPipeline for PrepassPipeline<M>
+where
+    M::Data: PartialEq + Eq + Hash + Clone,
+{
+    type Key = MaterialPipelineKey<M>;
 
     fn specialize(
         &self,
         key: Self::Key,
         layout: &MeshVertexBufferLayout,
     ) -> Result<RenderPipelineDescriptor, SpecializedMeshPipelineError> {
-        // TODO I need to figure out a way to specialize the Material to get the correct cull_mode
-        // or any other desciptor specialization from the Material
-        // let desc = M::specialize(pipeline, descriptor, layout, key);
-
         let mut bind_group_layout = vec![self.view_layout.clone()];
         let mut shader_defs = Vec::new();
 
@@ -209,13 +210,13 @@ impl<M: Material> SpecializedMeshPipeline for PrepassPipeline<M> {
         bind_group_layout.insert(1, self.material_layout.clone());
         // }
 
-        if key.contains(MeshPipelineKey::ALPHA_MASK) {
+        if key.mesh_key.contains(MeshPipelineKey::ALPHA_MASK) {
             shader_defs.push(String::from("ALPHA_MASK"));
         }
 
         let mut vertex_attributes = vec![Mesh::ATTRIBUTE_POSITION.at_shader_location(0)];
 
-        if key.contains(MeshPipelineKey::PREPASS_NORMALS) {
+        if key.mesh_key.contains(MeshPipelineKey::PREPASS_NORMALS) {
             vertex_attributes.push(Mesh::ATTRIBUTE_NORMAL.at_shader_location(1));
             shader_defs.push(String::from("OUTPUT_NORMALS"));
         }
@@ -243,8 +244,8 @@ impl<M: Material> SpecializedMeshPipeline for PrepassPipeline<M> {
 
         let vertex_buffer_layout = layout.get_layout(&vertex_attributes)?;
 
-        let fragment = if key.contains(MeshPipelineKey::PREPASS_NORMALS)
-            || key.contains(MeshPipelineKey::ALPHA_MASK)
+        let fragment = if key.mesh_key.contains(MeshPipelineKey::PREPASS_NORMALS)
+            || key.mesh_key.contains(MeshPipelineKey::ALPHA_MASK)
         {
             let frag_shader_handle = if let Some(handle) = &self.material_fragment_shader {
                 handle.clone()
@@ -274,7 +275,7 @@ impl<M: Material> SpecializedMeshPipeline for PrepassPipeline<M> {
             PREPASS_SHADER_HANDLE.typed::<Shader>()
         };
 
-        Ok(RenderPipelineDescriptor {
+        let mut descriptor = RenderPipelineDescriptor {
             vertex: VertexState {
                 shader: vert_shader_handle,
                 entry_point: "vertex".into(),
@@ -284,11 +285,10 @@ impl<M: Material> SpecializedMeshPipeline for PrepassPipeline<M> {
             fragment,
             layout: Some(bind_group_layout),
             primitive: PrimitiveState {
-                topology: key.primitive_topology(),
+                topology: key.mesh_key.primitive_topology(),
                 strip_index_format: None,
                 front_face: FrontFace::Ccw,
-                // FIXME: Should use from material... but that would need specialization
-                cull_mode: Some(bevy_render::render_resource::Face::Back),
+                cull_mode: None,
                 unclipped_depth: false,
                 polygon_mode: PolygonMode::Fill,
                 conservative: false,
@@ -311,12 +311,16 @@ impl<M: Material> SpecializedMeshPipeline for PrepassPipeline<M> {
                 },
             }),
             multisample: MultisampleState {
-                count: key.msaa_samples(),
+                count: key.mesh_key.msaa_samples(),
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },
             label: Some("prepass_pipeline".into()),
-        })
+        };
+
+        M::specialize(&self.material_pipeline, &mut descriptor, layout, key)?;
+
+        Ok(descriptor)
     }
 }
 
@@ -504,7 +508,10 @@ pub fn queue_prepass_material_meshes<M: Material>(
                         let pipeline_id = pipelines.specialize(
                             &mut pipeline_cache,
                             &prepass_pipeline,
-                            key,
+                            MaterialPipelineKey {
+                                mesh_key: key,
+                                bind_group_data: material.key.clone(),
+                            },
                             &mesh.layout,
                         );
                         let pipeline_id = match pipeline_id {
@@ -734,11 +741,11 @@ impl Node for PrepassNode {
                 }
             }
 
-            if let Some(view_depth_texture_resource) = &view_prepass_textures.depth {
+            if let Some(prepass_depth_texture) = &view_prepass_textures.depth {
                 // copy depth buffer to texture
                 render_context.command_encoder.copy_texture_to_texture(
                     view_depth_texture.texture.as_image_copy(),
-                    view_depth_texture_resource.texture.as_image_copy(),
+                    prepass_depth_texture.texture.as_image_copy(),
                     view_prepass_textures.size,
                 );
             }
