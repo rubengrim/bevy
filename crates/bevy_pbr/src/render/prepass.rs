@@ -209,6 +209,7 @@ where
     ) -> Result<RenderPipelineDescriptor, SpecializedMeshPipelineError> {
         let mut bind_group_layout = vec![self.view_layout.clone()];
         let mut shader_defs = Vec::new();
+        shader_defs.push(String::from("PREPASS_DEPTH"));
 
         // FIXME figure out a way to only add it when necessary
         // right now the issue is that the group is hardcoded to 1 in the pbr_bindings
@@ -226,6 +227,7 @@ where
         if key.mesh_key.contains(MeshPipelineKey::PREPASS_NORMALS) {
             vertex_attributes.push(Mesh::ATTRIBUTE_NORMAL.at_shader_location(1));
             shader_defs.push(String::from("OUTPUT_NORMALS"));
+            shader_defs.push(String::from("PREPASS_NORMALS"));
         }
 
         if layout.contains(Mesh::ATTRIBUTE_UV_0) {
