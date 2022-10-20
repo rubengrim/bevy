@@ -1,4 +1,4 @@
-//! A shader and a material that uses it.
+//! A shader that uses the depth texture generated in a prepass
 
 use bevy::{
     core_pipeline::core_3d::PrepassSettings,
