@@ -30,10 +30,12 @@ struct VertexOutput {
 #ifdef VERTEX_TANGENTS
     @location(2) world_tangent: vec4<f32>,
 #endif // VERTEX_TANGENTS
+#endif // OUTPUT_NORMALS
 
+#ifdef OUTPUT_VELOCITIES
     @location(3) world_position: vec4<f32>,
     @location(4) previous_world_position: vec4<f32>,
-#endif // OUTPUT_NORMALS
+#endif // OUTPUT_VELOCITIES
 }
 
 @vertex
@@ -62,30 +64,36 @@ fn vertex(vertex: Vertex) -> VertexOutput {
 #ifdef VERTEX_TANGENTS
     out.world_tangent = mesh_tangent_local_to_world(model, vertex.tangent);
 #endif // VERTEX_TANGENTS
+#endif // OUTPUT_NORMALS
 
+#ifdef OUTPUT_VELOCITIES
     out.world_position = mesh_position_local_to_world(model, vec4<f32>(vertex.position, 1.0));
     out.previous_world_position = mesh_position_local_to_world(mesh.previous_model, vec4<f32>(vertex.position, 1.0));
-#endif // OUTPUT_NORMALS
+#endif
 
     return out;
 }
 
-#ifdef OUTPUT_NORMALS
 struct FragmentInput {
-    @builtin(front_facing) is_front: bool,
+#ifdef OUTPUT_NORMALS
     @location(0) world_normal: vec3<f32>,
 #ifdef VERTEX_UVS
     @location(1) uv: vec2<f32>,
-#endif
+#endif // VERTEX_UVS
 #ifdef VERTEX_TANGENTS
     @location(2) world_tangent: vec4<f32>,
-#endif
+#endif // VERTEX_TANGENTS
+#endif // OUTPUT_NORMALS
 
+#ifdef OUTPUT_VELOCITIES
+    // FIXME: Can we use @builtin(position)?
     @location(3) world_position: vec4<f32>,
     @location(4) previous_world_position: vec4<f32>,
+#endif // OUTPUT_VELOCITIES
 }
 
 struct FragmentOutput {
+    // FIXME: Need to vary locations based on enabled features
     @location(0) normal: vec4<f32>,
     @location(1) velocity: vec2<f32>,
 }
@@ -101,12 +109,16 @@ fn clip_to_uv(clip: vec4<f32>) -> vec2<f32> {
 fn fragment(in: FragmentInput) -> FragmentOutput {
     var out: FragmentOutput;
 
+#ifdef OUTPUT_NORMALS
     out.normal = vec4<f32>(in.world_normal * 0.5 + vec3<f32>(0.5), 1.0);
+#endif
 
+
+#ifdef OUTPUT_VELOCITIES
     let clip_position = view.view_proj * in.world_position;
     let previous_clip_position = previous_view_proj * in.previous_world_position;
     out.velocity = clip_to_uv(clip_position) - clip_to_uv(previous_clip_position);
+#endif
 
     return out;
 }
-#endif // OUTPUT_NORMALS
