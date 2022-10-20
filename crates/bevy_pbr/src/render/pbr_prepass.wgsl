@@ -1,3 +1,5 @@
+// FIXME: These imports are wrong, but they make it possible to import pbr functions without copying any code
+
 #import bevy_pbr::mesh_view_bindings
 #import bevy_pbr::mesh_bindings
 

@@ -1177,6 +1177,17 @@ category = "Shaders"
 wasm = true
 
 [[example]]
+name = "shader_prepass"
+path = "examples/shader/shader_prepass.rs"
+
+[package.metadata.example.shader_prepass]
+name = "Material"
+description = "A shader using a depth prepass"
+category = "Shaders"
+wasm = true
+
+
+[[example]]
 name = "shader_material_screenspace_texture"
 path = "examples/shader/shader_material_screenspace_texture.rs"
 
