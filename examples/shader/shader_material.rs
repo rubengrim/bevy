@@ -2,6 +2,7 @@
 
 use bevy::{
     core_pipeline::core_3d::PrepassSettings,
+    pbr::PrepassPlugin,
     prelude::*,
     reflect::TypeUuid,
     render::render_resource::{AsBindGroup, ShaderRef},
@@ -17,6 +18,8 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(MaterialPlugin::<CustomMaterial>::default())
         .add_plugin(MaterialPlugin::<DepthMaterial>::default())
+        .add_plugin(PrepassPlugin::<CustomMaterial>::default())
+        .add_plugin(PrepassPlugin::<StandardMaterial>::default())
         .add_startup_system(setup)
         .add_system(rotate)
         .run();
@@ -39,16 +42,16 @@ fn setup(
     });
 
     // depth plane
-    commands.spawn(MaterialMeshBundle {
-        mesh: meshes.add(Mesh::from(shape::Quad {
-            flip: false,
-            size: Vec2::new(2.0, 2.0),
-        })),
-        material: depth_materials.add(DepthMaterial {}),
-        transform: Transform::from_xyz(-1.0, 1.0, 2.0)
-            .looking_at(Vec3::new(2.0, -2.5, -5.0), Vec3::Y),
-        ..default()
-    });
+    // commands.spawn(MaterialMeshBundle {
+    //     mesh: meshes.add(Mesh::from(shape::Quad {
+    //         flip: false,
+    //         size: Vec2::new(2.0, 2.0),
+    //     })),
+    //     material: depth_materials.add(DepthMaterial {}),
+    //     transform: Transform::from_xyz(-1.0, 1.0, 2.0)
+    //         .looking_at(Vec3::new(2.0, -2.5, -5.0), Vec3::Y),
+    //     ..default()
+    // });
 
     //cube
     commands.spawn((
@@ -61,17 +64,29 @@ fn setup(
         Rotates,
     ));
 
-    // cube
-    commands.spawn(MaterialMeshBundle {
+    commands.spawn(PbrBundle {
         mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-        material: materials.add(CustomMaterial {
-            color: Vec3::ONE,
-            color_texture: Some(asset_server.load("branding/icon.png")),
-            alpha_mode: AlphaMode::Blend,
+        material: std_materials.add(StandardMaterial {
+            alpha_mode: AlphaMode::Mask(1.0),
+            base_color_texture: Some(asset_server.load("branding/icon.png")),
+            ..default()
         }),
+
         transform: Transform::from_xyz(0.0, 0.5, 0.0),
         ..default()
     });
+
+    // cube
+    // commands.spawn(MaterialMeshBundle {
+    //     mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
+    //     material: materials.add(CustomMaterial {
+    //         color: Vec3::ONE,
+    //         color_texture: Some(asset_server.load("branding/icon.png")),
+    //         alpha_mode: AlphaMode::Mask(0.0),
+    //     }),
+    //     transform: Transform::from_xyz(0.0, 0.5, 0.0),
+    //     ..default()
+    // });
 
     // cube
     commands.spawn(MaterialMeshBundle {
