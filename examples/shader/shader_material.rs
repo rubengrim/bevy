@@ -7,6 +7,7 @@ use bevy::{
     reflect::TypeUuid,
     render::render_resource::{AsBindGroup, ShaderRef},
 };
+use fly_cam::{fly_camera, FlyCam};
 
 fn main() {
     App::new()
@@ -22,6 +23,7 @@ fn main() {
         .add_plugin(PrepassPlugin::<StandardMaterial>::default())
         .add_startup_system(setup)
         .add_system(rotate)
+        .add_system(fly_camera)
         .run();
 }
 
@@ -42,16 +44,16 @@ fn setup(
     });
 
     // depth plane
-    // commands.spawn(MaterialMeshBundle {
-    //     mesh: meshes.add(Mesh::from(shape::Quad {
-    //         flip: false,
-    //         size: Vec2::new(2.0, 2.0),
-    //     })),
-    //     material: depth_materials.add(DepthMaterial {}),
-    //     transform: Transform::from_xyz(-1.0, 1.0, 2.0)
-    //         .looking_at(Vec3::new(2.0, -2.5, -5.0), Vec3::Y),
-    //     ..default()
-    // });
+    commands.spawn(MaterialMeshBundle {
+        mesh: meshes.add(Mesh::from(shape::Quad {
+            flip: false,
+            size: Vec2::new(2.0, 2.0),
+        })),
+        material: depth_materials.add(DepthMaterial {}),
+        transform: Transform::from_xyz(-1.0, 1.0, 2.0)
+            .looking_at(Vec3::new(2.0, -2.5, -5.0), Vec3::Y),
+        ..default()
+    });
 
     //cube
     commands.spawn((
@@ -64,6 +66,7 @@ fn setup(
         Rotates,
     ));
 
+    //cube
     commands.spawn(PbrBundle {
         mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
         material: std_materials.add(StandardMaterial {
@@ -75,18 +78,6 @@ fn setup(
         transform: Transform::from_xyz(0.0, 0.5, 0.0),
         ..default()
     });
-
-    // cube
-    // commands.spawn(MaterialMeshBundle {
-    //     mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-    //     material: materials.add(CustomMaterial {
-    //         color: Vec3::ONE,
-    //         color_texture: Some(asset_server.load("branding/icon.png")),
-    //         alpha_mode: AlphaMode::Mask(0.0),
-    //     }),
-    //     transform: Transform::from_xyz(0.0, 0.5, 0.0),
-    //     ..default()
-    // });
 
     // cube
     commands.spawn(MaterialMeshBundle {
@@ -114,10 +105,11 @@ fn setup(
     // camera
     commands.spawn((
         Camera3dBundle {
-            transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+            transform: Transform::from_xyz(-3.0, 3., 5.0).looking_at(Vec3::ZERO, Vec3::Y),
             ..default()
         },
         PrepassSettings::default(),
+        FlyCam,
     ));
 }
 
@@ -172,5 +164,89 @@ impl Material for DepthMaterial {
 
     fn alpha_mode(&self) -> AlphaMode {
         AlphaMode::Blend
+    }
+}
+
+mod fly_cam {
+    use bevy::{input::mouse::MouseMotion, prelude::*};
+
+    #[derive(Component, Default)]
+    pub struct FlyCam;
+
+    pub fn fly_camera(
+        time: Res<Time>,
+        mut camera_transform: Query<&mut Transform, With<FlyCam>>,
+        windows: Res<Windows>,
+        mouse_input: Res<Input<MouseButton>>,
+        key_input: Res<Input<KeyCode>>,
+        mut mouse_motion: EventReader<MouseMotion>,
+        mut velocity: Local<Vec3>,
+    ) {
+        if !mouse_input.pressed(MouseButton::Right) {
+            return;
+        }
+
+        let dt = time.delta_seconds();
+
+        let mut transform = camera_transform.single_mut();
+
+        // Rotate
+
+        let mut mouse_delta = Vec2::ZERO;
+        for mouse_motion in mouse_motion.iter() {
+            mouse_delta += mouse_motion.delta;
+        }
+
+        if mouse_delta != Vec2::ZERO {
+            let window = if let Some(window) = windows.get_primary() {
+                Vec2::new(window.width() as f32, window.height() as f32)
+            } else {
+                Vec2::ZERO
+            };
+            let delta_x = mouse_delta.x / window.x * std::f32::consts::PI * 2.0;
+            let delta_y = mouse_delta.y / window.y * std::f32::consts::PI;
+            let yaw = Quat::from_rotation_y(-delta_x);
+            let pitch = Quat::from_rotation_x(-delta_y);
+            transform.rotation = yaw * transform.rotation; // rotate around global y axis
+            transform.rotation *= pitch; // rotate around local x axis
+        }
+
+        // Translate
+
+        let mut axis_input = Vec3::ZERO;
+        if key_input.pressed(KeyCode::W) {
+            axis_input.z += 1.0;
+        }
+        if key_input.pressed(KeyCode::S) {
+            axis_input.z -= 1.0;
+        }
+        if key_input.pressed(KeyCode::D) {
+            axis_input.x += 1.0;
+        }
+        if key_input.pressed(KeyCode::A) {
+            axis_input.x -= 1.0;
+        }
+        if key_input.pressed(KeyCode::Space) {
+            axis_input.y += 1.0;
+        }
+        if key_input.pressed(KeyCode::LShift) {
+            axis_input.y -= 1.0;
+        }
+
+        if axis_input != Vec3::ZERO {
+            let max_speed = 5.0;
+            *velocity = axis_input.normalize() * max_speed;
+        } else {
+            let friction = 0.5;
+            *velocity *= 1.0 - friction;
+            if velocity.length_squared() < 1e-6 {
+                *velocity = Vec3::ZERO;
+            }
+        }
+
+        let forward = transform.forward();
+        let right = transform.right();
+        transform.translation +=
+            velocity.x * dt * right + velocity.y * dt * Vec3::Y + velocity.z * dt * forward;
     }
 }
