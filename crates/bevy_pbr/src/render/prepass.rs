@@ -230,6 +230,10 @@ where
             shader_defs.push(String::from("PREPASS_NORMALS"));
         }
 
+        if key.contains(MeshPipelineKey::PREPASS_VELOCITIES) {
+            shader_defs.push(String::from("OUTPUT_VELOCITIES"));
+        }
+
         if layout.contains(Mesh::ATTRIBUTE_UV_0) {
             shader_defs.push(String::from("VERTEX_UVS"));
             vertex_attributes.push(Mesh::ATTRIBUTE_UV_0.at_shader_location(2));
@@ -255,6 +259,7 @@ where
 
         let fragment = if key.mesh_key.contains(MeshPipelineKey::PREPASS_NORMALS)
             || key.mesh_key.contains(MeshPipelineKey::ALPHA_MASK)
+            || key.mesh_key.contains(MeshPipelineKey::ALPHA_MASK)
         {
             let frag_shader_handle = if let Some(handle) = &self.material_fragment_shader {
                 handle.clone()
@@ -262,15 +267,27 @@ where
                 PREPASS_SHADER_HANDLE.typed::<Shader>()
             };
 
+            let mut targets = vec![];
+            if key.contains(MeshPipelineKey::PREPASS_NORMALS) {
+                targets.push(Some(ColorTargetState {
+                    format: TextureFormat::Rgb10a2Unorm,
+                    blend: Some(BlendState::REPLACE),
+                    write_mask: ColorWrites::ALL,
+                }));
+            }
+            if key.contains(MeshPipelineKey::PREPASS_VELOCITIES) {
+                targets.push(Some(ColorTargetState {
+                    format: TextureFormat::Rg16Float,
+                    blend: Some(BlendState::REPLACE),
+                    write_mask: ColorWrites::ALL,
+                }));
+            }
+
             Some(FragmentState {
                 shader: frag_shader_handle,
                 entry_point: "fragment".into(),
                 shader_defs: shader_defs.clone(),
-                targets: vec![Some(ColorTargetState {
-                    format: TextureFormat::Rgb10a2Unorm,
-                    blend: Some(BlendState::REPLACE),
-                    write_mask: ColorWrites::ALL,
-                })],
+                targets,
             })
         } else {
             None
@@ -349,6 +366,7 @@ pub fn extract_core_3d_camera_prepass_phase(
 pub struct ViewPrepassTextures {
     pub depth: Option<CachedTexture>,
     pub normals: Option<CachedTexture>,
+    pub velocities: Option<CachedTexture>,
     pub size: Extent3d,
 }
 
@@ -367,6 +385,7 @@ pub fn prepare_core_3d_prepass_textures(
 ) {
     let mut depth_textures = HashMap::default();
     let mut normal_textures = HashMap::default();
+    let mut velocity_textures = HashMap::default();
     for (entity, camera, prepass_settings) in &views_3d {
         if let Some(physical_target_size) = camera.physical_target_size {
             let size = Extent3d {
@@ -422,9 +441,33 @@ pub fn prepare_core_3d_prepass_textures(
                 ),
                 false => None,
             };
+            let cached_velocities_texture = match prepass_settings.output_velocity {
+                true => Some(
+                    velocity_textures
+                        .entry(camera.target.clone())
+                        .or_insert_with(|| {
+                            texture_cache.get(
+                                &render_device,
+                                TextureDescriptor {
+                                    label: Some("view_velocities_texture"),
+                                    size,
+                                    mip_level_count: 1,
+                                    sample_count: msaa.samples,
+                                    dimension: TextureDimension::D2,
+                                    format: TextureFormat::Rg16Float,
+                                    usage: TextureUsages::RENDER_ATTACHMENT
+                                        | TextureUsages::TEXTURE_BINDING,
+                                },
+                            )
+                        })
+                        .clone(),
+                ),
+                false => None,
+            };
             commands.entity(entity).insert(ViewPrepassTextures {
                 depth: cached_depth_texture,
                 normals: cached_normals_texture,
+                velocities: cached_velocities_texture,
                 size,
             });
         }
@@ -493,6 +536,9 @@ pub fn queue_prepass_material_meshes<M: Material>(
             MeshPipelineKey::PREPASS_DEPTH | MeshPipelineKey::from_msaa_samples(msaa.samples);
         if prepass_settings.output_normals {
             view_key |= MeshPipelineKey::PREPASS_NORMALS;
+        }
+        if prepass_settings.output_velocity {
+            view_key |= MeshPipelineKey::PREPASS_VELOCITIES;
         }
 
         for visible_entity in &visible_entities.entities {
@@ -696,9 +742,19 @@ impl Node for PrepassNode {
                     },
                 }));
             }
+            if let Some(view_velocities_texutre) = &view_prepass_textures.velocities {
+                color_attachments.push(Some(RenderPassColorAttachment {
+                    view: &view_velocities_texutre.default_view,
+                    resolve_target: None,
+                    ops: Operations {
+                        load: LoadOp::Clear(Color::BLACK.into()),
+                        store: true,
+                    },
+                }));
+            }
 
             {
-                // Set up the pass descriptor with the depth attachment and maybe colour attachment
+                // Set up the pass descriptor with the depth attachment and maybe colour attachments
                 let pass_descriptor = RenderPassDescriptor {
                     label: Some("prepass"),
                     color_attachments: &color_attachments,
