@@ -901,10 +901,11 @@ pub fn queue_mesh_view_bind_groups(
             };
             let fallback_view = match maybe_prepass_textures {
                 Some(ViewPrepassTextures {
-                    normals,
-                    velocities,
+                    normals: None,
+                    velocities: None,
                     ..
-                }) if normals.is_none() || velocities.is_none() => Some(
+                })
+                | None => Some(
                     &fallback_images
                         .image_for_samplecount(msaa.samples)
                         .texture_view,

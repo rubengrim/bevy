@@ -280,7 +280,7 @@ where
             shader_defs.push(String::from("PREPASS_NORMALS"));
         }
 
-        if key.contains(MeshPipelineKey::PREPASS_VELOCITIES) {
+        if key.mesh_key.contains(MeshPipelineKey::PREPASS_VELOCITIES) {
             shader_defs.push(String::from("OUTPUT_VELOCITIES"));
         }
 
@@ -308,7 +308,7 @@ where
         let vertex_buffer_layout = layout.get_layout(&vertex_attributes)?;
 
         let fragment = if key.mesh_key.contains(MeshPipelineKey::PREPASS_NORMALS)
-            || key.mesh_key.contains(MeshPipelineKey::ALPHA_MASK)
+            || key.mesh_key.contains(MeshPipelineKey::PREPASS_VELOCITIES)
             || key.mesh_key.contains(MeshPipelineKey::ALPHA_MASK)
         {
             let frag_shader_handle = if let Some(handle) = &self.material_fragment_shader {
@@ -318,14 +318,14 @@ where
             };
 
             let mut targets = vec![];
-            if key.contains(MeshPipelineKey::PREPASS_NORMALS) {
+            if key.mesh_key.contains(MeshPipelineKey::PREPASS_NORMALS) {
                 targets.push(Some(ColorTargetState {
                     format: TextureFormat::Rgb10a2Unorm,
                     blend: Some(BlendState::REPLACE),
                     write_mask: ColorWrites::ALL,
                 }));
             }
-            if key.contains(MeshPipelineKey::PREPASS_VELOCITIES) {
+            if key.mesh_key.contains(MeshPipelineKey::PREPASS_VELOCITIES) {
                 targets.push(Some(ColorTargetState {
                     format: TextureFormat::Rg32Float,
                     blend: Some(BlendState::REPLACE),
@@ -917,7 +917,7 @@ impl Node for PrepassNode {
                 }
             }
 
-            if let Some(view_depth_texture_resource) = &view_prepass_textures.depth {
+            if let Some(prepass_depth_texture) = &view_prepass_textures.depth {
                 // Copy depth buffer to texture
                 render_context.command_encoder.copy_texture_to_texture(
                     view_depth_texture.texture.as_image_copy(),
