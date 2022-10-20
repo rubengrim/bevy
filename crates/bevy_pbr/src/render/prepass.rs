@@ -282,7 +282,7 @@ impl<M: Material> SpecializedMeshPipeline for PrepassPipeline<M> {
                 strip_index_format: None,
                 front_face: FrontFace::Ccw,
                 // FIXME: Should use from material... but that would need specialization
-                cull_mode: None,
+                cull_mode: Some(bevy_render::render_resource::Face::Back),
                 unclipped_depth: false,
                 polygon_mode: PolygonMode::Fill,
                 conservative: false,
