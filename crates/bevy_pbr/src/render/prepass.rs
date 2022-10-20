@@ -819,7 +819,7 @@ impl PrepassNode {
 
 impl Node for PrepassNode {
     fn input(&self) -> Vec<SlotInfo> {
-        vec![SlotInfo::new(PrepassNode::IN_VIEW, SlotType::Entity)]
+        vec![SlotInfo::new(Self::IN_VIEW, SlotType::Entity)]
     }
 
     fn update(&mut self, world: &mut World) {
