@@ -2,6 +2,7 @@
 
 #import bevy_pbr::mesh_view_bindings
 #import bevy_pbr::mesh_bindings
+// #import bevy_pbr::prepass_bindings
 
 #import bevy_pbr::pbr_bindings
 #import bevy_pbr::utils
