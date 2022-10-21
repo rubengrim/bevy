@@ -42,12 +42,15 @@ mod draw_3d_graph {
 
 const TAA_SHADER_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 656865235226276);
+const TAA_JITTER_HANDLE: HandleUntyped =
+    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 50104637211504);
 
 pub struct TemporalAntialiasPlugin;
 
 impl Plugin for TemporalAntialiasPlugin {
     fn build(&self, app: &mut App) {
         load_internal_asset!(app, TAA_SHADER_HANDLE, "taa.wgsl", Shader::from_wgsl);
+        load_internal_asset!(app, TAA_JITTER_HANDLE, "taa_jitter.wgsl", Shader::from_wgsl);
 
         let render_app = match app.get_sub_app_mut(RenderApp) {
             Ok(render_app) => render_app,
@@ -390,7 +393,7 @@ fn prepare_taa_textures(
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: TextureDimension::D2,
-                format: TextureFormat::bevy_default(), // TODO: Use camera target's texture format
+                format: TextureFormat::bevy_default(),
                 usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
             };
 

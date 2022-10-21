@@ -3,6 +3,7 @@
 
 // NOTE: Bindings must come before functions that use them!
 #import bevy_pbr::mesh_functions
+#import bevy_pbr::taa_jitter
 
 struct Vertex {
 #ifdef VERTEX_POSITIONS
@@ -35,6 +36,11 @@ struct VertexOutput {
 fn vertex(vertex: Vertex) -> VertexOutput {
     var out: VertexOutput;
 
+    var projection: mat4x4<f32> = view.projection;
+#ifdef TEMPORAL_ANTI_ALIASING
+    projection = taa_jitter(projection);
+#endif
+
 #ifdef VERTEX_NORMALS
 #ifdef SKINNED
     var model = skin_model(vertex.joint_indices, vertex.joint_weights);
@@ -47,7 +53,7 @@ fn vertex(vertex: Vertex) -> VertexOutput {
 
 #ifdef VERTEX_POSITIONS
     out.world_position = mesh_position_local_to_world(model, vec4<f32>(vertex.position, 1.0));
-    out.clip_position = mesh_position_world_to_clip(out.world_position);
+    out.clip_position = projection * view.inverse_view * out.world_position;
 #endif
 
 #ifdef VERTEX_UVS

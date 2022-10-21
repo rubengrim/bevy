@@ -592,6 +592,7 @@ bitflags::bitflags! {
         const PREPASS_NORMALS             = (1 << 2);
         const PREPASS_VELOCITIES          = (1 << 3);
         const ALPHA_MASK                  = (1 << 4);
+        const TEMPORAL_ANTI_ALIASING      = (1 << 5);
         const MSAA_RESERVED_BITS          = MeshPipelineKey::MSAA_MASK_BITS << MeshPipelineKey::MSAA_SHIFT_BITS;
         const PRIMITIVE_TOPOLOGY_RESERVED_BITS = MeshPipelineKey::PRIMITIVE_TOPOLOGY_MASK_BITS << MeshPipelineKey::PRIMITIVE_TOPOLOGY_SHIFT_BITS;
     }
@@ -705,6 +706,10 @@ impl SpecializedMeshPipeline for MeshPipeline {
             // the current fragment value in the output and the depth is written to the
             // depth buffer
             depth_write_enabled = !key.contains(MeshPipelineKey::PREPASS_DEPTH);
+        }
+
+        if key.contains(MeshPipelineKey::TEMPORAL_ANTI_ALIASING) {
+            shader_defs.push(String::from("TEMPORAL_ANTI_ALIASING"));
         }
 
         Ok(RenderPipelineDescriptor {

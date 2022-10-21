@@ -1,6 +1,6 @@
 use crate::{
     AlphaMode, DrawMesh, MeshPipeline, MeshPipelineKey, MeshUniform, PrepassPlugin,
-    SetMeshBindGroup, SetMeshViewBindGroup,
+    SetMeshBindGroup, SetMeshViewBindGroup, TemporalAntialiasSettings,
 };
 use bevy_app::{App, Plugin};
 use bevy_asset::{AddAsset, AssetEvent, AssetServer, Assets, Handle};
@@ -364,12 +364,19 @@ pub fn queue_material_meshes<M: Material>(
         &mut RenderPhase<Opaque3d>,
         &mut RenderPhase<AlphaMask3d>,
         &mut RenderPhase<Transparent3d>,
+        Option<&TemporalAntialiasSettings>,
     )>,
 ) where
     M::Data: PartialEq + Eq + Hash + Clone,
 {
-    for (view, visible_entities, mut opaque_phase, mut alpha_mask_phase, mut transparent_phase) in
-        &mut views
+    for (
+        view,
+        visible_entities,
+        mut opaque_phase,
+        mut alpha_mask_phase,
+        mut transparent_phase,
+        maybe_taa_settings,
+    ) in &mut views
     {
         let draw_opaque_pbr = opaque_draw_functions
             .read()
@@ -399,6 +406,9 @@ pub fn queue_material_meshes<M: Material>(
                         let alpha_mode = material.properties.alpha_mode;
                         if let AlphaMode::Blend = alpha_mode {
                             mesh_key |= MeshPipelineKey::TRANSPARENT_MAIN_PASS;
+                        }
+                        if maybe_taa_settings.is_some() {
+                            mesh_key |= MeshPipelineKey::TEMPORAL_ANTI_ALIASING;
                         }
 
                         let pipeline_id = pipelines.specialize(
