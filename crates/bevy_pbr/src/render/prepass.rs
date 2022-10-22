@@ -14,6 +14,7 @@ use bevy_math::Mat4;
 use bevy_reflect::TypeUuid;
 use bevy_render::{
     camera::ExtractedCamera,
+    globals::{GlobalsBuffer, GlobalsUniform},
     mesh::MeshVertexBufferLayout,
     prelude::{Camera, Color, Mesh},
     render_asset::RenderAssets,
@@ -48,6 +49,7 @@ use bevy_utils::{tracing::error, FloatOrd, HashMap};
 use crate::{
     AlphaMode, DrawMesh, Material, MaterialPipeline, MaterialPipelineKey, MeshPipeline,
     MeshPipelineKey, MeshUniform, RenderMaterials, SetMaterialBindGroup, SetMeshBindGroup,
+    TemporalAntialiasSettings,
 };
 
 use std::{hash::Hash, marker::PhantomData};
@@ -218,6 +220,17 @@ impl<M: Material> FromWorld for PrepassPipeline<M> {
                     },
                     count: None,
                 },
+                // Globals
+                BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: ShaderStages::VERTEX,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: Some(GlobalsUniform::min_size()),
+                    },
+                    count: None,
+                },
             ],
             label: Some("prepass_view_layout"),
         });
@@ -303,6 +316,13 @@ where
             bind_group_layout.insert(2, self.skinned_mesh_layout.clone());
         } else {
             bind_group_layout.insert(2, self.mesh_layout.clone());
+        }
+
+        if key
+            .mesh_key
+            .contains(MeshPipelineKey::TEMPORAL_ANTI_ALIASING)
+        {
+            shader_defs.push(String::from("TEMPORAL_ANTI_ALIASING"));
         }
 
         let vertex_buffer_layout = layout.get_layout(&vertex_attributes)?;
@@ -588,11 +608,13 @@ pub fn queue_prepass_view_bind_group<M: Material>(
     prepass_pipeline: Res<PrepassPipeline<M>>,
     view_uniforms: Res<ViewUniforms>,
     previous_view_uniforms: Res<PreviousViewProjectionUniforms>,
+    globals_buffer: Res<GlobalsBuffer>,
     mut prepass_view_bind_group: ResMut<PrepassViewBindGroup>,
 ) {
-    if let (Some(view_binding), Some(previous_view_binding)) = (
+    if let (Some(view_binding), Some(previous_view_binding), Some(globals_binding)) = (
         view_uniforms.uniforms.binding(),
         previous_view_uniforms.uniforms.binding(),
+        globals_buffer.buffer.binding(),
     ) {
         prepass_view_bind_group.bind_group =
             Some(render_device.create_bind_group(&BindGroupDescriptor {
@@ -604,6 +626,10 @@ pub fn queue_prepass_view_bind_group<M: Material>(
                     BindGroupEntry {
                         binding: 1,
                         resource: previous_view_binding,
+                    },
+                    BindGroupEntry {
+                        binding: 2,
+                        resource: globals_binding,
                     },
                 ],
                 label: Some("prepass_view_bind_group"),
@@ -629,6 +655,7 @@ pub fn queue_prepass_material_meshes<M: Material>(
         &PrepassSettings,
         &mut RenderPhase<OpaquePrepass>,
         &mut RenderPhase<AlphaMaskPrepass>,
+        Option<&TemporalAntialiasSettings>,
     )>,
 ) where
     M::Data: PartialEq + Eq + Hash + Clone,
@@ -641,8 +668,14 @@ pub fn queue_prepass_material_meshes<M: Material>(
         .read()
         .get_id::<DrawPrepass<M>>()
         .unwrap();
-    for (view, visible_entities, prepass_settings, mut opaque_phase, mut alpha_mask_phase) in
-        &mut views
+    for (
+        view,
+        visible_entities,
+        prepass_settings,
+        mut opaque_phase,
+        mut alpha_mask_phase,
+        maybe_taa_settings,
+    ) in &mut views
     {
         let rangefinder = view.rangefinder3d();
 
@@ -661,21 +694,24 @@ pub fn queue_prepass_material_meshes<M: Material>(
             {
                 if let Some(material) = render_materials.get(material_handle) {
                     if let Some(mesh) = render_meshes.get(mesh_handle) {
-                        let mut key =
+                        let mut mesh_key =
                             MeshPipelineKey::from_primitive_topology(mesh.primitive_topology)
                                 | view_key;
                         let alpha_mode = material.properties.alpha_mode;
                         match alpha_mode {
                             AlphaMode::Opaque => {}
-                            AlphaMode::Mask(_) => key |= MeshPipelineKey::ALPHA_MASK,
+                            AlphaMode::Mask(_) => mesh_key |= MeshPipelineKey::ALPHA_MASK,
                             AlphaMode::Blend => continue,
+                        }
+                        if maybe_taa_settings.is_some() {
+                            mesh_key |= MeshPipelineKey::TEMPORAL_ANTI_ALIASING;
                         }
 
                         let pipeline_id = pipelines.specialize(
                             &mut pipeline_cache,
                             &prepass_pipeline,
                             MaterialPipelineKey {
-                                mesh_key: key,
+                                mesh_key,
                                 bind_group_data: material.key.clone(),
                             },
                             &mesh.layout,

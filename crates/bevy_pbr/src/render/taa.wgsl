@@ -26,9 +26,9 @@ fn fullscreen(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
 @fragment
 fn taa(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
     // TODO
-    var current_color: vec3<f32> = textureSample(view_target, f_sampler, uv).rgb;
-    var previous_color: vec3<f32> = textureSample(taa_accumulation, f_sampler, uv).rgb;
-    var output: vec3<f32> = (current_color * 0.1) + (previous_color * 0.9);
+    let current_color = textureSample(view_target, f_sampler, uv).rgb;
+    let previous_color = textureSample(taa_accumulation, f_sampler, uv).rgb;
+    let output = (current_color * 0.1) + (previous_color * 0.9);
     return vec4<f32>(output, 1.0);
 }
 

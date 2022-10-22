@@ -36,7 +36,7 @@ struct VertexOutput {
 fn vertex(vertex: Vertex) -> VertexOutput {
     var out: VertexOutput;
 
-    var projection: mat4x4<f32> = view.projection;
+    var projection = view.projection;
 #ifdef TEMPORAL_ANTI_ALIASING
     projection = taa_jitter(projection);
 #endif

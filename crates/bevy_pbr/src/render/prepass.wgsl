@@ -1,5 +1,6 @@
 #import bevy_pbr::prepass_bindings
 #import bevy_pbr::mesh_functions
+#import bevy_pbr::taa_jitter
 
 struct Vertex {
     @location(0) position: vec3<f32>,
@@ -42,13 +43,23 @@ struct VertexOutput {
 fn vertex(vertex: Vertex) -> VertexOutput {
     var out: VertexOutput;
 
+    var projection = view.projection;
+#ifdef TEMPORAL_ANTI_ALIASING
+    projection = taa_jitter(projection);
+#endif
+
 #ifdef SKINNED
     var model = skin_model(vertex.joint_indices, vertex.joint_weights);
 #else // SKINNED
     var model = mesh.model;
 #endif // SKINNED
 
-    out.clip_position = mesh_position_local_to_clip(model, vec4<f32>(vertex.position, 1.0));
+#ifdef OUTPUT_VELOCITIES
+    out.world_position = mesh_position_local_to_world(model, vec4<f32>(vertex.position, 1.0));
+    out.previous_world_position = mesh_position_local_to_world(mesh.previous_model, vec4<f32>(vertex.position, 1.0));
+#endif // OUTPUT_VELOCITIES
+
+    out.clip_position = projection * view.inverse_view * out.world_position;
 
 #ifdef OUTPUT_NORMALS
 #ifdef SKINNED
@@ -65,11 +76,6 @@ fn vertex(vertex: Vertex) -> VertexOutput {
     out.world_tangent = mesh_tangent_local_to_world(model, vertex.tangent);
 #endif // VERTEX_TANGENTS
 #endif // OUTPUT_NORMALS
-
-#ifdef OUTPUT_VELOCITIES
-    out.world_position = mesh_position_local_to_world(model, vec4<f32>(vertex.position, 1.0));
-    out.previous_world_position = mesh_position_local_to_world(mesh.previous_model, vec4<f32>(vertex.position, 1.0));
-#endif
 
     return out;
 }
@@ -112,7 +118,6 @@ fn fragment(in: FragmentInput) -> FragmentOutput {
 #ifdef OUTPUT_NORMALS
     out.normal = vec4<f32>(in.world_normal * 0.5 + vec3<f32>(0.5), 1.0);
 #endif
-
 
 #ifdef OUTPUT_VELOCITIES
     let clip_position = view.view_proj * in.world_position;
