@@ -3,7 +3,10 @@
 
 // NOTE: Bindings must come before functions that use them!
 #import bevy_pbr::mesh_functions
+
+#ifdef TEMPORAL_ANTI_ALIASING
 #import bevy_pbr::taa_jitter
+#endif
 
 struct Vertex {
 #ifdef VERTEX_POSITIONS

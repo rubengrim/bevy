@@ -1,6 +1,9 @@
 #import bevy_pbr::prepass_bindings
 #import bevy_pbr::mesh_functions
+
+#ifdef TEMPORAL_ANTI_ALIASING
 #import bevy_pbr::taa_jitter
+#endif
 
 struct Vertex {
     @location(0) position: vec3<f32>,
