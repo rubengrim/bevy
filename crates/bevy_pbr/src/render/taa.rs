@@ -26,7 +26,7 @@ use bevy_render::{
     },
     renderer::{RenderContext, RenderDevice},
     texture::{BevyDefault, CachedTexture, TextureCache},
-    view::ViewTarget,
+    view::{Msaa, ViewTarget},
     Extract, RenderApp, RenderStage,
 };
 use bevy_utils::HashMap;
@@ -48,6 +48,8 @@ pub struct TemporalAntialiasPlugin;
 impl Plugin for TemporalAntialiasPlugin {
     fn build(&self, app: &mut App) {
         load_internal_asset!(app, TAA_SHADER_HANDLE, "taa.wgsl", Shader::from_wgsl);
+
+        app.insert_resource(Msaa { samples: 1 });
 
         let render_app = match app.get_sub_app_mut(RenderApp) {
             Ok(render_app) => render_app,
@@ -222,7 +224,7 @@ impl FromWorld for TAAPipelines {
                         },
                         count: None,
                     },
-                    // Velocity
+                    // TAA Accumulation
                     BindGroupLayoutEntry {
                         binding: 1,
                         visibility: ShaderStages::FRAGMENT,
@@ -233,7 +235,7 @@ impl FromWorld for TAAPipelines {
                         },
                         count: None,
                     },
-                    // TAA Accumulation
+                    // Velocity
                     BindGroupLayoutEntry {
                         binding: 2,
                         visibility: ShaderStages::FRAGMENT,
@@ -456,11 +458,11 @@ fn queue_taa_bind_groups(
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: BindingResource::TextureView(&velocity_prepass.default_view),
+                    resource: BindingResource::TextureView(&taa_textures.accumulation.default_view),
                 },
                 BindGroupEntry {
                     binding: 2,
-                    resource: BindingResource::TextureView(&taa_textures.accumulation.default_view),
+                    resource: BindingResource::TextureView(&velocity_prepass.default_view),
                 },
                 BindGroupEntry {
                     binding: 3,
