@@ -37,14 +37,14 @@ fn taa(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
 @group(0) @binding(0) var taa_output: texture_2d<f32>;
 @group(0) @binding(1) var c_sampler: sampler;
 
-struct CopyOutput {
+struct BlitOutput {
     @location(0) r0: vec4<f32>,
     @location(1) r1: vec4<f32>,
 }
 
 @fragment
-fn copy(@location(0) uv: vec2<f32>) -> CopyOutput {
-    var out: CopyOutput;
+fn blit(@location(0) uv: vec2<f32>) -> BlitOutput {
+    var out: BlitOutput;
     out.r0 = textureSample(taa_output, c_sampler, uv);
     out.r1 = textureSample(taa_output, c_sampler, uv);
     return out;

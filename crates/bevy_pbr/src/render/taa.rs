@@ -143,11 +143,11 @@ impl Node for TAARenderNode {
             (Ok(c), Some(pipelines), Some(pipeline_cache)) => (c, pipelines, pipeline_cache),
             _ => return Ok(()),
         };
-        let (taa_pipeline, copy_pipeline) = match (
+        let (taa_pipeline, blit_pipeline) = match (
             pipeline_cache.get_render_pipeline(pipelines.taa_pipeline),
-            pipeline_cache.get_render_pipeline(pipelines.copy_pipeline),
+            pipeline_cache.get_render_pipeline(pipelines.blit_pipeline),
         ) {
-            (Some(taa_pipeline), Some(copy_pipeline)) => (taa_pipeline, copy_pipeline),
+            (Some(taa_pipeline), Some(blit_pipeline)) => (taa_pipeline, blit_pipeline),
             _ => return Ok(()),
         };
 
@@ -176,7 +176,7 @@ impl Node for TAARenderNode {
             let mut render_pass =
                 TrackedRenderPass::new(render_context.command_encoder.begin_render_pass(
                     &(RenderPassDescriptor {
-                        label: Some("taa_copy_pass"),
+                        label: Some("taa_blit_pass"),
                         color_attachments: &[
                             Some(view_target.get_color_attachment(Operations::default())),
                             Some(RenderPassColorAttachment {
@@ -188,8 +188,8 @@ impl Node for TAARenderNode {
                         depth_stencil_attachment: None,
                     }),
                 ));
-            render_pass.set_render_pipeline(copy_pipeline);
-            render_pass.set_bind_group(0, &bind_groups.copy_bind_group, &[]);
+            render_pass.set_render_pipeline(blit_pipeline);
+            render_pass.set_bind_group(0, &bind_groups.blit_bind_group, &[]);
             if let Some(viewport) = camera.viewport.as_ref() {
                 render_pass.set_camera_viewport(viewport);
             }
@@ -203,9 +203,9 @@ impl Node for TAARenderNode {
 #[derive(Resource)]
 struct TAAPipelines {
     taa_pipeline: CachedRenderPipelineId,
-    copy_pipeline: CachedRenderPipelineId,
+    blit_pipeline: CachedRenderPipelineId,
     taa_bind_group_layout: BindGroupLayout,
-    copy_bind_group_layout: BindGroupLayout,
+    blit_bind_group_layout: BindGroupLayout,
 }
 
 impl FromWorld for TAAPipelines {
@@ -259,9 +259,9 @@ impl FromWorld for TAAPipelines {
                 ],
             });
 
-        let copy_bind_group_layout =
+        let blit_bind_group_layout =
             render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-                label: Some("taa_copy_bind_group_layout"),
+                label: Some("taa_blit_bind_group_layout"),
                 entries: &[
                     // TAA Output
                     BindGroupLayoutEntry {
@@ -311,9 +311,9 @@ impl FromWorld for TAAPipelines {
             }),
         });
 
-        let copy_pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
-            label: Some("taa_copy_pipeline".into()),
-            layout: Some(vec![copy_bind_group_layout.clone()]),
+        let blit_pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
+            label: Some("taa_blit_pipeline".into()),
+            layout: Some(vec![blit_bind_group_layout.clone()]),
             vertex: VertexState {
                 shader: TAA_SHADER_HANDLE.typed::<Shader>(),
                 shader_defs: vec![],
@@ -326,7 +326,7 @@ impl FromWorld for TAAPipelines {
             fragment: Some(FragmentState {
                 shader: TAA_SHADER_HANDLE.typed::<Shader>(),
                 shader_defs: vec![],
-                entry_point: "copy".into(),
+                entry_point: "blit".into(),
                 targets: vec![
                     Some(ColorTargetState {
                         format: TextureFormat::bevy_default(),
@@ -344,9 +344,9 @@ impl FromWorld for TAAPipelines {
 
         TAAPipelines {
             taa_pipeline,
-            copy_pipeline,
+            blit_pipeline,
             taa_bind_group_layout,
-            copy_bind_group_layout,
+            blit_bind_group_layout,
         }
     }
 }
@@ -379,7 +379,7 @@ fn prepare_taa_textures(
     views: Query<(Entity, &ExtractedCamera, &PrepassSettings), With<TemporalAntialiasSettings>>,
 ) {
     let mut accumulation_textures = HashMap::default();
-    let mut view_target_copy_textures = HashMap::default();
+    let mut otuput_textures = HashMap::default();
     let views = views
         .iter()
         .filter(|(_, _, prepass_settings)| prepass_settings.output_velocity);
@@ -405,8 +405,8 @@ fn prepare_taa_textures(
                 .or_insert_with(|| texture_cache.get(&render_device, texture_descriptor.clone()))
                 .clone();
 
-            texture_descriptor.label = Some("taa_view_target_copy_texture");
-            let output = view_target_copy_textures
+            texture_descriptor.label = Some("taa_view_target_blit_texture");
+            let output = otuput_textures
                 .entry(camera.target.clone())
                 .or_insert_with(|| texture_cache.get(&render_device, texture_descriptor))
                 .clone();
@@ -422,7 +422,7 @@ fn prepare_taa_textures(
 #[derive(Component)]
 struct TAABindGroups {
     taa_bind_group: BindGroup,
-    copy_bind_group: BindGroup,
+    blit_bind_group: BindGroup,
 }
 
 fn queue_taa_bind_groups(
@@ -474,9 +474,9 @@ fn queue_taa_bind_groups(
             ],
         });
 
-        let copy_bind_group = render_device.create_bind_group(&BindGroupDescriptor {
-            label: Some("taa_copy_bind_group"),
-            layout: &pipeline.copy_bind_group_layout,
+        let blit_bind_group = render_device.create_bind_group(&BindGroupDescriptor {
+            label: Some("taa_blit_bind_group"),
+            layout: &pipeline.blit_bind_group_layout,
             entries: &[
                 BindGroupEntry {
                     binding: 0,
@@ -491,7 +491,7 @@ fn queue_taa_bind_groups(
 
         commands.entity(entity).insert(TAABindGroups {
             taa_bind_group,
-            copy_bind_group,
+            blit_bind_group,
         });
     }
 }
