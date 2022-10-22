@@ -18,17 +18,41 @@ fn fullscreen(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
 
 // ----------------------------------------------------------------------------
 
+#import bevy_pbr::mesh_view_types
+
 @group(0) @binding(0) var view_target: texture_2d<f32>;
 @group(0) @binding(1) var taa_accumulation: texture_2d<f32>;
 @group(0) @binding(2) var velocity: texture_2d<f32>;
-@group(0) @binding(3) var f_sampler: sampler;
+@group(0) @binding(3) var<uniform> view: View;
+@group(0) @binding(4) var f_sampler: sampler;
 
 @fragment
 fn taa(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
-    // TODO
+    // Fetch the current sample
     let current_color = textureSample(view_target, f_sampler, uv).rgb;
-    let previous_color = textureSample(taa_accumulation, f_sampler, uv).rgb;
+
+    // Reproject to find the equivalent sample from the past
+    let current_velocity = textureSample(velocity, f_sampler, uv).rg;
+    let previous_uv = uv + current_velocity;
+    let previous_color = textureSample(taa_accumulation, f_sampler, previous_uv).rgb;
+
+    // Neighborhood clamping (3x3)
+    // TODO: Unroll loop by hand
+    var min_color = vec3(9999.0);
+    var max_color = vec3(-9999.0);
+    for (var x = -1; x <= 1; x += 1) {
+        for (var y = -1; y <= 1; y += 1) {
+            let uv = uv + (vec2(f32(x), f32(y)) / view.viewport.zw);
+            let color = textureSample(view_target, f_sampler, uv).rgb;
+            min_color = min(min_color, color);
+            max_color = max(max_color, color);
+        }
+    }
+    let previous_color = clamp(previous_color, min_color, max_color);
+
+    // Blend current and previous samples
     let output = (current_color * 0.1) + (previous_color * 0.9);
+
     return vec4<f32>(output, 1.0);
 }
 
