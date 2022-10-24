@@ -17,16 +17,16 @@ use bevy_render::{
     render_phase::TrackedRenderPass,
     render_resource::{
         BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
-        BindGroupLayoutEntry, BindingResource, BindingType, BlendState, BufferBindingType,
-        CachedRenderPipelineId, ColorTargetState, ColorWrites, Extent3d, FragmentState,
-        MultisampleState, Operations, PipelineCache, PrimitiveState, RenderPassColorAttachment,
-        RenderPassDescriptor, RenderPipelineDescriptor, SamplerBindingType, SamplerDescriptor,
-        Shader, ShaderStages, ShaderType, TextureDescriptor, TextureDimension, TextureFormat,
-        TextureSampleType, TextureUsages, TextureViewDimension, VertexState,
+        BindGroupLayoutEntry, BindingResource, BindingType, BlendState, CachedRenderPipelineId,
+        ColorTargetState, ColorWrites, Extent3d, FilterMode, FragmentState, MultisampleState,
+        Operations, PipelineCache, PrimitiveState, RenderPassColorAttachment, RenderPassDescriptor,
+        RenderPipelineDescriptor, SamplerBindingType, SamplerDescriptor, Shader, ShaderStages,
+        TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType, TextureUsages,
+        TextureViewDimension, VertexState,
     },
     renderer::{RenderContext, RenderDevice},
     texture::{BevyDefault, CachedTexture, TextureCache},
-    view::{Msaa, ViewTarget, ViewUniform, ViewUniformOffset, ViewUniforms},
+    view::{Msaa, ViewTarget},
     Extract, RenderApp, RenderStage,
 };
 use bevy_utils::HashMap;
@@ -103,7 +103,6 @@ struct TAARenderNode {
         &'static ViewTarget,
         &'static TAATextures,
         &'static TAABindGroups,
-        &'static ViewUniformOffset,
     )>,
 }
 
@@ -136,11 +135,7 @@ impl Node for TAARenderNode {
         let _taa_span = info_span!("taa").entered();
 
         let view_entity = graph.get_input_entity(Self::IN_VIEW)?;
-        let (
-            (camera, view_target, taa_textures, bind_groups, view_uniform_offset),
-            pipelines,
-            pipeline_cache,
-        ) = match (
+        let ((camera, view_target, taa_textures, bind_groups), pipelines, pipeline_cache) = match (
             self.view_query.get_manual(world, view_entity),
             world.get_resource::<TAAPipelines>(),
             world.get_resource::<PipelineCache>(),
@@ -170,11 +165,7 @@ impl Node for TAARenderNode {
                     }),
                 ));
             render_pass.set_render_pipeline(taa_pipeline);
-            render_pass.set_bind_group(
-                0,
-                &bind_groups.taa_bind_group,
-                &[view_uniform_offset.offset],
-            );
+            render_pass.set_bind_group(0, &bind_groups.taa_bind_group, &[]);
             if let Some(viewport) = camera.viewport.as_ref() {
                 render_pass.set_camera_viewport(viewport);
             }
@@ -258,18 +249,14 @@ impl FromWorld for TAAPipelines {
                         },
                         count: None,
                     },
-                    // View
+                    // Nearest sampler
                     BindGroupLayoutEntry {
                         binding: 3,
                         visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Buffer {
-                            ty: BufferBindingType::Uniform,
-                            has_dynamic_offset: true,
-                            min_binding_size: Some(ViewUniform::min_size()),
-                        },
+                        ty: BindingType::Sampler(SamplerBindingType::NonFiltering),
                         count: None,
                     },
-                    // Sampler
+                    // Linear sampler
                     BindGroupLayoutEntry {
                         binding: 4,
                         visibility: ShaderStages::FRAGMENT,
@@ -294,11 +281,11 @@ impl FromWorld for TAAPipelines {
                         },
                         count: None,
                     },
-                    // Sampler
+                    // Linear sampler
                     BindGroupLayoutEntry {
                         binding: 1,
                         visibility: ShaderStages::FRAGMENT,
-                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                        ty: BindingType::Sampler(SamplerBindingType::NonFiltering),
                         count: None,
                     },
                 ],
@@ -449,17 +436,11 @@ fn queue_taa_bind_groups(
     mut commands: Commands,
     render_device: Res<RenderDevice>,
     pipeline: Res<TAAPipelines>,
-    view_uniforms: Res<ViewUniforms>,
     views: Query<
         (Entity, &ViewTarget, &TAATextures, &ViewPrepassTextures),
         With<TemporalAntialiasSettings>,
     >,
 ) {
-    let view_binding = match view_uniforms.uniforms.binding() {
-        Some(view_binding) => view_binding,
-        None => return,
-    };
-
     let views = views
         .iter()
         .filter_map(
@@ -471,8 +452,16 @@ fn queue_taa_bind_groups(
             },
         );
 
-    let sampler = render_device.create_sampler(&SamplerDescriptor {
-        label: Some("taa_sampler"),
+    let nearest_sampler = render_device.create_sampler(&SamplerDescriptor {
+        label: Some("taa_nearest_sampler"),
+        mag_filter: FilterMode::Nearest,
+        min_filter: FilterMode::Nearest,
+        ..SamplerDescriptor::default()
+    });
+    let linear_sampler = render_device.create_sampler(&SamplerDescriptor {
+        label: Some("taa_linear_sampler"),
+        mag_filter: FilterMode::Linear,
+        min_filter: FilterMode::Linear,
         ..SamplerDescriptor::default()
     });
 
@@ -495,11 +484,11 @@ fn queue_taa_bind_groups(
                 },
                 BindGroupEntry {
                     binding: 3,
-                    resource: view_binding.clone(),
+                    resource: BindingResource::Sampler(&nearest_sampler),
                 },
                 BindGroupEntry {
                     binding: 4,
-                    resource: BindingResource::Sampler(&sampler),
+                    resource: BindingResource::Sampler(&linear_sampler),
                 },
             ],
         });
@@ -514,7 +503,7 @@ fn queue_taa_bind_groups(
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: BindingResource::Sampler(&sampler),
+                    resource: BindingResource::Sampler(&nearest_sampler),
                 },
             ],
         });
