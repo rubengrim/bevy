@@ -96,6 +96,8 @@ pub struct Camera {
     /// The "target" that this camera will render to.
     #[reflect(ignore)]
     pub target: RenderTarget,
+    /// If this is set to true, the camera will use an intermediate "high dynamic range" render texture.
+    pub hdr: bool,
 }
 
 impl Default for Camera {
@@ -106,6 +108,7 @@ impl Default for Camera {
             viewport: None,
             computed: Default::default(),
             target: Default::default(),
+            hdr: true,
         }
     }
 }
@@ -478,6 +481,7 @@ pub fn extract_cameras(
                 ExtractedView {
                     projection: camera.projection_matrix(),
                     transform: *transform,
+                    hdr: camera.hdr,
                     viewport: UVec4::new(
                         viewport_origin.x,
                         viewport_origin.y,

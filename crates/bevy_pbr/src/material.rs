@@ -4,7 +4,10 @@ use crate::{
 };
 use bevy_app::{App, Plugin};
 use bevy_asset::{AddAsset, AssetEvent, AssetServer, Assets, Handle};
-use bevy_core_pipeline::core_3d::{AlphaMask3d, Opaque3d, Transparent3d};
+use bevy_core_pipeline::{
+    core_3d::{AlphaMask3d, Opaque3d, Transparent3d},
+    tonemapping::Tonemapping,
+};
 use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::{
     entity::Entity,
@@ -364,6 +367,7 @@ pub fn queue_material_meshes<M: Material>(
         &mut RenderPhase<Opaque3d>,
         &mut RenderPhase<AlphaMask3d>,
         &mut RenderPhase<Transparent3d>,
+        Option<&Tonemapping>,
         Option<&TemporalAntialiasSettings>,
     )>,
 ) where
@@ -375,6 +379,7 @@ pub fn queue_material_meshes<M: Material>(
         mut opaque_phase,
         mut alpha_mask_phase,
         mut transparent_phase,
+        tonemapping,
         maybe_taa_settings,
     ) in &mut views
     {
@@ -391,8 +396,15 @@ pub fn queue_material_meshes<M: Material>(
             .get_id::<DrawMaterial<M>>()
             .unwrap();
 
+        let mut view_key =
+            MeshPipelineKey::from_msaa_samples(msaa.samples) | MeshPipelineKey::from_hdr(view.hdr);
+
+        if let Some(tonemapping) = tonemapping {
+            if tonemapping.is_enabled && !view.hdr {
+                view_key |= MeshPipelineKey::TONEMAP_IN_SHADER;
+            }
+        }
         let rangefinder = view.rangefinder3d();
-        let msaa_key = MeshPipelineKey::from_msaa_samples(msaa.samples);
 
         for visible_entity in &visible_entities.entities {
             if let Ok((material_handle, mesh_handle, mesh_uniform)) =
@@ -402,7 +414,7 @@ pub fn queue_material_meshes<M: Material>(
                     if let Some(mesh) = render_meshes.get(mesh_handle) {
                         let mut mesh_key =
                             MeshPipelineKey::from_primitive_topology(mesh.primitive_topology)
-                                | msaa_key;
+                                | view_key;
                         let alpha_mode = material.properties.alpha_mode;
                         if let AlphaMode::Blend = alpha_mode {
                             mesh_key |= MeshPipelineKey::TRANSPARENT_MAIN_PASS;
