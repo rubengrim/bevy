@@ -72,17 +72,23 @@ impl Plugin for TemporalAntialiasPlugin {
             .unwrap();
         draw_3d_graph.add_node(draw_3d_graph::node::TAA, taa_node);
         draw_3d_graph
+            .add_slot_edge(
+                draw_3d_graph.input_node().unwrap().id,
+                bevy_core_pipeline::core_3d::graph::input::VIEW_ENTITY,
+                draw_3d_graph::node::TAA,
+                TAARenderNode::IN_VIEW,
+            )
+            .unwrap();
+        draw_3d_graph
             .add_node_edge(
                 bevy_core_pipeline::core_3d::graph::node::MAIN_PASS,
                 draw_3d_graph::node::TAA,
             )
             .unwrap();
         draw_3d_graph
-            .add_slot_edge(
-                draw_3d_graph.input_node().unwrap().id,
-                bevy_core_pipeline::core_3d::graph::input::VIEW_ENTITY,
+            .add_node_edge(
                 draw_3d_graph::node::TAA,
-                TAARenderNode::IN_VIEW,
+                bevy_core_pipeline::core_3d::graph::node::TONEMAPPING,
             )
             .unwrap();
     }
