@@ -216,6 +216,7 @@ struct TAAPipelines {
     taa_pipeline: CachedRenderPipelineId,
     blit_sdr_pipeline: CachedRenderPipelineId,
     blit_hdr_pipeline: CachedRenderPipelineId,
+
     taa_bind_group_layout: BindGroupLayout,
     blit_bind_group_layout: BindGroupLayout,
 }
@@ -330,13 +331,13 @@ impl FromWorld for TAAPipelines {
             }),
         });
 
-        let mut blit_pipeline_descriptor = RenderPipelineDescriptor {
+        let blit_sdr_pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
             label: Some("taa_blit_sdr_pipeline".into()),
             layout: Some(vec![blit_bind_group_layout.clone()]),
             vertex: VertexState {
                 shader: TAA_SHADER_HANDLE.typed::<Shader>(),
                 shader_defs: vec![],
-                entry_point: vertex_entry_point,
+                entry_point: vertex_entry_point.clone(),
                 buffers: vec![],
             },
             primitive: PrimitiveState::default(),
@@ -359,20 +360,44 @@ impl FromWorld for TAAPipelines {
                     }),
                 ],
             }),
-        };
-        let blit_sdr_pipeline =
-            pipeline_cache.queue_render_pipeline(blit_pipeline_descriptor.clone());
-        blit_pipeline_descriptor.label = Some("taa_blit_hdr_pipeline".into());
-        blit_pipeline_descriptor.fragment.as_mut().unwrap().targets[0]
-            .as_mut()
-            .unwrap()
-            .format = ViewTarget::TEXTURE_FORMAT_HDR;
-        let blit_hdr_pipeline = pipeline_cache.queue_render_pipeline(blit_pipeline_descriptor);
+        });
+
+        let blit_hdr_pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
+            label: Some("taa_blit_hdr_pipeline".into()),
+            layout: Some(vec![blit_bind_group_layout.clone()]),
+            vertex: VertexState {
+                shader: TAA_SHADER_HANDLE.typed::<Shader>(),
+                shader_defs: vec![],
+                entry_point: vertex_entry_point,
+                buffers: vec![],
+            },
+            primitive: PrimitiveState::default(),
+            depth_stencil: None,
+            multisample: MultisampleState::default(),
+            fragment: Some(FragmentState {
+                shader: TAA_SHADER_HANDLE.typed::<Shader>(),
+                shader_defs: vec!["TONEMAP".to_string()],
+                entry_point: "blit".into(),
+                targets: vec![
+                    Some(ColorTargetState {
+                        format: ViewTarget::TEXTURE_FORMAT_HDR,
+                        blend: Some(BlendState::REPLACE),
+                        write_mask: ColorWrites::ALL,
+                    }),
+                    Some(ColorTargetState {
+                        format: TextureFormat::bevy_default(),
+                        blend: Some(BlendState::REPLACE),
+                        write_mask: ColorWrites::ALL,
+                    }),
+                ],
+            }),
+        });
 
         TAAPipelines {
             taa_pipeline,
             blit_sdr_pipeline,
             blit_hdr_pipeline,
+
             taa_bind_group_layout,
             blit_bind_group_layout,
         }

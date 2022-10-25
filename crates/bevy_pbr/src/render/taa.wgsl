@@ -1,4 +1,5 @@
 #import bevy_core_pipeline::fullscreen_vertex_shader
+#import bevy_core_pipeline::tonemapping
 
 @group(0) @binding(0) var view_target: texture_2d<f32>;
 @group(0) @binding(1) var taa_accumulation: texture_2d<f32>;
@@ -32,13 +33,25 @@ fn clip_towards_aabb_center(previous_color: vec3<f32>, current_color: vec3<f32>,
     return select(previous_color, p_clip + v_clip / ma_unit, ma_unit > 1.0);
 }
 
+fn sample_view_target(uv: vec2<f32>) -> vec3<f32> {
+    let c = textureSample(view_target, nearest_sampler, uv).rgb;
+#ifdef TONEMAP
+    let c = reinhard_luminance(c);
+#endif
+    return RGB_to_YCoCg(c);
+}
+
 @fragment
 fn taa(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
     let texture_size = vec2<f32>(textureDimensions(view_target));
     let texel_size = 1.0 / texture_size;
 
     // Fetch the current sample
-    let current_color = textureSample(view_target, nearest_sampler, uv).rgb;
+    let original_color = textureSample(view_target, nearest_sampler, uv);
+    let current_color = original_color.rgb;
+#ifdef TONEMAP
+    let current_color = reinhard_luminance(current_color);
+#endif
 
     // Reproject to find the equivalent sample from the past, using 5-tap Catmull-Rom filtering
     // from https://gist.github.com/TheRealMJP/c83b8c0f46b63f3a88a5986f4fa982b1
@@ -64,15 +77,15 @@ fn taa(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
     previous_color += textureSample(taa_accumulation, linear_sampler, vec2(texel_position_12.x, texel_position_3.y)).rgb * w12.x * w3.y;
 
     // Constrain past sample with 3x3 YCoCg variance clipping to handle disocclusion
-    let s_tl = RGB_to_YCoCg(textureSample(view_target, nearest_sampler, uv + vec2(-texel_size.x, texel_size.y)).rgb);
-    let s_tm = RGB_to_YCoCg(textureSample(view_target, nearest_sampler, uv + vec2(0.0, texel_size.y)).rgb);
-    let s_tr = RGB_to_YCoCg(textureSample(view_target, nearest_sampler, uv + texel_size).rgb);
-    let s_ml = RGB_to_YCoCg(textureSample(view_target, nearest_sampler, uv - vec2(texel_size.x, 0.0)).rgb);
+    let s_tl = sample_view_target(uv + vec2(-texel_size.x, texel_size.y));
+    let s_tm = sample_view_target(uv + vec2(0.0, texel_size.y));
+    let s_tr = sample_view_target(uv + texel_size);
+    let s_ml = sample_view_target(uv - vec2(texel_size.x, 0.0));
     let s_mm = RGB_to_YCoCg(current_color);
-    let s_mr = RGB_to_YCoCg(textureSample(view_target, nearest_sampler, uv + vec2(texel_size.x, 0.0)).rgb);
-    let s_bl = RGB_to_YCoCg(textureSample(view_target, nearest_sampler, uv - texel_size).rgb);
-    let s_bm = RGB_to_YCoCg(textureSample(view_target, nearest_sampler, uv - vec2(0.0, texel_size.y)).rgb);
-    let s_br = RGB_to_YCoCg(textureSample(view_target, nearest_sampler, uv + vec2(texel_size.x, -texel_size.y)).rgb);
+    let s_mr = sample_view_target(uv + vec2(texel_size.x, 0.0));
+    let s_bl = sample_view_target(uv - texel_size);
+    let s_bm = sample_view_target(uv - vec2(0.0, texel_size.y));
+    let s_br = sample_view_target(uv + vec2(texel_size.x, -texel_size.y));
     let moment_1 = s_tl + s_tm + s_tr + s_ml + s_mm + s_mr + s_bl + s_bm + s_br;
     let moment_2 = (s_tl * s_tl) + (s_tm * s_tm) + (s_tr * s_tr) + (s_ml * s_ml) + (s_mm * s_mm) + (s_mr * s_mr) + (s_bl * s_bl) + (s_bm * s_bm) + (s_br * s_br);
     let mean = moment_1 / 9.0;
@@ -84,7 +97,7 @@ fn taa(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
     // Blend current and past sample
     let output = (current_color * 0.1) + (previous_color * 0.9);
 
-    return vec4<f32>(output, 1.0);
+    return vec4<f32>(output, original_color.a);
 }
 
 // ----------------------------------------------------------------------------
@@ -93,14 +106,21 @@ fn taa(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
 @group(0) @binding(1) var blit_sampler: sampler;
 
 struct BlitOutput {
-    @location(0) r0: vec4<f32>,
-    @location(1) r1: vec4<f32>,
+    @location(0) view_target: vec4<f32>,
+    @location(1) taa_accumulation: vec4<f32>,
 }
 
 @fragment
 fn blit(@location(0) uv: vec2<f32>) -> BlitOutput {
     var out: BlitOutput;
-    out.r0 = textureSample(taa_output, blit_sampler, uv);
-    out.r1 = textureSample(taa_output, blit_sampler, uv);
+
+    out.taa_accumulation = textureSample(taa_output, blit_sampler, uv);
+
+#ifdef TONEMAP
+    out.view_target = vec4(inverse_reinhard_luminance(out.taa_accumulation.rgb), out.taa_accumulation.a);
+#else
+    out.view_target = out.taa_accumulation;
+#endif
+
     return out;
 }
