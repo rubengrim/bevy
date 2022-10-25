@@ -26,7 +26,7 @@ use bevy_render::{
     },
     renderer::{RenderContext, RenderDevice},
     texture::{BevyDefault, CachedTexture, TextureCache},
-    view::{Msaa, ViewTarget},
+    view::{ExtractedView, Msaa, ViewTarget},
     Extract, RenderApp, RenderStage,
 };
 use bevy_utils::HashMap;
@@ -100,6 +100,7 @@ impl Default for TemporalAntialiasSettings {
 struct TAARenderNode {
     view_query: QueryState<(
         &'static ExtractedCamera,
+        &'static ExtractedView,
         &'static ViewTarget,
         &'static TAATextures,
         &'static TAABindGroups,
@@ -135,17 +136,21 @@ impl Node for TAARenderNode {
         let _taa_span = info_span!("taa").entered();
 
         let view_entity = graph.get_input_entity(Self::IN_VIEW)?;
-        let ((camera, view_target, taa_textures, bind_groups), pipelines, pipeline_cache) = match (
-            self.view_query.get_manual(world, view_entity),
-            world.get_resource::<TAAPipelines>(),
-            world.get_resource::<PipelineCache>(),
-        ) {
-            (Ok(c), Some(pipelines), Some(pipeline_cache)) => (c, pipelines, pipeline_cache),
-            _ => return Ok(()),
-        };
+        let ((camera, view, view_target, taa_textures, bind_groups), pipelines, pipeline_cache) =
+            match (
+                self.view_query.get_manual(world, view_entity),
+                world.get_resource::<TAAPipelines>(),
+                world.get_resource::<PipelineCache>(),
+            ) {
+                (Ok(c), Some(pipelines), Some(pipeline_cache)) => (c, pipelines, pipeline_cache),
+                _ => return Ok(()),
+            };
         let (taa_pipeline, blit_pipeline) = match (
             pipeline_cache.get_render_pipeline(pipelines.taa_pipeline),
-            pipeline_cache.get_render_pipeline(pipelines.blit_pipeline),
+            pipeline_cache.get_render_pipeline(match view.hdr {
+                true => pipelines.blit_hdr_pipeline,
+                false => pipelines.blit_sdr_pipeline,
+            }),
         ) {
             (Some(taa_pipeline), Some(blit_pipeline)) => (taa_pipeline, blit_pipeline),
             _ => return Ok(()),
@@ -203,7 +208,8 @@ impl Node for TAARenderNode {
 #[derive(Resource)]
 struct TAAPipelines {
     taa_pipeline: CachedRenderPipelineId,
-    blit_pipeline: CachedRenderPipelineId,
+    blit_sdr_pipeline: CachedRenderPipelineId,
+    blit_hdr_pipeline: CachedRenderPipelineId,
     taa_bind_group_layout: BindGroupLayout,
     blit_bind_group_layout: BindGroupLayout,
 }
@@ -292,7 +298,7 @@ impl FromWorld for TAAPipelines {
             });
 
         let mut pipeline_cache = world.resource_mut::<PipelineCache>();
-        let vertex_entry_point: Cow<str> = "fullscreen".into();
+        let vertex_entry_point: Cow<str> = "fullscreen_vertex_shader".into();
 
         let taa_pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
             label: Some("taa_pipeline".into()),
@@ -318,8 +324,8 @@ impl FromWorld for TAAPipelines {
             }),
         });
 
-        let blit_pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
-            label: Some("taa_blit_pipeline".into()),
+        let mut blit_pipeline_descriptor = RenderPipelineDescriptor {
+            label: Some("taa_blit_sdr_pipeline".into()),
             layout: Some(vec![blit_bind_group_layout.clone()]),
             vertex: VertexState {
                 shader: TAA_SHADER_HANDLE.typed::<Shader>(),
@@ -347,11 +353,20 @@ impl FromWorld for TAAPipelines {
                     }),
                 ],
             }),
-        });
+        };
+        let blit_sdr_pipeline =
+            pipeline_cache.queue_render_pipeline(blit_pipeline_descriptor.clone());
+        blit_pipeline_descriptor.label = Some("taa_blit_hdr_pipeline".into());
+        blit_pipeline_descriptor.fragment.as_mut().unwrap().targets[0]
+            .as_mut()
+            .unwrap()
+            .format = ViewTarget::TEXTURE_FORMAT_HDR;
+        let blit_hdr_pipeline = pipeline_cache.queue_render_pipeline(blit_pipeline_descriptor);
 
         TAAPipelines {
             taa_pipeline,
-            blit_pipeline,
+            blit_sdr_pipeline,
+            blit_hdr_pipeline,
             taa_bind_group_layout,
             blit_bind_group_layout,
         }
@@ -472,7 +487,7 @@ fn queue_taa_bind_groups(
             entries: &[
                 BindGroupEntry {
                     binding: 0,
-                    resource: BindingResource::TextureView(&view_target.view),
+                    resource: BindingResource::TextureView(view_target.main_texture.texture()),
                 },
                 BindGroupEntry {
                     binding: 1,

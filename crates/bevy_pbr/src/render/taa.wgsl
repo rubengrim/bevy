@@ -1,22 +1,4 @@
-struct VertexOutput {
-    @location(0) uv: vec2<f32>,
-    @builtin(position) position: vec4<f32>,
-}
-
-@vertex
-fn fullscreen(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
-    var out: VertexOutput;
-    out.uv.x = select(0.0, 2.0, vertex_index == u32(2));
-    out.uv.y = select(0.0, 2.0, vertex_index == u32(1));
-    out.position = vec4(
-        ((out.uv * vec2(2.0, -2.0)) + vec2(-1.0, 1.0)),
-        1.0,
-        1.0
-    );
-    return out;
-}
-
-// ----------------------------------------------------------------------------
+#import bevy_core_pipeline::fullscreen_vertex_shader
 
 @group(0) @binding(0) var view_target: texture_2d<f32>;
 @group(0) @binding(1) var taa_accumulation: texture_2d<f32>;
