@@ -2,7 +2,10 @@ use std::borrow::Cow;
 
 use bevy_app::{App, Plugin};
 use bevy_asset::{load_internal_asset, HandleUntyped};
-use bevy_core_pipeline::{core_3d::PrepassSettings, prelude::Camera3d};
+use bevy_core_pipeline::{
+    core_3d::PrepassSettings, fullscreen_vertex_shader::fullscreen_shader_vertex_state,
+    prelude::Camera3d,
+};
 use bevy_ecs::{
     prelude::{Component, Entity},
     query::{QueryState, With},
@@ -305,17 +308,11 @@ impl FromWorld for TAAPipelines {
             });
 
         let mut pipeline_cache = world.resource_mut::<PipelineCache>();
-        let vertex_entry_point: Cow<str> = "fullscreen_vertex_shader".into();
 
         let taa_pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
             label: Some("taa_pipeline".into()),
             layout: Some(vec![taa_bind_group_layout.clone()]),
-            vertex: VertexState {
-                shader: TAA_SHADER_HANDLE.typed::<Shader>(),
-                shader_defs: vec![],
-                entry_point: vertex_entry_point.clone(),
-                buffers: vec![],
-            },
+            vertex: fullscreen_shader_vertex_state(),
             primitive: PrimitiveState::default(),
             depth_stencil: None,
             multisample: MultisampleState::default(),
@@ -334,12 +331,7 @@ impl FromWorld for TAAPipelines {
         let blit_sdr_pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
             label: Some("taa_blit_sdr_pipeline".into()),
             layout: Some(vec![blit_bind_group_layout.clone()]),
-            vertex: VertexState {
-                shader: TAA_SHADER_HANDLE.typed::<Shader>(),
-                shader_defs: vec![],
-                entry_point: vertex_entry_point.clone(),
-                buffers: vec![],
-            },
+            vertex: fullscreen_shader_vertex_state(),
             primitive: PrimitiveState::default(),
             depth_stencil: None,
             multisample: MultisampleState::default(),
@@ -365,12 +357,7 @@ impl FromWorld for TAAPipelines {
         let blit_hdr_pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
             label: Some("taa_blit_hdr_pipeline".into()),
             layout: Some(vec![blit_bind_group_layout.clone()]),
-            vertex: VertexState {
-                shader: TAA_SHADER_HANDLE.typed::<Shader>(),
-                shader_defs: vec![],
-                entry_point: vertex_entry_point,
-                buffers: vec![],
-            },
+            vertex: fullscreen_shader_vertex_state(),
             primitive: PrimitiveState::default(),
             depth_stencil: None,
             multisample: MultisampleState::default(),
