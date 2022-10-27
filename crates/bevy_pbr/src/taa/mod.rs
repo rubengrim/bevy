@@ -68,7 +68,7 @@ impl Plugin for TemporalAntialiasPlugin {
             .add_system_to_stage(RenderStage::Prepare, prepare_taa_textures)
             .add_system_to_stage(RenderStage::Queue, queue_taa_bind_groups);
 
-        let taa_node = TAARenderNode::new(&mut render_app.world);
+        let taa_node = TAANode::new(&mut render_app.world);
         let mut graph = render_app.world.resource_mut::<RenderGraph>();
         let draw_3d_graph = graph
             .get_sub_graph_mut(bevy_core_pipeline::core_3d::graph::NAME)
@@ -79,7 +79,7 @@ impl Plugin for TemporalAntialiasPlugin {
                 draw_3d_graph.input_node().unwrap().id,
                 bevy_core_pipeline::core_3d::graph::input::VIEW_ENTITY,
                 draw_3d_graph::node::TAA,
-                TAARenderNode::IN_VIEW,
+                TAANode::IN_VIEW,
             )
             .unwrap();
         draw_3d_graph
@@ -106,7 +106,7 @@ impl Default for TemporalAntialiasSettings {
     }
 }
 
-struct TAARenderNode {
+struct TAANode {
     view_query: QueryState<(
         &'static ExtractedCamera,
         &'static ExtractedView,
@@ -116,8 +116,8 @@ struct TAARenderNode {
     )>,
 }
 
-impl TAARenderNode {
-    pub const IN_VIEW: &'static str = "view";
+impl TAANode {
+    const IN_VIEW: &'static str = "view";
 
     fn new(world: &mut World) -> Self {
         Self {
@@ -126,7 +126,7 @@ impl TAARenderNode {
     }
 }
 
-impl Node for TAARenderNode {
+impl Node for TAANode {
     fn input(&self) -> Vec<SlotInfo> {
         vec![SlotInfo::new(Self::IN_VIEW, SlotType::Entity)]
     }
