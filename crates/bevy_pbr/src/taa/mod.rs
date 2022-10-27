@@ -419,7 +419,7 @@ fn prepare_taa_textures(
     views: Query<(Entity, &ExtractedCamera, &PrepassSettings), With<TemporalAntialiasSettings>>,
 ) {
     let mut accumulation_textures = HashMap::default();
-    let mut otuput_textures = HashMap::default();
+    let mut output_textures = HashMap::default();
     let views = views
         .iter()
         .filter(|(_, _, prepass_settings)| prepass_settings.output_velocity);
@@ -446,7 +446,7 @@ fn prepare_taa_textures(
                 .clone();
 
             texture_descriptor.label = Some("taa_view_target_blit_texture");
-            let output = otuput_textures
+            let output = output_textures
                 .entry(camera.target.clone())
                 .or_insert_with(|| texture_cache.get(&render_device, texture_descriptor))
                 .clone();
