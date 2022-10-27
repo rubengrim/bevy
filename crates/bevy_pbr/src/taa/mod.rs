@@ -468,7 +468,7 @@ struct TAABindGroups {
 fn queue_taa_bind_groups(
     mut commands: Commands,
     render_device: Res<RenderDevice>,
-    pipeline: Res<TAAPipelines>,
+    pipelines: Res<TAAPipelines>,
     views: Query<
         (Entity, &ViewTarget, &TAATextures, &ViewPrepassTextures),
         With<TemporalAntialiasSettings>,
@@ -501,7 +501,7 @@ fn queue_taa_bind_groups(
     for (entity, view_target, taa_textures, velocity_prepass) in views {
         let taa_bind_group = render_device.create_bind_group(&BindGroupDescriptor {
             label: Some("taa_bind_group"),
-            layout: &pipeline.taa_bind_group_layout,
+            layout: &pipelines.taa_bind_group_layout,
             entries: &[
                 BindGroupEntry {
                     binding: 0,
@@ -528,7 +528,7 @@ fn queue_taa_bind_groups(
 
         let blit_bind_group = render_device.create_bind_group(&BindGroupDescriptor {
             label: Some("taa_blit_bind_group"),
-            layout: &pipeline.blit_bind_group_layout,
+            layout: &pipelines.blit_bind_group_layout,
             entries: &[
                 BindGroupEntry {
                     binding: 0,
