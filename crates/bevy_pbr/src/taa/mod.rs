@@ -424,13 +424,13 @@ fn prepare_taa_textures(
         .iter()
         .filter(|(_, _, prepass_settings)| prepass_settings.output_velocity);
     for (entity, camera, _) in views {
-        if let Some(physical_target_size) = camera.physical_target_size {
+        if let Some(physical_viewport_size) = camera.physical_viewport_size {
             let mut texture_descriptor = TextureDescriptor {
                 label: None,
                 size: Extent3d {
                     depth_or_array_layers: 1,
-                    width: physical_target_size.x,
-                    height: physical_target_size.y,
+                    width: physical_viewport_size.x,
+                    height: physical_viewport_size.y,
                 },
                 mip_level_count: 1,
                 sample_count: 1,
