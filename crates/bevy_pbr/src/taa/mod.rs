@@ -313,28 +313,25 @@ impl FromWorld for TAAPipelines {
             label: Some("taa_pipeline".into()),
             layout: Some(vec![taa_bind_group_layout.clone()]),
             vertex: fullscreen_shader_vertex_state(),
-            primitive: PrimitiveState::default(),
-            depth_stencil: None,
-            multisample: MultisampleState::default(),
             fragment: Some(FragmentState {
                 shader: TAA_SHADER_HANDLE.typed::<Shader>(),
                 shader_defs: vec![],
                 entry_point: "taa".into(),
                 targets: vec![Some(ColorTargetState {
-                    format: TextureFormat::bevy_default(),
-                    blend: Some(BlendState::REPLACE),
+                    format: TextureFormat::bevy_default(), // TODO: This seems wrong, I think this also may need to be HDR
+                    blend: None,
                     write_mask: ColorWrites::ALL,
                 })],
             }),
+            primitive: PrimitiveState::default(),
+            depth_stencil: None,
+            multisample: MultisampleState::default(),
         });
 
         let blit_sdr_pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
             label: Some("taa_blit_sdr_pipeline".into()),
             layout: Some(vec![blit_bind_group_layout.clone()]),
             vertex: fullscreen_shader_vertex_state(),
-            primitive: PrimitiveState::default(),
-            depth_stencil: None,
-            multisample: MultisampleState::default(),
             fragment: Some(FragmentState {
                 shader: TAA_SHADER_HANDLE.typed::<Shader>(),
                 shader_defs: vec![],
@@ -342,25 +339,25 @@ impl FromWorld for TAAPipelines {
                 targets: vec![
                     Some(ColorTargetState {
                         format: TextureFormat::bevy_default(),
-                        blend: Some(BlendState::REPLACE),
+                        blend: None,
                         write_mask: ColorWrites::ALL,
                     }),
                     Some(ColorTargetState {
                         format: TextureFormat::bevy_default(),
-                        blend: Some(BlendState::REPLACE),
+                        blend: None,
                         write_mask: ColorWrites::ALL,
                     }),
                 ],
             }),
+            primitive: PrimitiveState::default(),
+            depth_stencil: None,
+            multisample: MultisampleState::default(),
         });
 
         let blit_hdr_pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
             label: Some("taa_blit_hdr_pipeline".into()),
             layout: Some(vec![blit_bind_group_layout.clone()]),
             vertex: fullscreen_shader_vertex_state(),
-            primitive: PrimitiveState::default(),
-            depth_stencil: None,
-            multisample: MultisampleState::default(),
             fragment: Some(FragmentState {
                 shader: TAA_SHADER_HANDLE.typed::<Shader>(),
                 shader_defs: vec!["TONEMAP".to_string()],
@@ -368,16 +365,19 @@ impl FromWorld for TAAPipelines {
                 targets: vec![
                     Some(ColorTargetState {
                         format: ViewTarget::TEXTURE_FORMAT_HDR,
-                        blend: Some(BlendState::REPLACE),
+                        blend: None,
                         write_mask: ColorWrites::ALL,
                     }),
                     Some(ColorTargetState {
                         format: TextureFormat::bevy_default(),
-                        blend: Some(BlendState::REPLACE),
+                        blend: None,
                         write_mask: ColorWrites::ALL,
                     }),
                 ],
             }),
+            primitive: PrimitiveState::default(),
+            depth_stencil: None,
+            multisample: MultisampleState::default(),
         });
 
         TAAPipelines {
