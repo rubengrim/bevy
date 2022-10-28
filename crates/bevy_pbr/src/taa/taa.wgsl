@@ -25,12 +25,16 @@ fn YCoCg_to_RGB(ycocg: vec3<f32>) -> vec3<f32> {
 
 fn clip_towards_aabb_center(previous_color: vec3<f32>, current_color: vec3<f32>, aabb_min: vec3<f32>, aabb_max: vec3<f32>) -> vec3<f32> {
     let p_clip = 0.5 * (aabb_max + aabb_min);
-    let e_clip = 0.5 * (aabb_max - aabb_min);
+    let e_clip = 0.5 * (aabb_max - aabb_min) + 0.00000001;
     let v_clip = previous_color - p_clip;
-    let v_unit = v_clip.xyz / e_clip;
+    let v_unit = v_clip / e_clip;
     let a_unit = abs(v_unit);
     let ma_unit = max(a_unit.x, max(a_unit.y, a_unit.z));
-    return select(previous_color, p_clip + v_clip / ma_unit, ma_unit > 1.0);
+    if (ma_unit > 1.0) {
+        return p_clip + v_clip / ma_unit;
+    } else {
+        return previous_color;
+    }
 }
 
 fn sample_view_target(uv: vec2<f32>) -> vec3<f32> {
