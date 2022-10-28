@@ -1,8 +1,7 @@
 #define_import_path bevy_pbr::taa_jitter
 
 fn taa_jitter(projection: mat4x4<f32>) -> mat4x4<f32> {
-    // TODO: When naga implements it, this can be a module-level const
-    // Halton sequence (2, 3), -0.5
+    // Halton sequence (2, 3) minus 0.5
     var halton_sequence = array(
         vec2(0.0, -0.16666666),
         vec2(-0.25, 0.16666669),

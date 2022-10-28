@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use bevy_app::{App, Plugin};
 use bevy_asset::{load_internal_asset, HandleUntyped};
 use bevy_core_pipeline::{
@@ -20,12 +18,12 @@ use bevy_render::{
     render_phase::TrackedRenderPass,
     render_resource::{
         BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
-        BindGroupLayoutEntry, BindingResource, BindingType, BlendState, CachedRenderPipelineId,
+        BindGroupLayoutEntry, BindingResource, BindingType, CachedRenderPipelineId,
         ColorTargetState, ColorWrites, Extent3d, FilterMode, FragmentState, MultisampleState,
         Operations, PipelineCache, PrimitiveState, RenderPassColorAttachment, RenderPassDescriptor,
         RenderPipelineDescriptor, SamplerBindingType, SamplerDescriptor, Shader, ShaderStages,
         TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType, TextureUsages,
-        TextureViewDimension, VertexState,
+        TextureViewDimension,
     },
     renderer::{RenderContext, RenderDevice},
     texture::{BevyDefault, CachedTexture, TextureCache},
@@ -154,13 +152,15 @@ impl Node for TAANode {
                 (Ok(c), Some(pipelines), Some(pipeline_cache)) => (c, pipelines, pipeline_cache),
                 _ => return Ok(()),
             };
-        let (taa_pipeline, blit_pipeline) = match (
-            pipeline_cache.get_render_pipeline(pipelines.taa_pipeline),
-            pipeline_cache.get_render_pipeline(match view.hdr {
-                true => pipelines.blit_hdr_pipeline,
-                false => pipelines.blit_sdr_pipeline,
-            }),
-        ) {
+        let (taa_pipeline, blit_pipeline) = match view.hdr {
+            true => (pipelines.taa_hdr_pipeline, pipelines.blit_hdr_pipeline),
+            false => (pipelines.taa_sdr_pipeline, pipelines.blit_sdr_pipeline),
+        };
+        let (taa_pipeline, blit_pipeline) = (
+            pipeline_cache.get_render_pipeline(taa_pipeline),
+            pipeline_cache.get_render_pipeline(blit_pipeline),
+        );
+        let (taa_pipeline, blit_pipeline) = match (taa_pipeline, blit_pipeline) {
             (Some(taa_pipeline), Some(blit_pipeline)) => (taa_pipeline, blit_pipeline),
             _ => return Ok(()),
         };
@@ -216,7 +216,9 @@ impl Node for TAANode {
 
 #[derive(Resource)]
 struct TAAPipelines {
-    taa_pipeline: CachedRenderPipelineId,
+    taa_sdr_pipeline: CachedRenderPipelineId,
+    taa_hdr_pipeline: CachedRenderPipelineId,
+
     blit_sdr_pipeline: CachedRenderPipelineId,
     blit_hdr_pipeline: CachedRenderPipelineId,
 
@@ -309,8 +311,8 @@ impl FromWorld for TAAPipelines {
 
         let mut pipeline_cache = world.resource_mut::<PipelineCache>();
 
-        let taa_pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
-            label: Some("taa_pipeline".into()),
+        let taa_sdr_pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
+            label: Some("taa_sdr_pipeline".into()),
             layout: Some(vec![taa_bind_group_layout.clone()]),
             vertex: fullscreen_shader_vertex_state(),
             fragment: Some(FragmentState {
@@ -318,7 +320,26 @@ impl FromWorld for TAAPipelines {
                 shader_defs: vec![],
                 entry_point: "taa".into(),
                 targets: vec![Some(ColorTargetState {
-                    format: TextureFormat::bevy_default(), // TODO: This seems wrong, I think this also may need to be HDR
+                    format: TextureFormat::bevy_default(),
+                    blend: None,
+                    write_mask: ColorWrites::ALL,
+                })],
+            }),
+            primitive: PrimitiveState::default(),
+            depth_stencil: None,
+            multisample: MultisampleState::default(),
+        });
+
+        let taa_hdr_pipeline = pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
+            label: Some("taa_hdr_pipeline".into()),
+            layout: Some(vec![taa_bind_group_layout.clone()]),
+            vertex: fullscreen_shader_vertex_state(),
+            fragment: Some(FragmentState {
+                shader: TAA_SHADER_HANDLE.typed::<Shader>(),
+                shader_defs: vec!["TONEMAP".to_string()],
+                entry_point: "taa".into(),
+                targets: vec![Some(ColorTargetState {
+                    format: ViewTarget::TEXTURE_FORMAT_HDR,
                     blend: None,
                     write_mask: ColorWrites::ALL,
                 })],
@@ -369,7 +390,7 @@ impl FromWorld for TAAPipelines {
                         write_mask: ColorWrites::ALL,
                     }),
                     Some(ColorTargetState {
-                        format: TextureFormat::bevy_default(),
+                        format: ViewTarget::TEXTURE_FORMAT_HDR,
                         blend: None,
                         write_mask: ColorWrites::ALL,
                     }),
@@ -381,7 +402,9 @@ impl FromWorld for TAAPipelines {
         });
 
         TAAPipelines {
-            taa_pipeline,
+            taa_sdr_pipeline,
+            taa_hdr_pipeline,
+
             blit_sdr_pipeline,
             blit_hdr_pipeline,
 
@@ -416,14 +439,17 @@ fn prepare_taa_textures(
     mut commands: Commands,
     mut texture_cache: ResMut<TextureCache>,
     render_device: Res<RenderDevice>,
-    views: Query<(Entity, &ExtractedCamera, &PrepassSettings), With<TemporalAntialiasSettings>>,
+    views: Query<
+        (Entity, &ExtractedCamera, &ExtractedView, &PrepassSettings),
+        With<TemporalAntialiasSettings>,
+    >,
 ) {
     let mut accumulation_textures = HashMap::default();
     let mut output_textures = HashMap::default();
     let views = views
         .iter()
-        .filter(|(_, _, prepass_settings)| prepass_settings.output_velocity);
-    for (entity, camera, _) in views {
+        .filter(|(_, _, _, prepass_settings)| prepass_settings.output_velocity);
+    for (entity, camera, view, _) in views {
         if let Some(physical_viewport_size) = camera.physical_viewport_size {
             let mut texture_descriptor = TextureDescriptor {
                 label: None,
@@ -435,7 +461,11 @@ fn prepare_taa_textures(
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: TextureDimension::D2,
-                format: TextureFormat::bevy_default(),
+                format: if view.hdr {
+                    ViewTarget::TEXTURE_FORMAT_HDR
+                } else {
+                    TextureFormat::bevy_default()
+                },
                 usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
             };
 

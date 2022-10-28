@@ -14,16 +14,22 @@ use bevy_render::{
 #[cfg(feature = "trace")]
 use bevy_utils::tracing::info_span;
 
-/// Add a `PrepassSettings` component to a view to perform any of a depth, normal, or velocity prepass.
-/// These textures are useful for reducing overdraw in the main render pass, and screen-space effects.
+/// Add a `PrepassSettings` component to a [`Camera3d`] to perform any of a depth, normal, or velocity prepass.
+/// These textures are useful for screen-space effects, and reducing overdraw in the main render pass.
 #[derive(Clone, Component)]
 pub struct PrepassSettings {
     /// If true then depth values will be copied to a separate texture available to the main pass.
+    ///
     /// If true then this will also be used to reduce overdraw in the main render pass.
     pub output_depth: bool,
+
     /// If true then vertex world normals will be copied to a separate texture available to the main pass.
     pub output_normals: bool,
+
     /// If true then velocity values will be copied to a separate texture available to the main pass.
+    ///
+    /// Required by the following `bevy_pbr` plugins:
+    /// * `TemporalAntialiasPlugin`
     pub output_velocity: bool,
 }
 
