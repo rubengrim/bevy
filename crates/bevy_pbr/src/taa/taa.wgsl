@@ -30,7 +30,7 @@ fn clip_towards_aabb_center(previous_color: vec3<f32>, current_color: vec3<f32>,
     let v_unit = v_clip / e_clip;
     let a_unit = abs(v_unit);
     let ma_unit = max(a_unit.x, max(a_unit.y, a_unit.z));
-    if (ma_unit > 1.0) {
+    if ma_unit > 1.0 {
         return p_clip + v_clip / ma_unit;
     } else {
         return previous_color;
