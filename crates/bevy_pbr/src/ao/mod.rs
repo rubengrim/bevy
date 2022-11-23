@@ -377,7 +377,7 @@ impl FromWorld for AmbientOcclusionPipelines {
                         visibility: ShaderStages::COMPUTE,
                         ty: BindingType::StorageTexture {
                             access: StorageTextureAccess::WriteOnly,
-                            format: TextureFormat::R32Uint,
+                            format: TextureFormat::Rgba16Float,
                             view_dimension: TextureViewDimension::D2,
                         },
                         count: None,
@@ -459,9 +459,9 @@ fn extract_ambient_occlusion_settings(
 }
 
 #[derive(Component)]
-struct AmbientOcclusionTextures {
+pub struct AmbientOcclusionTextures {
     prefiltered_depth_texture: CachedTexture,
-    ambient_occlusion_texture: CachedTexture,
+    pub ambient_occlusion_texture: CachedTexture,
     depth_differences_texture: CachedTexture,
 }
 
@@ -502,8 +502,8 @@ fn prepare_ambient_occlusion_textures(
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: TextureDimension::D2,
-                format: TextureFormat::R32Uint,
-                usage: TextureUsages::STORAGE_BINDING,
+                format: TextureFormat::Rgba16Float,
+                usage: TextureUsages::STORAGE_BINDING | TextureUsages::TEXTURE_BINDING,
             };
             let ambient_occlusion_texture = ambient_occlusion_textures
                 .entry(camera.target.clone())

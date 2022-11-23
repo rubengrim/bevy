@@ -3,7 +3,7 @@
 @group(0) @binding(0) var prefiltered_depth: texture_2d<f32>;
 @group(0) @binding(1) var normals: texture_2d<f32>;
 @group(0) @binding(2) var hilbert_index: texture_2d<u32>;
-@group(0) @binding(3) var ambient_occlusion: texture_storage_2d<r32uint, write>;
+@group(0) @binding(3) var ambient_occlusion: texture_storage_2d<rgba16float, write>;
 @group(0) @binding(4) var depth_differences: texture_storage_2d<r32uint, write>;
 @group(0) @binding(5) var<uniform> globals: Globals;
 @group(1) @binding(0) var point_clamp_sampler: sampler;
@@ -85,7 +85,7 @@ fn gtao(pixel_coordinates: vec2<i32>, slice_count: u32, samples_per_slice_side: 
     let half_pi = pi / 2.0;
 
     var pixel_depth = calculate_neighboring_depth_differences(pixel_coordinates);
-    pixel_depth *= 0.99999; // TODO: XeGTAO avoid precision artifacts, is needed?
+    // pixel_depth *= 0.99999; // TODO: XeGTAO avoid precision artifacts, is needed?
 
     let uv = (vec2<f32>(pixel_coordinates) + 0.5) / view.viewport.zw;
     let pixel_position = reconstruct_view_space_position(pixel_depth, uv);
@@ -147,7 +147,7 @@ fn gtao(pixel_coordinates: vec2<i32>, slice_count: u32, samples_per_slice_side: 
     }
     visiblity /= f32(slice_count);
 
-    textureStore(ambient_occlusion, pixel_coordinates, vec4<u32>(u32(visiblity), 0u, 0u, 0u));
+    textureStore(ambient_occlusion, pixel_coordinates, vec4<f32>(vec3(visiblity), 1.0));
 }
 
 // TODO: Replace below when shader defines can hold values
@@ -161,7 +161,7 @@ fn gtao_low(@builtin(global_invocation_id) global_id: vec3<u32>) {
 @compute
 @workgroup_size(8, 8, 1)
 fn gtao_medium(@builtin(global_invocation_id) global_id: vec3<u32>) {
-    gtao(vec2<i32>(global_id.xy), 2u, 2u); // 8 spp (2 * (2 * 2)), plus optional temporal samples
+    gtao(vec2<i32>(global_id.xy), 3u, 3u); // 8 spp (2 * (2 * 2)), plus optional temporal samples
 }
 
 @compute

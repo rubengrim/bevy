@@ -7,9 +7,11 @@ mod light;
 mod material;
 mod pbr_material;
 mod render;
+mod upscaling;
 
 pub use alpha::*;
 pub use ao::*;
+use bevy_core_pipeline::core_3d::graph;
 use bevy_utils::default;
 pub use bundle::*;
 pub use light::*;
@@ -48,13 +50,15 @@ use bevy_render::{
     camera::CameraUpdateSystem,
     extract_resource::ExtractResourcePlugin,
     prelude::Color,
-    render_graph::RenderGraph,
+    render_graph::{RenderGraph, SlotInfo, SlotType},
     render_phase::{sort_phase_system, AddRenderCommand, DrawFunctions},
     render_resource::{Shader, SpecializedMeshPipelines},
     view::VisibilitySystems,
     RenderApp, RenderStage,
 };
 use bevy_transform::TransformSystem;
+
+use crate::upscaling::{UpscalingNode, UpscalingPlugin};
 
 pub const PBR_TYPES_SHADER_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 1708015359337029744);
@@ -144,6 +148,7 @@ impl Plugin for PbrPlugin {
             .register_type::<AmbientLight>()
             .register_type::<DirectionalLightShadowMap>()
             .register_type::<PointLightShadowMap>()
+            .add_plugin(UpscalingPlugin)
             .add_plugin(MeshRenderPlugin)
             .add_plugin(MaterialPlugin::<StandardMaterial> {
                 prepass_enabled: self.prepass_enabled,
@@ -263,6 +268,7 @@ impl Plugin for PbrPlugin {
             .init_resource::<GlobalLightMeta>()
             .init_resource::<SpecializedMeshPipelines<ShadowPipeline>>();
 
+        let upscaling = UpscalingNode::new(&mut render_app.world);
         let shadow_pass_node = ShadowPassNode::new(&mut render_app.world);
         render_app.add_render_command::<Shadow, DrawShadowMesh>();
         let mut graph = render_app.world.resource_mut::<RenderGraph>();
@@ -282,6 +288,22 @@ impl Plugin for PbrPlugin {
                 bevy_core_pipeline::core_3d::graph::input::VIEW_ENTITY,
                 draw_3d_graph::node::SHADOW_PASS,
                 ShadowPassNode::IN_VIEW,
+            )
+            .unwrap();
+
+        draw_3d_graph.add_node(graph::node::UPSCALING, upscaling);
+        draw_3d_graph
+            .add_slot_edge(
+                draw_3d_graph.input_node().unwrap().id,
+                graph::input::VIEW_ENTITY,
+                graph::node::UPSCALING,
+                UpscalingNode::IN_VIEW,
+            )
+            .unwrap();
+        draw_3d_graph
+            .add_node_edge(
+                graph::node::END_MAIN_PASS_POST_PROCESSING,
+                graph::node::UPSCALING,
             )
             .unwrap();
     }

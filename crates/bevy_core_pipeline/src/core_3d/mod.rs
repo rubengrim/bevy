@@ -74,7 +74,7 @@ impl Plugin for Core3dPlugin {
         let prepass_node = PrepassNode::new(&mut render_app.world);
         let pass_node_3d = MainPass3dNode::new(&mut render_app.world);
         let tonemapping = TonemappingNode::new(&mut render_app.world);
-        let upscaling = UpscalingNode::new(&mut render_app.world);
+        // let upscaling = UpscalingNode::new(&mut render_app.world);
         let mut graph = render_app.world.resource_mut::<RenderGraph>();
 
         let mut draw_3d_graph = RenderGraph::default();
@@ -82,7 +82,7 @@ impl Plugin for Core3dPlugin {
         draw_3d_graph.add_node(graph::node::MAIN_PASS, pass_node_3d);
         draw_3d_graph.add_node(graph::node::TONEMAPPING, tonemapping);
         draw_3d_graph.add_node(graph::node::END_MAIN_PASS_POST_PROCESSING, EmptyNode);
-        draw_3d_graph.add_node(graph::node::UPSCALING, upscaling);
+        // draw_3d_graph.add_node(graph::node::UPSCALING, upscaling);
 
         let input_node_id = draw_3d_graph.set_input(vec![SlotInfo::new(
             graph::input::VIEW_ENTITY,
@@ -112,14 +112,14 @@ impl Plugin for Core3dPlugin {
                 TonemappingNode::IN_VIEW,
             )
             .unwrap();
-        draw_3d_graph
-            .add_slot_edge(
-                input_node_id,
-                graph::input::VIEW_ENTITY,
-                graph::node::UPSCALING,
-                UpscalingNode::IN_VIEW,
-            )
-            .unwrap();
+        // draw_3d_graph
+        //     .add_slot_edge(
+        //         input_node_id,
+        //         graph::input::VIEW_ENTITY,
+        //         graph::node::UPSCALING,
+        //         UpscalingNode::IN_VIEW,
+        //     )
+        //     .unwrap();
         draw_3d_graph
             .add_node_edge(graph::node::PREPASS, graph::node::MAIN_PASS)
             .unwrap();
@@ -132,12 +132,12 @@ impl Plugin for Core3dPlugin {
                 graph::node::END_MAIN_PASS_POST_PROCESSING,
             )
             .unwrap();
-        draw_3d_graph
-            .add_node_edge(
-                graph::node::END_MAIN_PASS_POST_PROCESSING,
-                graph::node::UPSCALING,
-            )
-            .unwrap();
+        // draw_3d_graph
+        //     .add_node_edge(
+        //         graph::node::END_MAIN_PASS_POST_PROCESSING,
+        //         graph::node::UPSCALING,
+        //     )
+        //     .unwrap();
         graph.add_sub_graph(graph::NAME, draw_3d_graph);
     }
 }

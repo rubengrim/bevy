@@ -147,12 +147,12 @@ pub fn build_ui_render(app: &mut App) {
                 draw_ui_graph::node::UI_PASS,
             )
             .unwrap();
-        graph_3d
-            .add_node_edge(
-                draw_ui_graph::node::UI_PASS,
-                bevy_core_pipeline::core_3d::graph::node::UPSCALING,
-            )
-            .unwrap();
+        // graph_3d
+        //     .add_node_edge(
+        //         draw_ui_graph::node::UI_PASS,
+        //         bevy_core_pipeline::core_3d::graph::node::UPSCALING,
+        //     )
+        //     .unwrap();
         graph_3d
             .add_slot_edge(
                 graph_3d.input_node().unwrap().id,

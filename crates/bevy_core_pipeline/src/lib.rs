@@ -50,7 +50,7 @@ impl Plugin for CorePipelinePlugin {
             .add_plugin(Core2dPlugin)
             .add_plugin(Core3dPlugin)
             .add_plugin(TonemappingPlugin)
-            .add_plugin(UpscalingPlugin)
+            // .add_plugin(UpscalingPlugin)
             .add_plugin(BloomPlugin)
             .add_plugin(FxaaPlugin);
     }
