@@ -136,10 +136,10 @@ pub fn build_ui_render(app: &mut App) {
             bevy_core_pipeline::core_3d::graph::node::END_MAIN_PASS_POST_PROCESSING,
             draw_ui_graph::node::UI_PASS,
         );
-        graph_3d.add_node_edge(
-            draw_ui_graph::node::UI_PASS,
-            bevy_core_pipeline::core_3d::graph::node::UPSCALING,
-        );
+        // graph_3d.add_node_edge(
+        //     draw_ui_graph::node::UI_PASS,
+        //     bevy_core_pipeline::core_3d::graph::node::UPSCALING,
+        // );
         graph_3d.add_slot_edge(
             graph_3d.input_node().id,
             bevy_core_pipeline::core_3d::graph::input::VIEW_ENTITY,

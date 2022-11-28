@@ -6,9 +6,11 @@
 
 use bevy::{
     asset::LoadState,
+    core_pipeline::prepass::PrepassSettings,
     gltf::Gltf,
     input::mouse::MouseMotion,
     math::Vec3A,
+    pbr::{AmbientOcclusionSettings, PbrPlugin},
     prelude::*,
     render::primitives::{Aabb, Sphere},
     scene::InstanceId,
@@ -45,6 +47,7 @@ Controls:
         color: Color::WHITE,
         brightness: 1.0 / 5.0f32,
     })
+    .insert_resource(Msaa { samples: 1 })
     .init_resource::<CameraTracker>()
     .add_plugins(
         DefaultPlugins
@@ -59,6 +62,9 @@ Controls:
                 asset_folder: std::env::var("CARGO_MANIFEST_DIR")
                     .unwrap_or_else(|_| ".".to_string()),
                 watch_for_changes: true,
+            })
+            .set(PbrPlugin {
+                prepass_enabled: true,
             }),
     )
     .add_startup_system(setup)
@@ -88,7 +94,7 @@ struct SceneHandle {
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let scene_path = std::env::args()
         .nth(1)
-        .unwrap_or_else(|| "assets/models/FlightHelmet/FlightHelmet.gltf".to_string());
+        .unwrap_or_else(|| "glTF/Sponza.gltf".to_string());
     info!("Loading {}", scene_path);
     commands.insert_resource(SceneHandle {
         handle: asset_server.load(&scene_path),
@@ -257,8 +263,13 @@ fn setup_scene_after_load(
                     is_active: false,
                     ..default()
                 },
+                prepass_settings: PrepassSettings {
+                    depth_enabled: true,
+                    normal_enabled: true,
+                },
                 ..default()
             },
+            AmbientOcclusionSettings::default(),
             CameraController::default(),
         ));
 

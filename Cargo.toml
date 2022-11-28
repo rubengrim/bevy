@@ -1646,3 +1646,6 @@ inherits = "release"
 opt-level = "z"
 lto = "fat"
 codegen-units = 1
+
+[patch.crates-io]
+naga = { path = "../naga" }
