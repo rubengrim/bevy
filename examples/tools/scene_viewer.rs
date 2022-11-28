@@ -10,7 +10,7 @@ use bevy::{
     gltf::Gltf,
     input::mouse::MouseMotion,
     math::Vec3A,
-    pbr::{AmbientOcclusionSettings, PbrPlugin},
+    pbr::{AmbientOcclusionSettings, PbrPlugin, TemporalAntialiasSettings},
     prelude::*,
     render::primitives::{Aabb, Sphere},
     scene::InstanceId,
@@ -270,6 +270,7 @@ fn setup_scene_after_load(
                 },
                 ..default()
             },
+            TemporalAntialiasSettings::default(),
             AmbientOcclusionSettings::default(),
             CameraController::default(),
         ));
