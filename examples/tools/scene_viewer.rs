@@ -266,6 +266,7 @@ fn setup_scene_after_load(
                 prepass_settings: PrepassSettings {
                     depth_enabled: true,
                     normal_enabled: true,
+                    velocity_enabled: true,
                 },
                 ..default()
             },
