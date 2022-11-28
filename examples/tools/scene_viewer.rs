@@ -10,7 +10,7 @@ use bevy::{
     gltf::Gltf,
     input::mouse::MouseMotion,
     math::Vec3A,
-    pbr::{AmbientOcclusionSettings, PbrPlugin, TemporalAntialiasSettings},
+    pbr::{AmbientOcclusionSettings, PbrPlugin, TemporalAntialiasBundle, TemporalAntialiasPlugin},
     prelude::*,
     render::primitives::{Aabb, Sphere},
     scene::InstanceId,
@@ -47,7 +47,6 @@ Controls:
         color: Color::WHITE,
         brightness: 1.0 / 5.0f32,
     })
-    .insert_resource(Msaa { samples: 1 })
     .init_resource::<CameraTracker>()
     .add_plugins(
         DefaultPlugins
@@ -67,6 +66,7 @@ Controls:
                 prepass_enabled: true,
             }),
     )
+    .add_plugin(TemporalAntialiasPlugin)
     .add_startup_system(setup)
     .add_system_to_stage(CoreStage::PreUpdate, scene_load_check)
     .add_system_to_stage(CoreStage::PreUpdate, setup_scene_after_load)
@@ -270,7 +270,7 @@ fn setup_scene_after_load(
                 },
                 ..default()
             },
-            TemporalAntialiasSettings::default(),
+            TemporalAntialiasBundle::default(),
             AmbientOcclusionSettings::default(),
             CameraController::default(),
         ));
