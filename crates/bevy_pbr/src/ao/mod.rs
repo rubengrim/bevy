@@ -615,7 +615,9 @@ fn prepare_ambient_occlusion_textures(
                 sample_count: 1,
                 dimension: TextureDimension::D2,
                 format: TextureFormat::R32Float,
-                usage: TextureUsages::STORAGE_BINDING | TextureUsages::TEXTURE_BINDING,
+                usage: TextureUsages::STORAGE_BINDING
+                    | TextureUsages::TEXTURE_BINDING
+                    | TextureUsages::RENDER_ATTACHMENT,
             };
             let ambient_occlusion_texture = ambient_occlusion_textures
                 .entry(camera.target.clone())

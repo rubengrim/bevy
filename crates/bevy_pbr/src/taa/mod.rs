@@ -33,6 +33,8 @@ use bevy_render::{
 };
 use bevy_utils::HashMap;
 
+use crate::AmbientOcclusionTextures;
+
 mod draw_3d_graph {
     pub mod node {
         /// Label for the TAA render node.
@@ -101,6 +103,7 @@ struct TAANode {
         &'static TAATextures,
         &'static ViewPrepassTextures,
         &'static TAABlitBindGroup,
+        &'static AmbientOcclusionTextures,
     )>,
 }
 
@@ -134,7 +137,7 @@ impl Node for TAANode {
 
         let view_entity = graph.get_input_entity(Self::IN_VIEW)?;
         let (
-            Ok((camera, view, view_target, taa_textures, prepass_textures, blit_bind_group)),
+            Ok((camera, view, view_target, taa_textures, prepass_textures, blit_bind_group, ao)),
             Some(pipelines),
             Some(pipeline_cache),
         ) = (
@@ -165,7 +168,9 @@ impl Node for TAANode {
                 entries: &[
                     BindGroupEntry {
                         binding: 0,
-                        resource: BindingResource::TextureView(&view_target.source),
+                        resource: BindingResource::TextureView(
+                            &ao.ambient_occlusion_texture.default_view,
+                        ),
                     },
                     BindGroupEntry {
                         binding: 1,
@@ -218,7 +223,7 @@ impl Node for TAANode {
                         label: Some("taa_blit_pass"),
                         color_attachments: &[
                             Some(RenderPassColorAttachment {
-                                view: view_target.destination,
+                                view: &ao.ambient_occlusion_texture.default_view,
                                 resolve_target: None,
                                 ops: Operations::default(),
                             }),
@@ -365,7 +370,7 @@ impl FromWorld for TAAPipelines {
                 shader_defs: vec![],
                 entry_point: "taa".into(),
                 targets: vec![Some(ColorTargetState {
-                    format: TextureFormat::bevy_default(),
+                    format: TextureFormat::R32Float,
                     blend: None,
                     write_mask: ColorWrites::ALL,
                 })],
@@ -404,12 +409,12 @@ impl FromWorld for TAAPipelines {
                 entry_point: "blit".into(),
                 targets: vec![
                     Some(ColorTargetState {
-                        format: TextureFormat::bevy_default(),
+                        format: TextureFormat::R32Float,
                         blend: None,
                         write_mask: ColorWrites::ALL,
                     }),
                     Some(ColorTargetState {
-                        format: TextureFormat::bevy_default(),
+                        format: TextureFormat::R32Float,
                         blend: None,
                         write_mask: ColorWrites::ALL,
                     }),
@@ -512,7 +517,7 @@ fn prepare_taa_textures(
                 format: if view.hdr {
                     ViewTarget::TEXTURE_FORMAT_HDR
                 } else {
-                    TextureFormat::bevy_default()
+                    TextureFormat::R32Float
                 },
                 usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
             };
