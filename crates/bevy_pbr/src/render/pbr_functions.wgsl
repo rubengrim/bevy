@@ -249,7 +249,7 @@ fn pbr(
         cluster_index,
     );
 
-    return output_color;
+    return vec4(ambient_occlusion, 1.0);
 }
 
 #ifdef TONEMAP_IN_SHADER
