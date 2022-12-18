@@ -317,8 +317,15 @@ fn update_lights(
     key_input: Res<Input<KeyCode>>,
     time: Res<Time>,
     mut query: Query<(&mut Transform, &mut DirectionalLight)>,
+    mut query2: Query<&mut TemporalAntialiasSettings>,
     mut animate_directional_light: Local<bool>,
 ) {
+    if key_input.just_pressed(KeyCode::B) {
+        for mut t in &mut query2 {
+            t.digital_filter = !t.digital_filter;
+        }
+    }
+
     let mut projection_adjustment = Vec3::ONE;
     if key_input.just_pressed(KeyCode::Key5) {
         projection_adjustment.x -= SCALE_STEP;

@@ -19,7 +19,7 @@ use bevy_render::{
     render_graph::{Node, NodeRunError, RenderGraph, RenderGraphContext, SlotInfo, SlotType},
     render_phase::TrackedRenderPass,
     render_resource::{
-        BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
+        BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
         BindGroupLayoutEntry, BindingResource, BindingType, CachedRenderPipelineId,
         ColorTargetState, ColorWrites, Extent3d, FilterMode, FragmentState, MultisampleState,
         Operations, PipelineCache, PrimitiveState, RenderPassColorAttachment, RenderPassDescriptor,
@@ -43,11 +43,15 @@ mod draw_3d_graph {
 const TAA_SHADER_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 656865235226276);
 
+const FILTER_SHADER_HANDLE: HandleUntyped =
+    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 156865235226276);
+
 pub struct TemporalAntialiasPlugin;
 
 impl Plugin for TemporalAntialiasPlugin {
     fn build(&self, app: &mut App) {
         load_internal_asset!(app, TAA_SHADER_HANDLE, "taa.wgsl", Shader::from_wgsl);
+        load_internal_asset!(app, FILTER_SHADER_HANDLE, "filter.wgsl", Shader::from_wgsl);
 
         app.insert_resource(Msaa { samples: 1 })
             .register_type::<TemporalAntialiasSettings>();
@@ -59,7 +63,8 @@ impl Plugin for TemporalAntialiasPlugin {
             .init_resource::<SpecializedRenderPipelines<TAAPipeline>>()
             .add_system_to_stage(RenderStage::Extract, extract_taa_settings)
             .add_system_to_stage(RenderStage::Prepare, prepare_taa_history_textures)
-            .add_system_to_stage(RenderStage::Prepare, prepare_taa_pipelines);
+            .add_system_to_stage(RenderStage::Prepare, prepare_taa_pipelines)
+            .add_system_to_stage(RenderStage::Queue, queue_taa_filter_bind_groups);
 
         let taa_node = TAANode::new(&mut render_app.world);
         let mut graph = render_app.world.resource_mut::<RenderGraph>();
@@ -97,13 +102,15 @@ pub struct TemporalAntialiasBundle {
 
 #[derive(Component, Reflect, Clone)]
 pub struct TemporalAntialiasSettings {
-    depth_rejection_enabled: bool,
+    pub depth_rejection_enabled: bool,
+    pub digital_filter: bool,
 }
 
 impl Default for TemporalAntialiasSettings {
     fn default() -> Self {
         Self {
             depth_rejection_enabled: true,
+            digital_filter: true,
         }
     }
 }
@@ -112,9 +119,11 @@ struct TAANode {
     view_query: QueryState<(
         &'static ExtractedCamera,
         &'static ViewTarget,
+        &'static TAAFilterBindGroup,
         &'static TAAHistoryTextures,
         &'static ViewPrepassTextures,
         &'static TAAPipelineId,
+        &'static TemporalAntialiasSettings,
     )>,
 }
 
@@ -148,7 +157,7 @@ impl Node for TAANode {
 
         let view_entity = graph.get_input_entity(Self::IN_VIEW)?;
         let (
-            Ok((camera, view_target, taa_history_textures, prepass_textures, taa_pipeline_id)),
+            Ok((camera, view_target, filter_bind_group, taa_history_textures, prepass_textures, taa_pipeline_id, taa_settings)),
             Some(pipelines),
             Some(pipeline_cache),
         ) = (
@@ -158,8 +167,10 @@ impl Node for TAANode {
         ) else {
             return Ok(());
         };
-        let (Some(taa_pipeline), Some(prepass_velocity_texture), Some(prepass_depth_texture), Some(prepass_previous_depth_texture)) = (
+        let (Some(taa_pipeline), Some(filter_horizontal_pipeline), Some(filter_vertical_pipeline), Some(prepass_velocity_texture), Some(prepass_depth_texture), Some(prepass_previous_depth_texture)) = (
             pipeline_cache.get_render_pipeline(taa_pipeline_id.0),
+            pipeline_cache.get_render_pipeline(pipelines.filter_horizontal_pipeline),
+            pipeline_cache.get_render_pipeline(pipelines.filter_vertical_pipeline),
             &prepass_textures.velocity,
             &prepass_textures.depth,
             &prepass_textures.previous_depth,
@@ -239,6 +250,48 @@ impl Node for TAANode {
             taa_pass.draw(0..3, 0..1);
         }
 
+        if taa_settings.digital_filter {
+            let mut filter_horizontal_pass =
+                TrackedRenderPass::new(render_context.command_encoder.begin_render_pass(
+                    &(RenderPassDescriptor {
+                        label: Some("taa_filter_horizontal_pass"),
+                        color_attachments: &[Some(RenderPassColorAttachment {
+                            view: &taa_history_textures.read.default_view,
+                            resolve_target: None,
+                            ops: Operations::default(),
+                        })],
+                        depth_stencil_attachment: None,
+                    }),
+                ));
+            filter_horizontal_pass.set_render_pipeline(filter_horizontal_pipeline);
+            filter_horizontal_pass.set_bind_group(0, &filter_bind_group.horizontal, &[]);
+            if let Some(viewport) = camera.viewport.as_ref() {
+                filter_horizontal_pass.set_camera_viewport(viewport);
+            }
+            filter_horizontal_pass.draw(0..3, 0..1);
+        }
+
+        if taa_settings.digital_filter {
+            let mut filter_vertical_pass =
+                TrackedRenderPass::new(render_context.command_encoder.begin_render_pass(
+                    &(RenderPassDescriptor {
+                        label: Some("taa_filter_vertical_pass"),
+                        color_attachments: &[Some(RenderPassColorAttachment {
+                            view: &taa_history_textures.write.default_view,
+                            resolve_target: None,
+                            ops: Operations::default(),
+                        })],
+                        depth_stencil_attachment: None,
+                    }),
+                ));
+            filter_vertical_pass.set_render_pipeline(filter_vertical_pipeline);
+            filter_vertical_pass.set_bind_group(0, &filter_bind_group.vertical, &[]);
+            if let Some(viewport) = camera.viewport.as_ref() {
+                filter_vertical_pass.set_camera_viewport(viewport);
+            }
+            filter_vertical_pass.draw(0..3, 0..1);
+        }
+
         Ok(())
     }
 }
@@ -246,6 +299,9 @@ impl Node for TAANode {
 #[derive(Resource)]
 struct TAAPipeline {
     taa_bind_group_layout: BindGroupLayout,
+    filter_bind_group_layout: BindGroupLayout,
+    filter_horizontal_pipeline: CachedRenderPipelineId,
+    filter_vertical_pipeline: CachedRenderPipelineId,
     nearest_sampler: Sampler,
     linear_sampler: Sampler,
 }
@@ -343,15 +399,85 @@ impl FromWorld for TAAPipeline {
                 ],
             });
 
+        let filter_bind_group_layout =
+            render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: Some("taa_filter_bind_group_layout"),
+                entries: &[
+                    // TAA History (read)
+                    BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Texture {
+                            sample_type: TextureSampleType::Float { filterable: true },
+                            view_dimension: TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    // Linear sampler
+                    BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+            });
+
+        let mut pipeline_cache = world.resource_mut::<PipelineCache>();
+
+        let filter_horizontal_pipeline =
+            pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
+                label: Some("taa_filter_horizontal_pipeline".into()),
+                layout: Some(vec![filter_bind_group_layout.clone()]),
+                vertex: fullscreen_shader_vertex_state(),
+                fragment: Some(FragmentState {
+                    shader: FILTER_SHADER_HANDLE.typed::<Shader>(),
+                    shader_defs: vec!["HORIZONTAL".into()],
+                    entry_point: "digital_filter".into(),
+                    targets: vec![Some(ColorTargetState {
+                        format: ViewTarget::TEXTURE_FORMAT_HDR,
+                        blend: None,
+                        write_mask: ColorWrites::ALL,
+                    })],
+                }),
+                primitive: PrimitiveState::default(),
+                depth_stencil: None,
+                multisample: MultisampleState::default(),
+            });
+
+        let filter_vertical_pipeline =
+            pipeline_cache.queue_render_pipeline(RenderPipelineDescriptor {
+                label: Some("taa_filter_vertical_pipeline".into()),
+                layout: Some(vec![filter_bind_group_layout.clone()]),
+                vertex: fullscreen_shader_vertex_state(),
+                fragment: Some(FragmentState {
+                    shader: FILTER_SHADER_HANDLE.typed::<Shader>(),
+                    shader_defs: vec![],
+                    entry_point: "digital_filter".into(),
+                    targets: vec![Some(ColorTargetState {
+                        format: ViewTarget::TEXTURE_FORMAT_HDR,
+                        blend: None,
+                        write_mask: ColorWrites::ALL,
+                    })],
+                }),
+                primitive: PrimitiveState::default(),
+                depth_stencil: None,
+                multisample: MultisampleState::default(),
+            });
+
         TAAPipeline {
             taa_bind_group_layout,
+            filter_bind_group_layout,
+            filter_horizontal_pipeline,
+            filter_vertical_pipeline,
             nearest_sampler,
             linear_sampler,
         }
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(PartialEq, Eq, Hash, Copy, Clone)]
 struct TAAPipelineKey {
     hdr: bool,
     depth_rejection_enabled: bool,
@@ -512,5 +638,57 @@ fn prepare_taa_pipelines(
         let pipeline_id = pipelines.specialize(&mut pipeline_cache, &pipeline, pipeline_key);
 
         commands.entity(entity).insert(TAAPipelineId(pipeline_id));
+    }
+}
+
+#[derive(Component)]
+struct TAAFilterBindGroup {
+    horizontal: BindGroup,
+    vertical: BindGroup,
+}
+
+fn queue_taa_filter_bind_groups(
+    mut commands: Commands,
+    render_device: Res<RenderDevice>,
+    pipelines: Res<TAAPipeline>,
+    views: Query<(Entity, &TAAHistoryTextures)>,
+) {
+    for (entity, taa_history_textures) in &views {
+        let horizontal = render_device.create_bind_group(&BindGroupDescriptor {
+            label: Some("taa_filter_horizontal_bind_group"),
+            layout: &pipelines.filter_bind_group_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: BindingResource::TextureView(
+                        &taa_history_textures.write.default_view,
+                    ),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::Sampler(&pipelines.linear_sampler),
+                },
+            ],
+        });
+
+        let vertical = render_device.create_bind_group(&BindGroupDescriptor {
+            label: Some("taa_filter_vertical_bind_group"),
+            layout: &pipelines.filter_bind_group_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: BindingResource::TextureView(&taa_history_textures.read.default_view),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::Sampler(&pipelines.linear_sampler),
+                },
+            ],
+        });
+
+        commands.entity(entity).insert(TAAFilterBindGroup {
+            horizontal,
+            vertical,
+        });
     }
 }
