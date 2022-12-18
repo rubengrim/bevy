@@ -6,9 +6,11 @@
 
 use bevy::{
     asset::LoadState,
+    core_pipeline::prepass::{PrepassDepthSettings, PrepassSettings},
     gltf::Gltf,
     input::mouse::MouseMotion,
     math::Vec3A,
+    pbr::{PbrPlugin, TemporalAntialiasBundle, TemporalAntialiasPlugin, TemporalAntialiasSettings},
     prelude::*,
     render::primitives::{Aabb, Sphere},
     scene::InstanceId,
@@ -59,8 +61,13 @@ Controls:
                 asset_folder: std::env::var("CARGO_MANIFEST_DIR")
                     .unwrap_or_else(|_| ".".to_string()),
                 watch_for_changes: true,
+            })
+            .set(PbrPlugin {
+                prepass_enabled: true,
+                ..default()
             }),
     )
+    .add_plugin(TemporalAntialiasPlugin)
     .add_startup_system(setup)
     .add_system_to_stage(CoreStage::PreUpdate, scene_load_check)
     .add_system_to_stage(CoreStage::PreUpdate, setup_scene_after_load)
@@ -254,11 +261,20 @@ fn setup_scene_after_load(
                 )
                 .looking_at(Vec3::from(aabb.center), Vec3::Y),
                 camera: Camera {
+                    hdr: true,
                     is_active: false,
+                    ..default()
+                },
+                prepass_settings: PrepassSettings {
+                    depth_settings: PrepassDepthSettings::Enabled {
+                        keep_1_frame_history: true,
+                    },
+                    velocity_enabled: true,
                     ..default()
                 },
                 ..default()
             },
+            TemporalAntialiasBundle::default(),
             CameraController::default(),
         ));
 
