@@ -1,4 +1,7 @@
-use crate::{clear_color::ClearColorConfig, tonemapping::Tonemapping};
+use crate::{
+    clear_color::ClearColorConfig,
+    tonemapping::{TonemappingCurve, TonemappingMode, TonemappingSettings},
+};
 use bevy_ecs::{prelude::*, query::QueryItem};
 use bevy_reflect::{Reflect, ReflectDeserialize, ReflectSerialize};
 use bevy_render::{
@@ -67,7 +70,7 @@ pub struct Camera3dBundle {
     pub transform: Transform,
     pub global_transform: GlobalTransform,
     pub camera_3d: Camera3d,
-    pub tonemapping: Tonemapping,
+    pub tonemapping_settings: TonemappingSettings,
 }
 
 // NOTE: ideally Perspective and Orthographic defaults can share the same impl, but sadly it breaks rust's type inference
@@ -75,7 +78,9 @@ impl Default for Camera3dBundle {
     fn default() -> Self {
         Self {
             camera_render_graph: CameraRenderGraph::new(crate::core_3d::graph::NAME),
-            tonemapping: Tonemapping::Enabled {
+            tonemapping_settings: TonemappingSettings {
+                mode: TonemappingMode::Global,
+                curve: TonemappingCurve::ACESFilmic,
                 deband_dither: true,
             },
             camera: Default::default(),

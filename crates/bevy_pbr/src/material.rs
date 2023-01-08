@@ -6,7 +6,7 @@ use bevy_app::{App, Plugin};
 use bevy_asset::{AddAsset, AssetEvent, AssetServer, Assets, Handle};
 use bevy_core_pipeline::{
     core_3d::{AlphaMask3d, Opaque3d, Transparent3d},
-    tonemapping::Tonemapping,
+    tonemapping::TonemappingSettings,
 };
 use bevy_derive::{Deref, DerefMut};
 use bevy_ecs::{
@@ -326,7 +326,7 @@ pub fn queue_material_meshes<M: Material>(
     mut views: Query<(
         &ExtractedView,
         &VisibleEntities,
-        Option<&Tonemapping>,
+        Option<&TonemappingSettings>,
         &mut RenderPhase<Opaque3d>,
         &mut RenderPhase<AlphaMask3d>,
         &mut RenderPhase<Transparent3d>,
@@ -337,7 +337,7 @@ pub fn queue_material_meshes<M: Material>(
     for (
         view,
         visible_entities,
-        tonemapping,
+        tonemapping_settings,
         mut opaque_phase,
         mut alpha_mask_phase,
         mut transparent_phase,
@@ -350,15 +350,15 @@ pub fn queue_material_meshes<M: Material>(
         let mut view_key =
             MeshPipelineKey::from_msaa_samples(msaa.samples) | MeshPipelineKey::from_hdr(view.hdr);
 
-        if let Some(Tonemapping::Enabled { deband_dither }) = tonemapping {
-            if !view.hdr {
-                view_key |= MeshPipelineKey::TONEMAP_IN_SHADER;
+        // if let Some(Tonemapping::Enabled { deband_dither }) = tonemapping {
+        //     if !view.hdr {
+        //         view_key |= MeshPipelineKey::TONEMAP_IN_SHADER;
 
-                if *deband_dither {
-                    view_key |= MeshPipelineKey::DEBAND_DITHER;
-                }
-            }
-        }
+        //         if *deband_dither {
+        //             view_key |= MeshPipelineKey::DEBAND_DITHER;
+        //         }
+        //     }
+        // }
         let rangefinder = view.rangefinder3d();
 
         for visible_entity in &visible_entities.entities {

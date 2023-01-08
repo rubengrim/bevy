@@ -5,7 +5,7 @@ use crate::{
     Sprite, SPRITE_SHADER_HANDLE,
 };
 use bevy_asset::{AssetEvent, Assets, Handle, HandleId};
-use bevy_core_pipeline::{core_2d::Transparent2d, tonemapping::Tonemapping};
+use bevy_core_pipeline::{core_2d::Transparent2d, tonemapping::TonemappingSettings};
 use bevy_ecs::{
     prelude::*,
     system::{lifetimeless::*, SystemParamItem, SystemState},
@@ -460,7 +460,7 @@ pub fn queue_sprites(
         &mut RenderPhase<Transparent2d>,
         &VisibleEntities,
         &ExtractedView,
-        Option<&Tonemapping>,
+        Option<&TonemappingSettings>,
     )>,
     events: Res<SpriteAssetEvents>,
 ) {
@@ -516,17 +516,17 @@ pub fn queue_sprites(
         });
         let image_bind_groups = &mut *image_bind_groups;
 
-        for (mut transparent_phase, visible_entities, view, tonemapping) in &mut views {
+        for (mut transparent_phase, visible_entities, view, tonemapping_settings) in &mut views {
             let mut view_key = SpritePipelineKey::from_hdr(view.hdr) | msaa_key;
-            if let Some(Tonemapping::Enabled { deband_dither }) = tonemapping {
-                if !view.hdr {
-                    view_key |= SpritePipelineKey::TONEMAP_IN_SHADER;
+            // if let Some(Tonemapping::Enabled { deband_dither }) = tonemapping_settings {
+            //     if !view.hdr {
+            //         view_key |= SpritePipelineKey::TONEMAP_IN_SHADER;
 
-                    if *deband_dither {
-                        view_key |= SpritePipelineKey::DEBAND_DITHER;
-                    }
-                }
-            }
+            //         if *deband_dither {
+            //             view_key |= SpritePipelineKey::DEBAND_DITHER;
+            //         }
+            //     }
+            // }
             let pipeline = pipelines.specialize(
                 &mut pipeline_cache,
                 &sprite_pipeline,
