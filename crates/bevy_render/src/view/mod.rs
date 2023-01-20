@@ -8,11 +8,11 @@ use crate::{
     camera::{ExtractedCamera, TemporalJitter},
     extract_resource::{ExtractResource, ExtractResourcePlugin},
     prelude::Image,
-    rangefinder::ViewRangefinder3d,
     render_asset::RenderAssets,
+    render_phase::ViewRangefinder3d,
     render_resource::{DynamicUniformBuffer, ShaderType, Texture, TextureView},
     renderer::{RenderDevice, RenderQueue},
-    texture::{BevyDefault, CachedTexture, TextureCache},
+    texture::{BevyDefault, TextureCache},
     RenderApp, RenderStage,
 };
 use bevy_app::{App, Plugin};
@@ -56,30 +56,34 @@ impl Plugin for ViewPlugin {
 
 /// Configuration resource for [Multi-Sample Anti-Aliasing](https://en.wikipedia.org/wiki/Multisample_anti-aliasing).
 ///
+/// The number of samples to run for Multi-Sample Anti-Aliasing. Higher numbers result in
+/// smoother edges.
+/// Defaults to 4.
+///
+/// Note that WGPU currently only supports 1 or 4 samples.
+/// Ultimately we plan on supporting whatever is natively supported on a given device.
+/// Check out this issue for more info: <https://github.com/gfx-rs/wgpu/issues/1832>
+///
 /// # Example
 /// ```
 /// # use bevy_app::prelude::App;
 /// # use bevy_render::prelude::Msaa;
 /// App::new()
-///     .insert_resource(Msaa { samples: 4 })
+///     .insert_resource(Msaa::default())
 ///     .run();
 /// ```
-#[derive(Resource, Clone, ExtractResource, Reflect)]
+#[derive(Resource, Default, Clone, Copy, ExtractResource, Reflect, PartialEq, PartialOrd)]
 #[reflect(Resource)]
-pub struct Msaa {
-    /// The number of samples to run for Multi-Sample Anti-Aliasing. Higher numbers result in
-    /// smoother edges.
-    /// Defaults to 4.
-    ///
-    /// Note that WGPU currently only supports 1 or 4 samples.
-    /// Ultimately we plan on supporting whatever is natively supported on a given device.
-    /// Check out this issue for more info: <https://github.com/gfx-rs/wgpu/issues/1832>
-    pub samples: u32,
+pub enum Msaa {
+    Off = 1,
+    #[default]
+    Sample4 = 4,
 }
 
-impl Default for Msaa {
-    fn default() -> Self {
-        Self { samples: 4 }
+impl Msaa {
+    #[inline]
+    pub fn samples(&self) -> u32 {
+        *self as u32
     }
 }
 
@@ -147,7 +151,7 @@ impl ViewTarget {
         match &self.main_textures.sampled {
             Some(sampled_texture) => RenderPassColorAttachment {
                 view: sampled_texture,
-                resolve_target: Some(&self.main_texture().default_view),
+                resolve_target: Some(self.main_texture()),
                 ops,
             },
             None => self.get_unsampled_color_attachment(ops),
@@ -160,14 +164,14 @@ impl ViewTarget {
         ops: Operations<Color>,
     ) -> RenderPassColorAttachment {
         RenderPassColorAttachment {
-            view: &self.main_texture().default_view,
+            view: self.main_texture(),
             resolve_target: None,
             ops,
         }
     }
 
     /// The "main" unsampled texture.
-    pub fn main_texture(&self) -> &CachedTexture {
+    pub fn main_texture(&self) -> &TextureView {
         if self.main_texture.load(Ordering::SeqCst) == 0 {
             &self.main_textures.a
         } else {
@@ -215,13 +219,13 @@ impl ViewTarget {
         // if the old main texture is a, then the post processing must write from a to b
         if old_is_a_main_texture == 0 {
             PostProcessWrite {
-                source: &self.main_textures.a.default_view,
-                destination: &self.main_textures.b.default_view,
+                source: &self.main_textures.a,
+                destination: &self.main_textures.b,
             }
         } else {
             PostProcessWrite {
-                source: &self.main_textures.b.default_view,
-                destination: &self.main_textures.a.default_view,
+                source: &self.main_textures.b,
+                destination: &self.main_textures.a,
             }
         }
     }
@@ -245,7 +249,7 @@ fn prepare_view_uniforms(
     for (entity, camera, temporal_jitter) in &views {
         let viewport = camera.viewport.as_vec4();
         let unjittered_projection = camera.projection;
-        let mut projection = unjittered_projection.clone();
+        let mut projection = unjittered_projection;
 
         if let Some(temporal_jitter) = temporal_jitter {
             temporal_jitter.jitter_projection(&mut projection, viewport.zw());
@@ -279,8 +283,8 @@ fn prepare_view_uniforms(
 
 #[derive(Clone)]
 struct MainTargetTextures {
-    a: CachedTexture,
-    b: CachedTexture,
+    a: TextureView,
+    b: TextureView,
     sampled: Option<TextureView>,
 }
 
@@ -296,10 +300,10 @@ fn prepare_view_targets(
 ) {
     let mut textures = HashMap::default();
     for (entity, camera, view) in cameras.iter() {
-        if let Some(target_size) = camera.physical_target_size {
+        if let (Some(target_size), Some(target)) = (camera.physical_target_size, &camera.target) {
             if let (Some(out_texture_view), Some(out_texture_format)) = (
-                camera.target.get_texture_view(&windows, &images),
-                camera.target.get_texture_format(&windows, &images),
+                target.get_texture_view(&windows, &images),
+                target.get_texture_format(&windows, &images),
             ) {
                 let size = Extent3d {
                     width: target_size.x,
@@ -324,25 +328,28 @@ fn prepare_view_targets(
                             dimension: TextureDimension::D2,
                             format: main_texture_format,
                             usage: TextureUsages::RENDER_ATTACHMENT
-                                | TextureUsages::TEXTURE_BINDING
-                                | TextureUsages::STORAGE_BINDING,
+                                | TextureUsages::TEXTURE_BINDING,
                         };
                         MainTargetTextures {
-                            a: texture_cache.get(
-                                &render_device,
-                                TextureDescriptor {
-                                    label: Some("main_texture_a"),
-                                    ..descriptor
-                                },
-                            ),
-                            b: texture_cache.get(
-                                &render_device,
-                                TextureDescriptor {
-                                    label: Some("main_texture_b"),
-                                    ..descriptor
-                                },
-                            ),
-                            sampled: (msaa.samples > 1).then(|| {
+                            a: texture_cache
+                                .get(
+                                    &render_device,
+                                    TextureDescriptor {
+                                        label: Some("main_texture_a"),
+                                        ..descriptor
+                                    },
+                                )
+                                .default_view,
+                            b: texture_cache
+                                .get(
+                                    &render_device,
+                                    TextureDescriptor {
+                                        label: Some("main_texture_b"),
+                                        ..descriptor
+                                    },
+                                )
+                                .default_view,
+                            sampled: (msaa.samples() > 1).then(|| {
                                 texture_cache
                                     .get(
                                         &render_device,
@@ -350,7 +357,7 @@ fn prepare_view_targets(
                                             label: Some("main_texture_sampled"),
                                             size,
                                             mip_level_count: 1,
-                                            sample_count: msaa.samples,
+                                            sample_count: msaa.samples(),
                                             dimension: TextureDimension::D2,
                                             format: main_texture_format,
                                             usage: TextureUsages::RENDER_ATTACHMENT,

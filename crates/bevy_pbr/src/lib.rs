@@ -7,8 +7,6 @@ mod material;
 mod pbr_material;
 mod prepass;
 mod render;
-mod ssao;
-mod taa;
 
 pub use alpha::*;
 use bevy_utils::default;
@@ -18,8 +16,6 @@ pub use material::*;
 pub use pbr_material::*;
 pub use prepass::*;
 pub use render::*;
-pub use ssao::*;
-pub use taa::*;
 
 use bevy_window::ModifiesWindows;
 
@@ -165,7 +161,6 @@ impl Plugin for PbrPlugin {
                 prepass_enabled: self.prepass_enabled,
                 ..default()
             })
-            .add_plugin(ScreenSpaceAmbientOcclusionPlugin)
             .init_resource::<AmbientLight>()
             .init_resource::<GlobalVisiblePointLights>()
             .init_resource::<DirectionalLightShadowMap>()
@@ -196,7 +191,7 @@ impl Plugin for PbrPlugin {
                     .after(VisibilitySystems::CheckVisibility)
                     .after(TransformSystem::TransformPropagate)
                     // We assume that no entity will be both a directional light and a spot light,
-                    // so these systems will run indepdently of one another.
+                    // so these systems will run independently of one another.
                     // FIXME: Add an archetype invariant for this https://github.com/bevyengine/bevy/issues/1481.
                     .ambiguous_with(update_spot_light_frusta),
             )
@@ -219,7 +214,6 @@ impl Plugin for PbrPlugin {
                 check_light_mesh_visibility
                     .label(SimulationLightSystems::CheckLightVisibility)
                     .after(TransformSystem::TransformPropagate)
-                    .after(VisibilitySystems::CalculateBounds)
                     .after(SimulationLightSystems::UpdateLightFrusta)
                     // NOTE: This MUST be scheduled AFTER the core renderer visibility check
                     // because that resets entity ComputedVisibility for the first view
