@@ -8,14 +8,17 @@ use bevy_render::{
     camera::ExtractedCamera,
     render_graph::{Node, NodeRunError, RenderGraphContext, SlotInfo, SlotType},
     render_phase::RenderPhase,
-    render_resource::{LoadOp, Operations, RenderPassDepthStencilAttachment, RenderPassDescriptor},
+    render_resource::{
+        LoadOp, Operations, RenderPassColorAttachment, RenderPassDepthStencilAttachment,
+        RenderPassDescriptor,
+    },
     renderer::RenderContext,
     view::{ExtractedView, ViewDepthTexture, ViewTarget},
 };
 #[cfg(feature = "trace")]
 use bevy_utils::tracing::info_span;
 
-use super::Camera3dDepthLoadOp;
+use super::{Camera3dDepthLoadOp, MainPass3dTexture};
 
 pub struct MainPass3dNode {
     query: QueryState<
@@ -27,6 +30,7 @@ pub struct MainPass3dNode {
             &'static Camera3d,
             &'static ViewTarget,
             &'static ViewDepthTexture,
+            Option<&'static MainPass3dTexture>,
             Option<&'static DepthPrepass>,
             Option<&'static NormalPrepass>,
         ),
@@ -68,11 +72,18 @@ impl Node for MainPass3dNode {
             camera_3d,
             target,
             depth,
+            main_pass_3d_texture,
             depth_prepass,
             normal_prepass,
         )) = self.query.get_manual(world, view_entity) else {
             // No window
             return Ok(());
+        };
+
+        let viewport = if main_pass_3d_texture.is_some() {
+            None
+        } else {
+            camera.viewport.as_ref()
         };
 
         // Always run opaque pass to ensure screen is cleared
@@ -82,20 +93,30 @@ impl Node for MainPass3dNode {
             #[cfg(feature = "trace")]
             let _main_opaque_pass_3d_span = info_span!("main_opaque_pass_3d").entered();
 
+            // NOTE: The opaque pass loads the color
+            // buffer as well as writing to it.
+            let ops = Operations {
+                load: match camera_3d.clear_color {
+                    ClearColorConfig::Default => {
+                        LoadOp::Clear(world.resource::<ClearColor>().0.into())
+                    }
+                    ClearColorConfig::Custom(color) => LoadOp::Clear(color.into()),
+                    ClearColorConfig::None => LoadOp::Load,
+                },
+                store: true,
+            };
+            let attachment = match main_pass_3d_texture {
+                Some(MainPass3dTexture { texture }) => RenderPassColorAttachment {
+                    view: &texture.default_view,
+                    resolve_target: None, // TODO
+                    ops,
+                },
+                None => target.get_color_attachment(ops),
+            };
+
             let mut render_pass = render_context.begin_tracked_render_pass(RenderPassDescriptor {
                 label: Some("main_opaque_pass_3d"),
-                // NOTE: The opaque pass loads the color
-                // buffer as well as writing to it.
-                color_attachments: &[Some(target.get_color_attachment(Operations {
-                    load: match camera_3d.clear_color {
-                        ClearColorConfig::Default => {
-                            LoadOp::Clear(world.resource::<ClearColor>().0.into())
-                        }
-                        ClearColorConfig::Custom(color) => LoadOp::Clear(color.into()),
-                        ClearColorConfig::None => LoadOp::Load,
-                    },
-                    store: true,
-                }))],
+                color_attachments: &[Some(attachment)],
                 depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
                     view: &depth.view,
                     // NOTE: The opaque main pass loads the depth buffer and possibly overwrites it
@@ -115,12 +136,26 @@ impl Node for MainPass3dNode {
                 }),
             });
 
-            if let Some(viewport) = camera.viewport.as_ref() {
+            if let Some(viewport) = viewport {
                 render_pass.set_camera_viewport(viewport);
             }
 
             opaque_phase.render(&mut render_pass, world, view_entity);
         }
+
+        // NOTE: The transparent/alpha_mask pass loads the color buffer as well as overwriting it where appropriate.
+        let ops = Operations {
+            load: LoadOp::Load,
+            store: true,
+        };
+        let alpha_attachment = match main_pass_3d_texture {
+            Some(MainPass3dTexture { texture }) => RenderPassColorAttachment {
+                view: &texture.default_view,
+                resolve_target: None, // TODO
+                ops,
+            },
+            None => target.get_color_attachment(ops),
+        };
 
         if !alpha_mask_phase.items.is_empty() {
             // Run the alpha mask pass, sorted front-to-back
@@ -130,11 +165,7 @@ impl Node for MainPass3dNode {
 
             let mut render_pass = render_context.begin_tracked_render_pass(RenderPassDescriptor {
                 label: Some("main_alpha_mask_pass_3d"),
-                // NOTE: The alpha_mask pass loads the color buffer as well as overwriting it where appropriate.
-                color_attachments: &[Some(target.get_color_attachment(Operations {
-                    load: LoadOp::Load,
-                    store: true,
-                }))],
+                color_attachments: &[Some(alpha_attachment.clone())],
                 depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
                     view: &depth.view,
                     // NOTE: The alpha mask pass loads the depth buffer and possibly overwrites it
@@ -146,7 +177,7 @@ impl Node for MainPass3dNode {
                 }),
             });
 
-            if let Some(viewport) = camera.viewport.as_ref() {
+            if let Some(viewport) = viewport {
                 render_pass.set_camera_viewport(viewport);
             }
 
@@ -161,11 +192,7 @@ impl Node for MainPass3dNode {
 
             let mut render_pass = render_context.begin_tracked_render_pass(RenderPassDescriptor {
                 label: Some("main_transparent_pass_3d"),
-                // NOTE: The transparent pass loads the color buffer as well as overwriting it where appropriate.
-                color_attachments: &[Some(target.get_color_attachment(Operations {
-                    load: LoadOp::Load,
-                    store: true,
-                }))],
+                color_attachments: &[Some(alpha_attachment)],
                 depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
                     view: &depth.view,
                     // NOTE: For the transparent pass we load the depth buffer. There should be no
@@ -182,7 +209,7 @@ impl Node for MainPass3dNode {
                 }),
             });
 
-            if let Some(viewport) = camera.viewport.as_ref() {
+            if let Some(viewport) = viewport {
                 render_pass.set_camera_viewport(viewport);
             }
 
@@ -192,7 +219,7 @@ impl Node for MainPass3dNode {
         // WebGL2 quirk: if ending with a render pass with a custom viewport, the viewport isn't
         // reset for the next render pass so add an empty render pass without a custom viewport
         #[cfg(feature = "webgl")]
-        if camera.viewport.is_some() {
+        if viewport.is_some() {
             #[cfg(feature = "trace")]
             let _reset_viewport_pass_3d = info_span!("reset_viewport_pass_3d").entered();
             let pass_descriptor = RenderPassDescriptor {

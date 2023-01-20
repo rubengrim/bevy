@@ -12,7 +12,7 @@ use crate::{
     render_phase::ViewRangefinder3d,
     render_resource::{DynamicUniformBuffer, ShaderType, Texture, TextureView},
     renderer::{RenderDevice, RenderQueue},
-    texture::{BevyDefault, TextureCache},
+    texture::{BevyDefault, CachedTexture, TextureCache},
     RenderApp, RenderStage,
 };
 use bevy_app::{App, Plugin};
@@ -151,7 +151,7 @@ impl ViewTarget {
         match &self.main_textures.sampled {
             Some(sampled_texture) => RenderPassColorAttachment {
                 view: sampled_texture,
-                resolve_target: Some(self.main_texture()),
+                resolve_target: Some(&self.main_texture().default_view),
                 ops,
             },
             None => self.get_unsampled_color_attachment(ops),
@@ -164,14 +164,14 @@ impl ViewTarget {
         ops: Operations<Color>,
     ) -> RenderPassColorAttachment {
         RenderPassColorAttachment {
-            view: self.main_texture(),
+            view: &self.main_texture().default_view,
             resolve_target: None,
             ops,
         }
     }
 
     /// The "main" unsampled texture.
-    pub fn main_texture(&self) -> &TextureView {
+    pub fn main_texture(&self) -> &CachedTexture {
         if self.main_texture.load(Ordering::SeqCst) == 0 {
             &self.main_textures.a
         } else {
@@ -219,13 +219,13 @@ impl ViewTarget {
         // if the old main texture is a, then the post processing must write from a to b
         if old_is_a_main_texture == 0 {
             PostProcessWrite {
-                source: &self.main_textures.a,
-                destination: &self.main_textures.b,
+                source: &self.main_textures.a.default_view,
+                destination: &self.main_textures.b.default_view,
             }
         } else {
             PostProcessWrite {
-                source: &self.main_textures.b,
-                destination: &self.main_textures.a,
+                source: &self.main_textures.b.default_view,
+                destination: &self.main_textures.a.default_view,
             }
         }
     }
@@ -283,8 +283,8 @@ fn prepare_view_uniforms(
 
 #[derive(Clone)]
 struct MainTargetTextures {
-    a: TextureView,
-    b: TextureView,
+    a: CachedTexture,
+    b: CachedTexture,
     sampled: Option<TextureView>,
 }
 
@@ -328,27 +328,25 @@ fn prepare_view_targets(
                             dimension: TextureDimension::D2,
                             format: main_texture_format,
                             usage: TextureUsages::RENDER_ATTACHMENT
-                                | TextureUsages::TEXTURE_BINDING,
+                                | TextureUsages::TEXTURE_BINDING
+                                | TextureUsages::STORAGE_BINDING,
+                            view_formats: &[],
                         };
                         MainTargetTextures {
-                            a: texture_cache
-                                .get(
-                                    &render_device,
-                                    TextureDescriptor {
-                                        label: Some("main_texture_a"),
-                                        ..descriptor
-                                    },
-                                )
-                                .default_view,
-                            b: texture_cache
-                                .get(
-                                    &render_device,
-                                    TextureDescriptor {
-                                        label: Some("main_texture_b"),
-                                        ..descriptor
-                                    },
-                                )
-                                .default_view,
+                            a: texture_cache.get(
+                                &render_device,
+                                TextureDescriptor {
+                                    label: Some("main_texture_a"),
+                                    ..descriptor
+                                },
+                            ),
+                            b: texture_cache.get(
+                                &render_device,
+                                TextureDescriptor {
+                                    label: Some("main_texture_b"),
+                                    ..descriptor
+                                },
+                            ),
                             sampled: (msaa.samples() > 1).then(|| {
                                 texture_cache
                                     .get(
@@ -361,6 +359,7 @@ fn prepare_view_targets(
                                             dimension: TextureDimension::D2,
                                             format: main_texture_format,
                                             usage: TextureUsages::RENDER_ATTACHMENT,
+                                            view_formats: &[],
                                         },
                                     )
                                     .default_view

@@ -184,9 +184,10 @@ pub fn prepare_windows(
             .entry(window.entity)
             .or_insert_with(|| unsafe {
                 // NOTE: On some OSes this MUST be called from the main thread.
-                let surface = render_instance.create_surface(&window.handle.get_handle());
+                let surface = render_instance.create_surface(&window.handle.get_handle()).unwrap();
                 let format = *surface
-                    .get_supported_formats(&render_adapter)
+                    .get_capabilities(&render_adapter)
+                    .formats
                     .get(0)
                     .unwrap_or_else(|| {
                         panic!(

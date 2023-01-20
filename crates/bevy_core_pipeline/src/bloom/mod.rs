@@ -580,6 +580,7 @@ fn prepare_bloom_textures(
                 dimension: TextureDimension::D2,
                 format: ViewTarget::TEXTURE_FORMAT_HDR,
                 usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
             };
 
             texture_descriptor.label = Some("bloom_texture_a");
@@ -638,7 +639,9 @@ fn queue_bloom_bind_groups(
                 entries: &[
                     BindGroupEntry {
                         binding: 0,
-                        resource: BindingResource::TextureView(view_target.main_texture()),
+                        resource: BindingResource::TextureView(
+                            &view_target.main_texture().default_view,
+                        ),
                     },
                     BindGroupEntry {
                         binding: 1,
