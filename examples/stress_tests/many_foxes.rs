@@ -4,7 +4,12 @@
 use std::f32::consts::PI;
 
 use bevy::{
+    core_pipeline::prepass::PrepassSettings,
     diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
+    pbr::{
+        PbrPlugin, ScreenSpaceAmbientOcclusionSettings, TemporalAntialiasBundle,
+        TemporalAntialiasPlugin,
+    },
     prelude::*,
     window::PresentMode,
 };
@@ -18,14 +23,26 @@ struct Foxes {
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            window: WindowDescriptor {
-                title: "🦊🦊🦊 Many Foxes! 🦊🦊🦊".to_string(),
-                present_mode: PresentMode::AutoNoVsync,
-                ..default()
-            },
-            ..default()
-        }))
+        .add_plugins(
+            DefaultPlugins
+                .set(WindowPlugin {
+                    window: WindowDescriptor {
+                        title: "🦊🦊🦊 Many Foxes! 🦊🦊🦊".to_string(),
+                        present_mode: PresentMode::AutoNoVsync,
+                        ..default()
+                    },
+                    ..default()
+                })
+                .set(PbrPlugin {
+                    prepass_enabled: true,
+                    ..default()
+                })
+                .set(AssetPlugin {
+                    watch_for_changes: true,
+                    ..default()
+                }),
+        )
+        .add_plugin(TemporalAntialiasPlugin)
         .add_plugin(FrameTimeDiagnosticsPlugin)
         .add_plugin(LogDiagnosticsPlugin::default())
         .insert_resource(Foxes {
@@ -37,7 +54,7 @@ fn main() {
         })
         .insert_resource(AmbientLight {
             color: Color::WHITE,
-            brightness: 1.0,
+            brightness: 5.0,
         })
         .add_startup_system(setup)
         .add_system(setup_scene_once_loaded)
@@ -151,11 +168,20 @@ fn setup(
         radius * 0.5 * zoom,
         radius * 1.5 * zoom,
     );
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_translation(translation)
-            .looking_at(0.2 * Vec3::new(translation.x, 0.0, translation.z), Vec3::Y),
-        ..default()
-    });
+    commands.spawn((
+        Camera3dBundle {
+            camera: Camera {
+                hdr: true,
+                ..default()
+            },
+            prepass_settings: PrepassSettings::all(),
+            transform: Transform::from_translation(translation)
+                .looking_at(0.2 * Vec3::new(translation.x, 0.0, translation.z), Vec3::Y),
+            ..default()
+        },
+        ScreenSpaceAmbientOcclusionSettings::default(),
+        TemporalAntialiasBundle::default(),
+    ));
 
     // Plane
     commands.spawn(PbrBundle {

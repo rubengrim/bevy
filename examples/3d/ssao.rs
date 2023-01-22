@@ -16,10 +16,17 @@ fn main() {
             brightness: 5.0,
             ..default()
         })
-        .add_plugins(DefaultPlugins.set(PbrPlugin {
-            prepass_enabled: true,
-            ..default()
-        }))
+        .add_plugins(
+            DefaultPlugins
+                .set(PbrPlugin {
+                    prepass_enabled: true,
+                    ..default()
+                })
+                .set(AssetPlugin {
+                    watch_for_changes: true,
+                    ..default()
+                }),
+        )
         .add_plugin(TemporalAntialiasPlugin)
         .add_startup_system(setup)
         .add_system(update)
@@ -34,6 +41,10 @@ fn setup(
 ) {
     commands.spawn((
         Camera3dBundle {
+            camera: Camera {
+                hdr: true,
+                ..default()
+            },
             transform: Transform::from_xyz(-2.0, 2.0, -2.0).looking_at(Vec3::ZERO, Vec3::Y),
             prepass_settings: PrepassSettings::all(),
             ..default()

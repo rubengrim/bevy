@@ -404,7 +404,13 @@ fn camera_tracker(
         Query<(Entity, &mut Camera), (Added<Camera>, With<CameraController>)>,
         Query<&mut Camera>,
     )>,
+    time: Res<Time>,
+
+    mut meshes: Query<&mut Transform, With<Handle<Mesh>>>,
 ) {
+    for mut mesh in &mut meshes {
+        mesh.translation.x = (time.elapsed_seconds() * 3.0).sin() * 0.1;
+    }
     // track added scene camera entities first, to ensure they are preferred for the
     // default active camera
     for (entity, mut camera) in queries.p0().iter_mut() {

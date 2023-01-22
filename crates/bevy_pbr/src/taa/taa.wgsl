@@ -53,30 +53,22 @@ fn sample_view_target(uv: vec2<f32>) -> vec3<f32> {
     return RGB_to_YCoCg(sample);
 }
 
-fn sachtNehabCubic(x: f32) -> f32
-{
+fn sachtNehabCubic(x: f32) -> f32 {
     let ss = x;
-	let ss2 = ss * ss;
-	let ss3 = ss2 * ss;
+    let ss2 = ss * ss;
+    let ss3 = ss2 * ss;
 
-    if (ss == 0.)
-     {   return 0.56259136;}
-    else if (ss < 1.)
-{        return 0.56259136 + 0.04465421f * ss - 0.70001154 * ss2 + 0.30938685 * ss3;
-}    else if (ss == 1.)
-{        return 0.21773426;
-}    else if (ss < 2.f)
-{        return 1.17739188 - 1.50921205 * ss + 0.64059253f * ss2 - 0.08992473 * ss3;
-}    else if (ss == 2.f)
-{        return 0.00097005;
-}    else
-{        return 0.;
-}}
+    if ss == 0. {   return 0.56259136;} else if ss < 1. {        return 0.56259136 + 0.04465421f * ss - 0.70001154 * ss2 + 0.30938685 * ss3;
+} else if ss == 1. {        return 0.21773426;
+} else if ss < 2.f {        return 1.17739188 - 1.50921205 * ss + 0.64059253f * ss2 - 0.08992473 * ss3;
+} else if ss == 2.f {        return 0.00097005;
+} else {        return 0.;
+}
+}
 
-fn sachtNehabCubic2(xy: vec2<f32>) -> vec2<f32>
-{
-   return vec2(sachtNehabCubic(xy.x), sachtNehabCubic(xy.y));
-   }
+fn sachtNehabCubic2(xy: vec2<f32>) -> vec2<f32> {
+    return vec2(sachtNehabCubic(xy.x), sachtNehabCubic(xy.y));
+}
 
 @fragment
 fn taa(@location(0) uv: vec2<f32>) -> Output {
@@ -153,25 +145,25 @@ fn taa(@location(0) uv: vec2<f32>) -> Output {
     let tc2 = (texel_center + 1.0) * texel_size;
     let tc3 = (texel_center + 2.0) * texel_size;
     var previous_color = vec3(0.0);
-    previous_color += textureSample(history, nearest_sampler, vec2( tc0.x, tc0.y ) ).rgb * w0.x * w0.y;
-    previous_color += textureSample(history, nearest_sampler, vec2( tc1.x, tc0.y ) ).rgb * w1.x * w0.y;
-    previous_color += textureSample(history, nearest_sampler, vec2( tc2.x, tc0.y ) ).rgb * w2.x * w0.y;
-    previous_color += textureSample(history, nearest_sampler, vec2( tc3.x, tc0.y ) ).rgb * w3.x * w0.y;
+    previous_color += textureSample(history, nearest_sampler, vec2(tc0.x, tc0.y)).rgb * w0.x * w0.y;
+    previous_color += textureSample(history, nearest_sampler, vec2(tc1.x, tc0.y)).rgb * w1.x * w0.y;
+    previous_color += textureSample(history, nearest_sampler, vec2(tc2.x, tc0.y)).rgb * w2.x * w0.y;
+    previous_color += textureSample(history, nearest_sampler, vec2(tc3.x, tc0.y)).rgb * w3.x * w0.y;
 
-    previous_color += textureSample(history, nearest_sampler, vec2( tc0.x, tc1.y ) ).rgb * w0.x * w1.y;
-    previous_color += textureSample(history, nearest_sampler, vec2( tc1.x, tc1.y ) ).rgb * w1.x * w1.y;
-    previous_color += textureSample(history, nearest_sampler, vec2( tc2.x, tc1.y ) ).rgb * w2.x * w1.y;
-    previous_color += textureSample(history, nearest_sampler, vec2( tc3.x, tc1.y ) ).rgb * w3.x * w1.y;
+    previous_color += textureSample(history, nearest_sampler, vec2(tc0.x, tc1.y)).rgb * w0.x * w1.y;
+    previous_color += textureSample(history, nearest_sampler, vec2(tc1.x, tc1.y)).rgb * w1.x * w1.y;
+    previous_color += textureSample(history, nearest_sampler, vec2(tc2.x, tc1.y)).rgb * w2.x * w1.y;
+    previous_color += textureSample(history, nearest_sampler, vec2(tc3.x, tc1.y)).rgb * w3.x * w1.y;
 
-    previous_color += textureSample(history, nearest_sampler, vec2( tc0.x, tc2.y ) ).rgb * w0.x * w2.y;
-    previous_color += textureSample(history, nearest_sampler, vec2( tc1.x, tc2.y ) ).rgb * w1.x * w2.y;
-    previous_color += textureSample(history, nearest_sampler, vec2( tc2.x, tc2.y ) ).rgb * w2.x * w2.y;
-    previous_color += textureSample(history, nearest_sampler, vec2( tc3.x, tc2.y ) ).rgb * w3.x * w2.y;
+    previous_color += textureSample(history, nearest_sampler, vec2(tc0.x, tc2.y)).rgb * w0.x * w2.y;
+    previous_color += textureSample(history, nearest_sampler, vec2(tc1.x, tc2.y)).rgb * w1.x * w2.y;
+    previous_color += textureSample(history, nearest_sampler, vec2(tc2.x, tc2.y)).rgb * w2.x * w2.y;
+    previous_color += textureSample(history, nearest_sampler, vec2(tc3.x, tc2.y)).rgb * w3.x * w2.y;
 
-    previous_color += textureSample(history, nearest_sampler, vec2( tc0.x, tc3.y ) ).rgb * w0.x * w3.y;
-    previous_color += textureSample(history, nearest_sampler, vec2( tc1.x, tc3.y ) ).rgb * w1.x * w3.y;
-    previous_color += textureSample(history, nearest_sampler, vec2( tc2.x, tc3.y ) ).rgb * w2.x * w3.y;
-    previous_color += textureSample(history, nearest_sampler, vec2( tc3.x, tc3.y ) ).rgb * w3.x * w3.y;
+    previous_color += textureSample(history, nearest_sampler, vec2(tc0.x, tc3.y)).rgb * w0.x * w3.y;
+    previous_color += textureSample(history, nearest_sampler, vec2(tc1.x, tc3.y)).rgb * w1.x * w3.y;
+    previous_color += textureSample(history, nearest_sampler, vec2(tc2.x, tc3.y)).rgb * w2.x * w3.y;
+    previous_color += textureSample(history, nearest_sampler, vec2(tc3.x, tc3.y)).rgb * w3.x * w3.y;
 
     // previous_color += textureSample(history, linear_sampler, vec2(texel_position_12.x, texel_position_0.y)).rgb * w12.x * w0.y;
     // previous_color += textureSample(history, linear_sampler, vec2(texel_position_0.x, texel_position_12.y)).rgb * w0.x * w12.y;
