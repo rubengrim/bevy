@@ -50,7 +50,7 @@ use crate::{
     settings::WgpuSettings,
     view::{ViewPlugin, WindowRenderPlugin},
 };
-use bevy_app::{App, AppLabel, Plugin};
+use bevy_app::{App, AppLabel, Plugin, SubApp};
 use bevy_asset::{AddAsset, AssetServer};
 use bevy_ecs::{prelude::*, system::SystemState};
 use bevy_utils::{default, tracing::debug};
@@ -150,7 +150,14 @@ impl Plugin for RenderPlugin {
         if let Some(backends) = self.wgpu_settings.backends {
             let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
                 backends,
-                ..default()
+                dx12_shader_compiler: self.wgpu_settings.dx12_shader_compiler.clone(),
+            });
+            let surface = primary_window.get_single().ok().map(|wrapper| unsafe {
+                // SAFETY: Plugins should be set up on the main thread.
+                let handle = wrapper.get_handle();
+                instance
+                    .create_surface(&handle)
+                    .expect("Failed to create wgpu surface")
             });
 
             let surface = primary_window
@@ -240,7 +247,7 @@ impl Plugin for RenderPlugin {
             app.insert_resource(receiver);
             render_app.insert_resource(sender);
 
-            app.add_sub_app(RenderApp, render_app, move |app_world, render_app| {
+            app.insert_sub_app(RenderApp, SubApp::new(render_app, move |app_world, render_app| {
                 #[cfg(feature = "trace")]
                 let _render_span = bevy_utils::tracing::info_span!("extract main app to render subapp").entered();
                 {
@@ -276,7 +283,7 @@ impl Plugin for RenderPlugin {
                     // extract
                     extract(app_world, render_app);
                 }
-            });
+            }));
         }
 
         app.add_plugin(ValidParentCheckPlugin::<view::ComputedVisibility>::default())
@@ -288,6 +295,7 @@ impl Plugin for RenderPlugin {
 
         app.register_type::<color::Color>()
             .register_type::<primitives::Aabb>()
+            .register_type::<primitives::CascadesFrusta>()
             .register_type::<primitives::CubemapFrusta>()
             .register_type::<primitives::Frustum>();
     }

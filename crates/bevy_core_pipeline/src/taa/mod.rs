@@ -19,7 +19,6 @@ use bevy_render::{
     camera::{ExtractedCamera, TemporalJitter},
     prelude::{Camera, Projection},
     render_graph::{Node, NodeRunError, RenderGraph, RenderGraphContext, SlotInfo, SlotType},
-    render_phase::TrackedRenderPass,
     render_resource::{
         BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
         BindGroupLayoutEntry, BindingResource, BindingType, CachedRenderPipelineId,
@@ -116,10 +115,13 @@ pub struct TemporalAntialiasBundle {
 ///
 /// Cons:
 /// * Chance of "ghosting" - ghostly trails left behind moving objects
+/// * Thin geometry or texture lines may flicker or disappear
 /// * Slightly blurs the image, leading to a softer look
 ///
 /// Because TAA blends past frames with the current frame, when the frames differ too much
 /// (such as with fast moving objects or camera cuts), ghosting artifacts may occur.
+///
+/// Artifacts tend to be reduced at higher framerates and rendering resolution.
 ///
 /// # Usage Notes
 ///
@@ -197,65 +199,63 @@ impl Node for TAANode {
         };
         let view_target = view_target.post_process_write();
 
-        let taa_bind_group = render_context
-            .render_device
-            .create_bind_group(&BindGroupDescriptor {
-                label: Some("taa_bind_group"),
-                layout: &pipelines.taa_bind_group_layout,
-                entries: &[
-                    BindGroupEntry {
-                        binding: 0,
-                        resource: BindingResource::TextureView(view_target.source),
-                    },
-                    BindGroupEntry {
-                        binding: 1,
-                        resource: BindingResource::TextureView(
-                            &taa_history_textures.read.default_view,
-                        ),
-                    },
-                    BindGroupEntry {
-                        binding: 2,
-                        resource: BindingResource::TextureView(
-                            &prepass_velocity_texture.default_view,
-                        ),
-                    },
-                    BindGroupEntry {
-                        binding: 3,
-                        resource: BindingResource::TextureView(&prepass_depth_texture.default_view),
-                    },
-                    BindGroupEntry {
-                        binding: 4,
-                        resource: BindingResource::Sampler(&pipelines.nearest_sampler),
-                    },
-                    BindGroupEntry {
-                        binding: 5,
-                        resource: BindingResource::Sampler(&pipelines.linear_sampler),
-                    },
-                ],
-            });
+        let taa_bind_group =
+            render_context
+                .render_device()
+                .create_bind_group(&BindGroupDescriptor {
+                    label: Some("taa_bind_group"),
+                    layout: &pipelines.taa_bind_group_layout,
+                    entries: &[
+                        BindGroupEntry {
+                            binding: 0,
+                            resource: BindingResource::TextureView(view_target.source),
+                        },
+                        BindGroupEntry {
+                            binding: 1,
+                            resource: BindingResource::TextureView(
+                                &taa_history_textures.read.default_view,
+                            ),
+                        },
+                        BindGroupEntry {
+                            binding: 2,
+                            resource: BindingResource::TextureView(
+                                &prepass_velocity_texture.default_view,
+                            ),
+                        },
+                        BindGroupEntry {
+                            binding: 3,
+                            resource: BindingResource::TextureView(
+                                &prepass_depth_texture.default_view,
+                            ),
+                        },
+                        BindGroupEntry {
+                            binding: 4,
+                            resource: BindingResource::Sampler(&pipelines.nearest_sampler),
+                        },
+                        BindGroupEntry {
+                            binding: 5,
+                            resource: BindingResource::Sampler(&pipelines.linear_sampler),
+                        },
+                    ],
+                });
 
         {
-            let mut taa_pass = TrackedRenderPass::new(
-                &render_context.render_device,
-                render_context.command_encoder.begin_render_pass(
-                    &(RenderPassDescriptor {
-                        label: Some("taa_pass"),
-                        color_attachments: &[
-                            Some(RenderPassColorAttachment {
-                                view: view_target.destination,
-                                resolve_target: None,
-                                ops: Operations::default(),
-                            }),
-                            Some(RenderPassColorAttachment {
-                                view: &taa_history_textures.write.default_view,
-                                resolve_target: None,
-                                ops: Operations::default(),
-                            }),
-                        ],
-                        depth_stencil_attachment: None,
+            let mut taa_pass = render_context.begin_tracked_render_pass(RenderPassDescriptor {
+                label: Some("taa_pass"),
+                color_attachments: &[
+                    Some(RenderPassColorAttachment {
+                        view: view_target.destination,
+                        resolve_target: None,
+                        ops: Operations::default(),
                     }),
-                ),
-            );
+                    Some(RenderPassColorAttachment {
+                        view: &taa_history_textures.write.default_view,
+                        resolve_target: None,
+                        ops: Operations::default(),
+                    }),
+                ],
+                depth_stencil_attachment: None,
+            });
             taa_pass.set_render_pipeline(taa_pipeline);
             taa_pass.set_bind_group(0, &taa_bind_group, &[]);
             if let Some(viewport) = camera.viewport.as_ref() {

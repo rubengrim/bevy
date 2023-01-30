@@ -10,7 +10,7 @@ keywords = ["game", "engine", "gamedev", "graphics", "bevy"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/bevyengine/bevy"
-rust-version = "1.66.0"
+rust-version = "1.67.0"
 
 [workspace]
 exclude = [
@@ -52,7 +52,7 @@ default = [
 ]
 
 # Force dynamic linking, which improves iterative compile times
-dynamic = ["bevy_dylib"]
+dynamic_linking = ["bevy_dylib", "bevy_internal/dynamic_linking"]
 
 # Optional bevy crates
 bevy_animation = ["bevy_internal/bevy_animation"]
@@ -282,16 +282,6 @@ wasm = true
 
 # 3D Rendering
 [[example]]
-name = "taa"
-path = "examples/3d/taa.rs"
-
-[package.metadata.example.taa]
-name = "Temporal Antialiasing"
-description = "A scene showcasing temporal antialiasing"
-category = "3D Rendering"
-wasm = false
-
-[[example]]
 name = "3d_scene"
 path = "examples/3d/3d_scene.rs"
 
@@ -308,6 +298,46 @@ path = "examples/3d/3d_shapes.rs"
 [package.metadata.example.3d_shapes]
 name = "3D Shapes"
 description = "A scene showcasing the built-in 3D shapes"
+category = "3D Rendering"
+wasm = true
+
+[[example]]
+name = "anti_aliasing"
+path = "examples/3d/anti_aliasing.rs"
+
+[package.metadata.example.anti_aliasing]
+name = "Anti Aliasing"
+description = "Compares different anti aliasing methods"
+category = "3D Rendering"
+wasm = false
+
+[[example]]
+name = "atmospheric_fog"
+path = "examples/3d/atmospheric_fog.rs"
+
+[package.metadata.example.atmospheric_fog]
+name = "Atmospheric Fog"
+description = "A scene showcasing the atmospheric fog effect"
+category = "3D Rendering"
+wasm = true
+
+[[example]]
+name = "fog"
+path = "examples/3d/fog.rs"
+
+[package.metadata.example.fog]
+name = "Fog"
+description = "A scene showcasing the distance fog effect"
+category = "3D Rendering"
+wasm = true
+
+[[example]]
+name = "blend_modes"
+path = "examples/3d/blend_modes.rs"
+
+[package.metadata.example.blend_modes]
+name = "Blend Modes"
+description = "Showcases different blend modes"
 category = "3D Rendering"
 wasm = true
 
@@ -358,26 +388,6 @@ path = "examples/3d/load_gltf.rs"
 [package.metadata.example.load_gltf]
 name = "Load glTF"
 description = "Loads and renders a glTF file as a scene"
-category = "3D Rendering"
-wasm = true
-
-[[example]]
-name = "fxaa"
-path = "examples/3d/fxaa.rs"
-
-[package.metadata.example.fxaa]
-name = "FXAA"
-description = "Compares MSAA (Multi-Sample Anti-Aliasing) and FXAA (Fast Approximate Anti-Aliasing)"
-category = "3D Rendering"
-wasm = true
-
-[[example]]
-name = "msaa"
-path = "examples/3d/msaa.rs"
-
-[package.metadata.example.msaa]
-name = "MSAA"
-description = "Configures MSAA (Multi-Sample Anti-Aliasing) for smoother edges"
 category = "3D Rendering"
 wasm = true
 
@@ -1131,6 +1141,16 @@ description = "Prints out all touch inputs"
 category = "Input"
 wasm = false
 
+[[example]]
+name = "text_input"
+path = "examples/input/text_input.rs"
+
+[package.metadata.example.text_input]
+name = "Text Input"
+description = "Simple text input with IME support"
+category = "Input"
+wasm = false
+
 # Reflection
 [[example]]
 name = "reflection"
@@ -1303,6 +1323,16 @@ name = "Array Texture"
 description = "A shader that shows how to reuse the core bevy PBR shading functionality in a custom material that obtains the base color from an array texture."
 category = "Shaders"
 wasm = true
+
+[[example]]
+name = "texture_binding_array"
+path = "examples/shader/texture_binding_array.rs"
+
+[package.metadata.example.texture_binding_array]
+name = "Texture Binding Array (Bindless Textures)"
+description = "A shader that shows how to bind and sample multiple textures as a binding array (a.k.a. bindless textures)."
+category = "Shaders"
+wasm = false
 
 # Stress tests
 [[package.metadata.category]]
@@ -1518,6 +1548,17 @@ name = "Text Debug"
 description = "An example for debugging text layout"
 category = "UI (User Interface)"
 wasm = true
+
+[[example]]
+name = "text_layout"
+path = "examples/ui/text_layout.rs"
+
+[package.metadata.example.text_layout]
+name = "Text Layout"
+description = "Demonstrates how the AlignItems and JustifyContent properties can be composed to layout text"
+category = "UI (User Interface)"
+wasm = false
+
 
 [[example]]
 name = "transparency_ui"
