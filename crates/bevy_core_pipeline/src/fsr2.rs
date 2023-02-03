@@ -117,7 +117,7 @@ struct Fsr2ContextWrapper {
     hdr: bool,
 }
 
-#[derive(Bundle)]
+#[derive(Bundle, Default)]
 pub struct Fsr2Bundle {
     pub settings: Fsr2Settings,
     pub jitter: TemporalJitter,
@@ -130,6 +130,16 @@ pub struct Fsr2Settings {
     pub quality_mode: Fsr2QualityMode,
     pub sharpness: f32,
     pub reset: bool,
+}
+
+impl Default for Fsr2Settings {
+    fn default() -> Self {
+        Self {
+            quality_mode: Fsr2QualityMode::Performance,
+            sharpness: 0.8,
+            reset: false,
+        }
+    }
 }
 
 fn extract_fsr2_settings(
