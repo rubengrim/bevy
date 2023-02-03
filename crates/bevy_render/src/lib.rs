@@ -53,7 +53,7 @@ use crate::{
 use bevy_app::{App, AppLabel, Plugin, SubApp};
 use bevy_asset::{AddAsset, AssetServer};
 use bevy_ecs::{prelude::*, system::SystemState};
-use bevy_utils::{default, tracing::debug};
+use bevy_utils::tracing::debug;
 use std::{
     any::TypeId,
     ops::{Deref, DerefMut},
@@ -159,17 +159,6 @@ impl Plugin for RenderPlugin {
                     .create_surface(&handle)
                     .expect("Failed to create wgpu surface")
             });
-
-            let surface = primary_window
-                .get_single()
-                .ok()
-                .map(|wrapper| unsafe {
-                    // SAFETY: Plugins should be set up on the main thread.
-                    let handle = wrapper.get_handle();
-                    instance.create_surface(&handle)
-                })
-                .unwrap()
-                .ok();
 
             let request_adapter_options = wgpu::RequestAdapterOptions {
                 power_preference: self.wgpu_settings.power_preference,
