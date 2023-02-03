@@ -191,9 +191,9 @@ impl ViewTarget {
     /// ahead of time.
     pub fn main_texture_other(&self) -> &TextureView {
         if self.main_texture.load(Ordering::SeqCst) == 0 {
-            &self.main_textures.b
+            &self.main_textures.b.default_view
         } else {
-            &self.main_textures.a
+            &self.main_textures.a.default_view
         }
     }
 
@@ -350,7 +350,7 @@ fn prepare_view_targets(
                             usage: TextureUsages::RENDER_ATTACHMENT
                                 | TextureUsages::TEXTURE_BINDING
                                 | TextureUsages::STORAGE_BINDING,
-w                            // TODO: Consider changing this if main_texture_format is not sRGB
+                            // TODO: Consider changing this if main_texture_format is not sRGB
                             view_formats: &[],
                         };
                         MainTargetTextures {

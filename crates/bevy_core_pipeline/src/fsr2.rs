@@ -256,7 +256,7 @@ impl Node for Fsr2Node {
                 camera_fov_angle_vertical: camera_projection.fov,
                 jitter_offset: temporal_jitter.offset,
                 adapter: render_adapter,
-                command_encoder: &mut render_context.command_encoder,
+                command_encoder: render_context.command_encoder(),
             })
             .expect("Failed to render FSR2");
 
