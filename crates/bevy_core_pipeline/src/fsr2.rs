@@ -15,12 +15,12 @@ use bevy_ecs::{
 use bevy_math::{UVec2, Vec4Swizzles};
 use bevy_render::{
     camera::TemporalJitter,
-    prelude::Projection,
+    prelude::{Camera, Projection},
     render_graph::{Node, NodeRunError, RenderGraph, RenderGraphContext, SlotInfo, SlotType},
     renderer::{RenderAdapter, RenderContext, RenderDevice},
     texture::CachedTexture,
     view::{ExtractedView, Msaa, ViewTarget},
-    Extract, ExtractSchedule, RenderApp, RenderSet,
+    ExtractSchedule, MainWorld, RenderApp, RenderSet,
 };
 use bevy_time::Time;
 #[cfg(feature = "trace")]
@@ -120,25 +120,24 @@ impl Default for Fsr2Settings {
     }
 }
 
-fn extract_fsr2_settings(
-    mut commands: Commands,
-    query: Extract<
-        Query<
-            (Entity, &Projection, &Fsr2Settings),
-            (
-                With<Camera3d>,
-                With<TemporalJitter>,
-                With<DepthPrepass>,
-                With<VelocityPrepass>,
-            ),
-        >,
-    >,
-) {
-    for (entity, camera_projection, fsr2_settings) in &query {
-        if matches!(camera_projection, Projection::Perspective(_)) {
+fn extract_fsr2_settings(mut commands: Commands, mut main_world: ResMut<MainWorld>) {
+    let mut cameras_3d = main_world
+        .query_filtered::<(Entity, &Camera, &Projection, &mut Fsr2Settings), (
+            With<Camera3d>,
+            With<TemporalJitter>,
+            With<DepthPrepass>,
+            With<VelocityPrepass>,
+        )>();
+
+    for (entity, camera, camera_projection, mut fsr2_settings) in
+        cameras_3d.iter_mut(&mut main_world)
+    {
+        let has_perspective_projection = matches!(camera_projection, Projection::Perspective(_));
+        if camera.is_active && has_perspective_projection {
             commands
                 .get_or_spawn(entity)
                 .insert((fsr2_settings.clone(), camera_projection.clone()));
+            fsr2_settings.reset = false;
         }
     }
 }
