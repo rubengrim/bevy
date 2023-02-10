@@ -9,28 +9,28 @@ use bevy_ecs::{
     prelude::{Bundle, Component, Entity},
     query::{QueryState, With},
     schedule::IntoSystemConfig,
-    system::{Commands, Query, Res, Resource},
+    system::{Commands, Query, Res, ResMut, Resource},
     world::World,
 };
-use bevy_math::UVec2;
+use bevy_math::{UVec2, Vec4Swizzles};
 use bevy_render::{
     camera::TemporalJitter,
-    prelude::{Camera, Projection},
+    prelude::Projection,
     render_graph::{Node, NodeRunError, RenderGraph, RenderGraphContext, SlotInfo, SlotType},
     renderer::{RenderAdapter, RenderContext, RenderDevice},
     texture::CachedTexture,
-    view::{Msaa, ViewTarget},
+    view::{ExtractedView, Msaa, ViewTarget},
     Extract, ExtractSchedule, RenderApp, RenderSet,
 };
 use bevy_time::Time;
 #[cfg(feature = "trace")]
 use bevy_utils::tracing::info_span;
-use bevy_winit::WinitWindows;
+use bevy_utils::HashMap;
 use fsr2_wgpu::{
     Fsr2Context, Fsr2Exposure, Fsr2InitializationFlags, Fsr2ReactiveMask, Fsr2RenderParameters,
     Fsr2Texture,
 };
-use std::sync::Mutex;
+use std::{mem, sync::Mutex};
 
 pub use fsr2_wgpu::Fsr2QualityMode;
 
@@ -41,9 +41,7 @@ mod draw_3d_graph {
     }
 }
 
-pub struct Fsr2Plugin {
-    pub hdr: bool,
-}
+pub struct Fsr2Plugin;
 
 impl Plugin for Fsr2Plugin {
     fn build(&self, app: &mut App) {
@@ -52,15 +50,6 @@ impl Plugin for Fsr2Plugin {
         }
 
         app.insert_resource(Msaa::Off);
-
-        let max_resolution = max_monitor_size(app);
-
-        let mut initialization_flags = Fsr2InitializationFlags::AUTO_EXPOSURE
-            | Fsr2InitializationFlags::INFINITE_DEPTH
-            | Fsr2InitializationFlags::INVERTED_DEPTH;
-        if self.hdr {
-            initialization_flags |= Fsr2InitializationFlags::HIGH_DYNAMIC_RANGE;
-        }
 
         let render_app = app.get_sub_app_mut(RenderApp).unwrap();
 
@@ -90,32 +79,20 @@ impl Plugin for Fsr2Plugin {
             crate::core_3d::graph::node::TONEMAPPING,
         );
 
-        let fsr2_context = Fsr2Context::new(
-            render_app.world.resource::<RenderDevice>().clone(),
-            max_resolution,
-            max_resolution,
-            initialization_flags,
-        )
-        .expect("Failed to create Fsr2Context");
-
         render_app
-            .insert_resource(Fsr2ContextWrapper {
-                context: Mutex::new(fsr2_context),
-                hdr: self.hdr,
-            })
+            .init_resource::<Fsr2ContextCache>()
             .add_system_to_schedule(ExtractSchedule, extract_fsr2_settings)
             .add_system(
-                prepare_fsr2_render_settings
+                prepare_fsr2
                     .in_set(RenderSet::Prepare)
                     .before(prepare_core_3d_textures),
             );
     }
 }
 
-#[derive(Resource)] // TODO: Remove resource, make this a per-view component
-pub struct Fsr2ContextWrapper {
-    context: Mutex<Fsr2Context<RenderDevice>>,
-    hdr: bool,
+#[derive(Resource, Default)]
+pub struct Fsr2ContextCache {
+    cache: HashMap<UVec2, (Mutex<Fsr2Context<RenderDevice>>, bool)>,
 }
 
 #[derive(Bundle, Default)]
@@ -145,10 +122,9 @@ impl Default for Fsr2Settings {
 
 fn extract_fsr2_settings(
     mut commands: Commands,
-    fsr2_context: Res<Fsr2ContextWrapper>,
     query: Extract<
         Query<
-            (Entity, &Camera, &Projection, &Fsr2Settings),
+            (Entity, &Projection, &Fsr2Settings),
             (
                 With<Camera3d>,
                 With<TemporalJitter>,
@@ -158,9 +134,8 @@ fn extract_fsr2_settings(
         >,
     >,
 ) {
-    for (entity, camera, camera_projection, fsr2_settings) in &query {
-        let perspective_projection = matches!(camera_projection, Projection::Perspective(_));
-        if perspective_projection && camera.hdr == fsr2_context.hdr {
+    for (entity, camera_projection, fsr2_settings) in &query {
+        if matches!(camera_projection, Projection::Perspective(_)) {
             commands
                 .get_or_spawn(entity)
                 .insert((fsr2_settings.clone(), camera_projection.clone()));
@@ -168,31 +143,65 @@ fn extract_fsr2_settings(
     }
 }
 
-pub fn prepare_fsr2_render_settings(
-    fsr2_context: Res<Fsr2ContextWrapper>,
+pub fn prepare_fsr2(
+    mut fsr2_context_cache: ResMut<Fsr2ContextCache>,
     frame_count: Res<FrameCount>,
-    mut query: Query<(&mut Camera3d, &mut TemporalJitter, &Fsr2Settings)>,
+    render_device: Res<RenderDevice>,
+    mut query: Query<(
+        &mut Camera3d,
+        &ExtractedView,
+        &mut TemporalJitter,
+        &Fsr2Settings,
+    )>,
 ) {
-    if !query.is_empty() {
-        let fsr2_context = fsr2_context.context.lock().unwrap();
+    for (mut camera, view, mut temporal_jitter, fsr2_settings) in &mut query {
+        let upscaled_resolution = view.viewport.zw();
 
-        for (mut camera, mut temporal_jitter, fsr2_settings) in &mut query {
-            let input_resolution =
-                fsr2_context.suggested_input_resolution(fsr2_settings.quality_mode);
+        let mut fsr2_context = fsr2_context_cache
+            .cache
+            .entry(upscaled_resolution)
+            .or_insert_with(|| {
+                let mut initialization_flags = Fsr2InitializationFlags::AUTO_EXPOSURE
+                    | Fsr2InitializationFlags::INFINITE_DEPTH
+                    | Fsr2InitializationFlags::INVERTED_DEPTH;
+                if view.hdr {
+                    initialization_flags |= Fsr2InitializationFlags::HIGH_DYNAMIC_RANGE;
+                }
 
-            camera.render_resolution = Some(input_resolution);
+                let fsr2_context = Fsr2Context::new(
+                    render_device.clone(),
+                    upscaled_resolution,
+                    upscaled_resolution,
+                    initialization_flags,
+                )
+                .expect("Failed to create Fsr2Context");
 
-            let frame_index = (frame_count.0 % i32::MAX as u32) as i32;
-            temporal_jitter.offset =
-                fsr2_context.suggested_camera_jitter_offset(input_resolution, frame_index);
-        }
+                (Mutex::new(fsr2_context), true)
+            });
+        fsr2_context.1 = true;
+        let fsr2_context = fsr2_context.0.lock().unwrap();
+
+        let input_resolution = fsr2_context.suggested_input_resolution(fsr2_settings.quality_mode);
+        fsr2_context.suggested_input_resolution(fsr2_settings.quality_mode);
+
+        camera.render_resolution = Some(input_resolution);
+
+        let frame_index = (frame_count.0 % i32::MAX as u32) as i32;
+        temporal_jitter.offset =
+            fsr2_context.suggested_camera_jitter_offset(input_resolution, frame_index);
+        fsr2_context.suggested_camera_jitter_offset(input_resolution, frame_index);
     }
+
+    fsr2_context_cache
+        .cache
+        .retain(|_, (_, in_use)| mem::take(in_use));
 }
 
 struct Fsr2Node {
     view_query: QueryState<(
         &'static Fsr2Settings,
         &'static Camera3d,
+        &'static ExtractedView,
         &'static Projection,
         &'static TemporalJitter,
         &'static ViewTarget,
@@ -232,22 +241,26 @@ impl Node for Fsr2Node {
         let view_entity = graph.get_input_entity(Self::IN_VIEW)?;
         let time = world.resource::<Time>();
         let render_adapter = world.resource::<RenderAdapter>();
-        let mut fsr2_context = world
-            .resource::<Fsr2ContextWrapper>()
-            .context
-            .lock()
-            .unwrap();
+        let fsr2_context_cache = world.resource::<Fsr2ContextCache>();
         let Ok((
             fsr2_settings,
             camera_3d,
+            view,
             Projection::Perspective(camera_projection),
             temporal_jitter,
             view_target,
             main_pass_3d_texture,
             prepass_textures
         )) = self.view_query.get_manual(world, view_entity) else { return Ok(()) };
-
         let render_resolution = camera_3d.render_resolution.unwrap();
+        let mut fsr2_context = fsr2_context_cache
+            .cache
+            .get(&view.viewport.zw())
+            .unwrap()
+            .0
+            .lock()
+            .unwrap();
+
         fsr2_context
             .render(Fsr2RenderParameters {
                 color: fsr2_texture(&main_pass_3d_texture.texture),
@@ -280,23 +293,4 @@ fn fsr2_texture(texture: &CachedTexture) -> Fsr2Texture {
         texture: &texture.texture,
         view: &texture.default_view,
     }
-}
-
-fn max_monitor_size(app: &App) -> UVec2 {
-    let mut max_resolution = UVec2::ZERO;
-    for monitor in app
-        .world
-        .get_non_send_resource::<WinitWindows>()
-        .unwrap()
-        .windows
-        .values()
-        .next()
-        .unwrap()
-        .available_monitors()
-    {
-        let monitor_size = monitor.size();
-        max_resolution.x = max_resolution.x.max(monitor_size.width);
-        max_resolution.y = max_resolution.y.max(monitor_size.height);
-    }
-    max_resolution
 }
