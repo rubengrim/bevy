@@ -1,5 +1,5 @@
 use crate::{
-    core_3d::MainPass3dTexture,
+    core_3d::{prepare_core_3d_textures, MainPass3dTexture},
     prelude::Camera3d,
     prepass::{DepthPrepass, VelocityPrepass, ViewPrepassTextures},
 };
@@ -8,7 +8,7 @@ use bevy_core::FrameCount;
 use bevy_ecs::{
     prelude::{Bundle, Component, Entity},
     query::{QueryState, With},
-    schedule::IntoSystemDescriptor,
+    schedule::IntoSystemConfig,
     system::{Commands, Query, Res, Resource},
     world::World,
 };
@@ -20,7 +20,7 @@ use bevy_render::{
     renderer::{RenderAdapter, RenderContext, RenderDevice},
     texture::CachedTexture,
     view::{Msaa, ViewTarget},
-    Extract, RenderApp, RenderStage,
+    Extract, ExtractSchedule, RenderApp, RenderSet,
 };
 use bevy_time::Time;
 #[cfg(feature = "trace")]
@@ -103,16 +103,17 @@ impl Plugin for Fsr2Plugin {
                 context: Mutex::new(fsr2_context),
                 hdr: self.hdr,
             })
-            .add_system_to_stage(RenderStage::Extract, extract_fsr2_settings)
-            .add_system_to_stage(
-                RenderStage::Prepare,
-                prepare_fsr2_render_settings.at_start(),
+            .add_system_to_schedule(ExtractSchedule, extract_fsr2_settings)
+            .add_system(
+                prepare_fsr2_render_settings
+                    .in_set(RenderSet::Prepare)
+                    .before(prepare_core_3d_textures),
             );
     }
 }
 
 #[derive(Resource)] // TODO: Remove resource, make this a per-view component
-struct Fsr2ContextWrapper {
+pub struct Fsr2ContextWrapper {
     context: Mutex<Fsr2Context<RenderDevice>>,
     hdr: bool,
 }
@@ -167,7 +168,7 @@ fn extract_fsr2_settings(
     }
 }
 
-fn prepare_fsr2_render_settings(
+pub fn prepare_fsr2_render_settings(
     fsr2_context: Res<Fsr2ContextWrapper>,
     frame_count: Res<FrameCount>,
     mut query: Query<(&mut Camera3d, &mut TemporalJitter, &Fsr2Settings)>,
@@ -177,13 +178,13 @@ fn prepare_fsr2_render_settings(
 
         for (mut camera, mut temporal_jitter, fsr2_settings) in &mut query {
             let input_resolution =
-                fsr2_context.get_suggested_input_resolution(fsr2_settings.quality_mode);
+                fsr2_context.suggested_input_resolution(fsr2_settings.quality_mode);
 
             camera.render_resolution = Some(input_resolution);
 
             let frame_index = (frame_count.0 % i32::MAX as u32) as i32;
             temporal_jitter.offset =
-                fsr2_context.get_camera_jitter_offset(input_resolution, frame_index);
+                fsr2_context.suggested_camera_jitter_offset(input_resolution, frame_index);
         }
     }
 }

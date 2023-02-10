@@ -20,10 +20,8 @@ exclude = [
 ]
 members = [
   "crates/*",
-  "examples/android",
-  "examples/ios",
+  "examples/mobile",
   "tools/ci",
-  "tools/spancmp",
   "tools/build-example-pages",
   "tools/build-wasm-example",
   "errors",
@@ -49,6 +47,7 @@ default = [
   "vorbis",
   "x11",
   "filesystem_watcher",
+  "android_shared_stdcxx"
 ]
 
 # Force dynamic linking, which improves iterative compile times
@@ -122,6 +121,9 @@ debug_asset_server = ["bevy_internal/debug_asset_server"]
 
 # Enable animation support, and glTF animation loading
 animation = ["bevy_internal/animation"]
+
+# Enable using a shared stdlib for cxx on Android.
+android_shared_stdcxx = ["bevy_internal/android_shared_stdcxx"]
 
 [dependencies]
 bevy_dylib = { path = "crates/bevy_dylib", version = "0.9.0", default-features = false, optional = true }
@@ -384,6 +386,7 @@ wasm = false
 [[example]]
 name = "load_gltf"
 path = "examples/3d/load_gltf.rs"
+required-features = ["ktx2", "zstd"]
 
 [package.metadata.example.load_gltf]
 name = "Load glTF"
@@ -414,6 +417,7 @@ wasm = true
 [[example]]
 name = "pbr"
 path = "examples/3d/pbr.rs"
+required-features = ["ktx2", "zstd"]
 
 [package.metadata.example.pbr]
 name = "Physically Based Rendering"
@@ -915,7 +919,7 @@ path = "examples/ecs/removal_detection.rs"
 
 [package.metadata.example.removal_detection]
 name = "Removal Detection"
-description = "Query for entities that had a specific component removed in a previous stage during the current frame"
+description = "Query for entities that had a specific component removed earlier in the current frame"
 category = "ECS (Entity Component System)"
 wasm = false
 
@@ -966,16 +970,6 @@ path = "examples/ecs/system_param.rs"
 [package.metadata.example.system_param]
 name = "System Parameter"
 description = "Illustrates creating custom system parameters with `SystemParam`"
-category = "ECS (Entity Component System)"
-wasm = false
-
-[[example]]
-name = "system_sets"
-path = "examples/ecs/system_sets.rs"
-
-[package.metadata.example.system_sets]
-name = "System Sets"
-description = "Shows `SystemSet` use along with run criterion"
 category = "ECS (Entity Component System)"
 wasm = false
 
@@ -1431,6 +1425,7 @@ wasm = true
 [[example]]
 name = "scene_viewer"
 path = "examples/tools/scene_viewer/main.rs"
+required-features = ["ktx2", "zstd"]
 
 [package.metadata.example.scene_viewer]
 name = "Scene Viewer"
@@ -1446,6 +1441,16 @@ path = "examples/tools/gamepad_viewer.rs"
 name = "Gamepad Viewer"
 description = "Shows a visualization of gamepad buttons, sticks, and triggers"
 category = "Tools"
+wasm = false
+
+[[example]]
+name = "nondeterministic_system_order"
+path = "examples/ecs/nondeterministic_system_order.rs"
+
+[package.metadata.example.nondeterministic_system_order]
+name = "Nondeterministic System Order"
+description = "Systems run in paralell, but their order isn't always deteriministic. Here's how to detect and fix this."
+category = "ECS (Entity Component System)"
 wasm = false
 
 [[example]]

@@ -83,13 +83,17 @@ impl Node for PrepassNode {
                     store: true,
                 },
             }));
+        } else {
+            color_attachments.push(None);
         }
         if let Some(view_velocities_texture) = &view_prepass_textures.velocity {
             color_attachments.push(Some(RenderPassColorAttachment {
                 view: &view_velocities_texture.default_view,
                 resolve_target: None,
                 ops: Operations {
-                    load: LoadOp::Clear(Color::BLACK.into()),
+                    // Blue channel dosen't matter, but set to 1.0 for possible faster clear
+                    // https://gpuopen.com/performance/#clears
+                    load: LoadOp::Clear(Color::rgb_linear(1.0, 1.0, 1.0).into()),
                     store: true,
                 },
             }));

@@ -6,9 +6,15 @@ pub mod fsr2;
 pub mod fullscreen_vertex_shader;
 pub mod fxaa;
 pub mod prepass;
-pub mod taa;
+mod taa;
 pub mod tonemapping;
 pub mod upscaling;
+
+pub mod experimental {
+    pub mod taa {
+        pub use crate::taa::*;
+    }
+}
 
 pub mod prelude {
     #[doc(hidden)]

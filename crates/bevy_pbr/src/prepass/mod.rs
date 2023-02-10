@@ -1,6 +1,7 @@
-use bevy_app::{CoreStage, Plugin};
+use bevy_app::{CoreSet, Plugin};
 use bevy_asset::{load_internal_asset, AssetServer, Handle, HandleUntyped};
 use bevy_core_pipeline::{
+    fsr2::prepare_fsr2_render_settings,
     prelude::Camera3d,
     prepass::{
         AlphaMask3dPrepass, DepthPrepass, NormalPrepass, Opaque3dPrepass, VelocityPrepass,
@@ -8,13 +9,11 @@ use bevy_core_pipeline::{
     },
 };
 use bevy_ecs::{
-    prelude::{Component, Entity},
-    query::With,
+    prelude::*,
     system::{
         lifetimeless::{Read, SRes},
-        Commands, Query, Res, ResMut, Resource, SystemParamItem,
+        SystemParamItem,
     },
-    world::{FromWorld, World},
 };
 use bevy_math::Mat4;
 use bevy_reflect::TypeUuid;
@@ -40,7 +39,7 @@ use bevy_render::{
     renderer::{RenderDevice, RenderQueue},
     texture::TextureCache,
     view::{ExtractedView, Msaa, ViewUniform, ViewUniformOffset, ViewUniforms, VisibleEntities},
-    Extract, RenderApp, RenderStage,
+    Extract, ExtractSchedule, RenderApp, RenderSet,
 };
 use bevy_transform::prelude::GlobalTransform;
 use bevy_utils::{tracing::error, HashMap};
@@ -96,39 +95,23 @@ where
             Shader::from_wgsl
         );
 
-        load_internal_asset!(
-            app,
-            PREPASS_UTILS_SHADER_HANDLE,
-            "prepass_utils.wgsl",
-            Shader::from_wgsl
-        );
-
-        load_internal_asset!(
-            app,
-            PREPASS_UTILS_SHADER_HANDLE,
-            "prepass_utils.wgsl",
-            Shader::from_wgsl
-        );
-
-        app.add_system_to_stage(CoreStage::PreUpdate, update_previous_view_projections)
-            .add_system_to_stage(CoreStage::PreUpdate, update_mesh_previous_global_transforms);
+        app.add_system(update_previous_view_projections.in_base_set(CoreSet::PreUpdate))
+            .add_system(update_mesh_previous_global_transforms.in_base_set(CoreSet::PreUpdate));
 
         let Ok(render_app) = app.get_sub_app_mut(RenderApp) else { return };
 
         render_app
-            .add_system_to_stage(RenderStage::Extract, extract_camera_prepass_phase)
-            .add_system_to_stage(RenderStage::Prepare, prepare_prepass_textures)
-            .add_system_to_stage(
-                RenderStage::Prepare,
-                prepare_previous_view_projection_uniforms,
+            .add_system_to_schedule(ExtractSchedule, extract_camera_prepass_phase)
+            .add_system(
+                prepare_prepass_textures
+                    .in_set(RenderSet::Prepare)
+                    .after(prepare_fsr2_render_settings),
             )
-            .add_system_to_stage(RenderStage::Queue, queue_prepass_view_bind_group::<M>)
-            .add_system_to_stage(RenderStage::Queue, queue_prepass_material_meshes::<M>)
-            .add_system_to_stage(RenderStage::PhaseSort, sort_phase_system::<Opaque3dPrepass>)
-            .add_system_to_stage(
-                RenderStage::PhaseSort,
-                sort_phase_system::<AlphaMask3dPrepass>,
-            )
+            .add_system(prepare_previous_view_projection_uniforms.in_set(RenderSet::Prepare))
+            .add_system(queue_prepass_view_bind_group::<M>.in_set(RenderSet::Queue))
+            .add_system(queue_prepass_material_meshes::<M>.in_set(RenderSet::Queue))
+            .add_system(sort_phase_system::<Opaque3dPrepass>.in_set(RenderSet::PhaseSort))
+            .add_system(sort_phase_system::<AlphaMask3dPrepass>.in_set(RenderSet::PhaseSort))
             .init_resource::<PrepassPipeline<M>>()
             .init_resource::<DrawFunctions<Opaque3dPrepass>>()
             .init_resource::<DrawFunctions<AlphaMask3dPrepass>>()
@@ -147,11 +130,11 @@ pub struct PreviousViewProjection {
 
 pub fn update_previous_view_projections(
     mut commands: Commands,
-    query: Query<(Entity, &ExtractedView), (With<Camera3d>, With<VelocityPrepass>)>,
+    query: Query<(Entity, &Camera, &GlobalTransform), (With<Camera3d>, With<VelocityPrepass>)>,
 ) {
-    for (entity, camera) in &query {
+    for (entity, camera, camera_transform) in &query {
         commands.entity(entity).insert(PreviousViewProjection {
-            view_proj: camera.projection * camera.transform.compute_matrix().inverse(),
+            view_proj: camera.projection_matrix() * camera_transform.compute_matrix().inverse(),
         });
     }
 }
@@ -161,12 +144,17 @@ pub struct PreviousGlobalTransform(pub Mat4);
 
 pub fn update_mesh_previous_global_transforms(
     mut commands: Commands,
-    query: Query<(Entity, &GlobalTransform), With<Handle<Mesh>>>,
+    views: Query<&Camera, (With<Camera3d>, With<VelocityPrepass>)>,
+    meshes: Query<(Entity, &GlobalTransform), With<Handle<Mesh>>>,
 ) {
-    for (entity, transform) in &query {
-        commands
-            .entity(entity)
-            .insert(PreviousGlobalTransform(transform.compute_matrix()));
+    let should_run = views.iter().any(|camera| camera.is_active);
+
+    if should_run {
+        for (entity, transform) in &meshes {
+            commands
+                .entity(entity)
+                .insert(PreviousGlobalTransform(transform.compute_matrix()));
+        }
     }
 }
 
@@ -270,9 +258,9 @@ where
             vertex_attributes.push(Mesh::ATTRIBUTE_POSITION.at_shader_location(0));
         }
 
-        shader_defs.push(ShaderDefVal::Int(
+        shader_defs.push(ShaderDefVal::UInt(
             "MAX_DIRECTIONAL_LIGHTS".to_string(),
-            MAX_DIRECTIONAL_LIGHTS as i32,
+            MAX_DIRECTIONAL_LIGHTS as u32,
         ));
         shader_defs.push(ShaderDefVal::UInt(
             "MAX_CASCADES_PER_LIGHT".to_string(),
@@ -296,16 +284,6 @@ where
 
         if key.mesh_key.contains(MeshPipelineKey::VELOCITY_PREPASS) {
             shader_defs.push("VELOCITY_PREPASS".into());
-
-            let mut velocity_output_location = 0;
-            if key.mesh_key.contains(MeshPipelineKey::NORMAL_PREPASS) {
-                velocity_output_location += 1;
-            }
-
-            shader_defs.push(ShaderDefVal::Int(
-                "VELOCITY_PREPASS_LOCATION".to_owned(),
-                velocity_output_location,
-            ));
         }
 
         if layout.contains(Mesh::ATTRIBUTE_JOINT_INDEX)
@@ -335,14 +313,16 @@ where
                 PREPASS_SHADER_HANDLE.typed::<Shader>()
             };
 
+            // Setup prepass fragment targets - normals in slot 0 (or None if not needed), velocity in slot 1
             let mut targets = vec![];
-            // When the normal prepass is enabled we need a target to be able to write to it.
             if key.mesh_key.contains(MeshPipelineKey::NORMAL_PREPASS) {
                 targets.push(Some(ColorTargetState {
                     format: NORMAL_PREPASS_FORMAT,
                     blend: Some(BlendState::REPLACE),
                     write_mask: ColorWrites::ALL,
                 }));
+            } else {
+                targets.push(None);
             }
             if key.mesh_key.contains(MeshPipelineKey::VELOCITY_PREPASS) {
                 targets.push(Some(ColorTargetState {
