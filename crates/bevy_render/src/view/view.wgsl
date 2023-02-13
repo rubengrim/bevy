@@ -11,4 +11,5 @@ struct View {
     world_position: vec3<f32>,
     // viewport(x_origin, y_origin, width, height)
     viewport: vec4<f32>,
+    mip_bias: f32,
 };

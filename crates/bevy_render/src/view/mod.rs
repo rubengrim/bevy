@@ -6,7 +6,7 @@ pub use visibility::*;
 pub use window::*;
 
 use crate::{
-    camera::{ExtractedCamera, TemporalJitter},
+    camera::{ExtractedCamera, MipBias, TemporalJitter},
     extract_resource::{ExtractResource, ExtractResourcePlugin},
     prelude::{Image, Shader},
     render_asset::RenderAssets,
@@ -127,6 +127,7 @@ pub struct ViewUniform {
     world_position: Vec3,
     // viewport(x_origin, y_origin, width, height)
     viewport: Vec4,
+    mip_bias: f32,
 }
 
 #[derive(Resource, Default)]
@@ -268,11 +269,16 @@ pub fn prepare_view_uniforms(
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
     mut view_uniforms: ResMut<ViewUniforms>,
-    views: Query<(Entity, &ExtractedView, Option<&TemporalJitter>)>,
+    views: Query<(
+        Entity,
+        &ExtractedView,
+        Option<&TemporalJitter>,
+        Option<&MipBias>,
+    )>,
 ) {
     view_uniforms.uniforms.clear();
 
-    for (entity, camera, temporal_jitter) in &views {
+    for (entity, camera, temporal_jitter, mip_bias) in &views {
         let viewport = camera.viewport.as_vec4();
         let unjittered_projection = camera.projection;
         let mut projection = unjittered_projection;
@@ -298,6 +304,7 @@ pub fn prepare_view_uniforms(
                 inverse_projection,
                 world_position: camera.transform.translation(),
                 viewport,
+                mip_bias: mip_bias.unwrap_or(&MipBias(0.0)).0,
             }),
         };
 

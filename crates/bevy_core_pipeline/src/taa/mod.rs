@@ -16,7 +16,7 @@ use bevy_ecs::{
 use bevy_math::vec2;
 use bevy_reflect::{Reflect, TypeUuid};
 use bevy_render::{
-    camera::{ExtractedCamera, TemporalJitter},
+    camera::{ExtractedCamera, MipBias, TemporalJitter},
     prelude::{Camera, Projection},
     render_graph::{Node, NodeRunError, RenderGraph, RenderGraphContext, SlotInfo, SlotType},
     render_resource::{
@@ -33,6 +33,7 @@ use bevy_render::{
     view::{prepare_view_uniforms, ExtractedView, Msaa, ViewTarget},
     ExtractSchedule, MainWorld, RenderApp, RenderSet,
 };
+use bevy_utils::default;
 #[cfg(feature = "trace")]
 use bevy_utils::tracing::info_span;
 
@@ -96,12 +97,22 @@ impl Plugin for TemporalAntialiasPlugin {
 }
 
 /// Bundle to apply temporal antialiasing.
-#[derive(Bundle, Default)]
+#[derive(Bundle)]
 pub struct TemporalAntialiasBundle {
     pub settings: TemporalAntialiasSettings,
     pub jitter: TemporalJitter,
     pub depth_prepass: DepthPrepass,
     pub velocity_prepass: VelocityPrepass,
+    pub mip_bias: MipBias,
+}
+
+impl Default for TemporalAntialiasBundle {
+    fn default() -> Self {
+        Self {
+            mip_bias: MipBias(-1.0),
+            ..default()
+        }
+    }
 }
 
 /// Component to apply temporal antialiasing to a 3d perspective camera.
