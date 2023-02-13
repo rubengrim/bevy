@@ -33,7 +33,6 @@ use bevy_render::{
     view::{prepare_view_uniforms, ExtractedView, Msaa, ViewTarget},
     ExtractSchedule, MainWorld, RenderApp, RenderSet,
 };
-use bevy_utils::default;
 #[cfg(feature = "trace")]
 use bevy_utils::tracing::info_span;
 
@@ -109,8 +108,11 @@ pub struct TemporalAntialiasBundle {
 impl Default for TemporalAntialiasBundle {
     fn default() -> Self {
         Self {
-            mip_bias: MipBias(-1.0),
-            ..default()
+            settings: Default::default(),
+            jitter: Default::default(),
+            depth_prepass: Default::default(),
+            velocity_prepass: Default::default(),
+            mip_bias: MipBias(0.0),
         }
     }
 }
