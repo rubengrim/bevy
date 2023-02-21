@@ -1,4 +1,7 @@
-use crate::{clear_color::ClearColorConfig, tonemapping::Tonemapping};
+use crate::{
+    clear_color::ClearColorConfig,
+    tonemapping::{DebandDither, Tonemapping},
+};
 use bevy_ecs::prelude::*;
 use bevy_math::UVec2;
 use bevy_reflect::{Reflect, ReflectDeserialize, ReflectSerialize};
@@ -7,7 +10,7 @@ use bevy_render::{
     extract_component::ExtractComponent,
     primitives::Frustum,
     render_resource::LoadOp,
-    view::VisibleEntities,
+    view::{ColorGrading, VisibleEntities},
 };
 use bevy_transform::prelude::{GlobalTransform, Transform};
 use serde::{Deserialize, Serialize};
@@ -63,6 +66,8 @@ pub struct Camera3dBundle {
     pub global_transform: GlobalTransform,
     pub camera_3d: Camera3d,
     pub tonemapping: Tonemapping,
+    pub dither: DebandDither,
+    pub color_grading: ColorGrading,
 }
 
 // NOTE: ideally Perspective and Orthographic defaults can share the same impl, but sadly it breaks rust's type inference
@@ -70,9 +75,6 @@ impl Default for Camera3dBundle {
     fn default() -> Self {
         Self {
             camera_render_graph: CameraRenderGraph::new(crate::core_3d::graph::NAME),
-            tonemapping: Tonemapping::Enabled {
-                deband_dither: true,
-            },
             camera: Default::default(),
             projection: Default::default(),
             visible_entities: Default::default(),
@@ -80,6 +82,9 @@ impl Default for Camera3dBundle {
             transform: Default::default(),
             global_transform: Default::default(),
             camera_3d: Default::default(),
+            tonemapping: Tonemapping::ReinhardLuminance,
+            dither: DebandDither::Enabled,
+            color_grading: ColorGrading::default(),
         }
     }
 }

@@ -105,6 +105,7 @@ where
             .add_system(
                 prepare_prepass_textures
                     .in_set(RenderSet::Prepare)
+                    .after(bevy_render::view::prepare_windows)
                     .after(prepare_fsr2),
             )
             .add_system(prepare_previous_view_projection_uniforms.in_set(RenderSet::Prepare))
@@ -357,7 +358,7 @@ where
                 buffers: vec![vertex_buffer_layout],
             },
             fragment,
-            layout: Some(bind_group_layout),
+            layout: bind_group_layout,
             primitive: PrimitiveState {
                 topology: key.mesh_key.primitive_topology(),
                 strip_index_format: None,
@@ -388,6 +389,7 @@ where
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },
+            push_constant_ranges: Vec::new(),
             label: Some("prepass_pipeline".into()),
         };
 
