@@ -136,6 +136,9 @@ detailed_trace = ["bevy_internal/detailed_trace"]
 # Include tonemapping LUT KTX2 files.
 tonemapping_luts = ["bevy_internal/tonemapping_luts"]
 
+# NVIDIA DLSS
+dlss = ["bevy_internal/dlss"]
+
 [dependencies]
 bevy_dylib = { path = "crates/bevy_dylib", version = "0.9.0", default-features = false, optional = true }
 bevy_internal = { path = "crates/bevy_internal", version = "0.9.0", default-features = false }
