@@ -69,7 +69,7 @@ impl Plugin for Core3dPlugin {
             .init_resource::<DrawFunctions<Transparent3d>>()
             .add_system_to_schedule(ExtractSchedule, extract_core_3d_camera_phases)
             .add_system(
-                prepare_core_3d_depth_textures
+                prepare_core_3d_textures
                     .in_set(RenderSet::Prepare)
                     .after(bevy_render::view::prepare_windows),
             )
