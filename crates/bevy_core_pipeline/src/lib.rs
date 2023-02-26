@@ -2,6 +2,7 @@ pub mod bloom;
 pub mod clear_color;
 pub mod core_2d;
 pub mod core_3d;
+#[cfg(feature = "dlss")]
 pub mod dlss;
 pub mod fsr2;
 pub mod fullscreen_vertex_shader;

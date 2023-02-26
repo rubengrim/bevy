@@ -1,7 +1,7 @@
-//! This example compares MSAA (Multi-Sample Anti-Aliasing), FXAA (Fast Approximate Anti-Aliasing), and TAA (Temporal Anti-Aliasing).
+//! This example compares different anti-aliasing methods.
 
-use std::{f32::consts::PI, fmt::Write};
-
+#[cfg(feature = "dlss")]
+use bevy::core_pipeline::dlss::{DlssAvailable, DlssBundle, DlssPlugin, DlssSettings};
 use bevy::{
     core_pipeline::{
         experimental::taa::{
@@ -17,22 +17,40 @@ use bevy::{
         texture::ImageSampler,
     },
 };
+use std::{f32::consts::PI, fmt::Write};
 
 fn main() {
-    App::new()
-        .insert_resource(Msaa::Off)
+    let mut app = App::new();
+
+    app.insert_resource(Msaa::Off)
         .add_plugins(DefaultPlugins)
         .add_plugin(TemporalAntialiasPlugin)
         .add_plugin(Fsr2Plugin)
         .add_startup_system(setup)
         .add_system(modify_aa)
-        .add_system(update_ui)
-        .run();
+        .add_system(update_ui);
+
+    #[cfg(feature = "dlss")]
+    app.add_plugin(DlssPlugin {
+        project_id: uuid::uuid!("5417916c-0291-4e3f-8f65-326c1858ab96"),
+    });
+
+    app.run();
 }
 
 fn modify_aa(
     keys: Res<Input<KeyCode>>,
-    mut camera: Query<
+    #[cfg(feature = "dlss")] mut camera: Query<
+        (
+            Entity,
+            Option<&mut Fxaa>,
+            Option<&TemporalAntialiasSettings>,
+            Option<&mut Fsr2Settings>,
+            Option<&mut DlssSettings>,
+        ),
+        With<Camera>,
+    >,
+    #[cfg(not(feature = "dlss"))] mut camera: Query<
         (
             Entity,
             Option<&mut Fxaa>,
@@ -42,8 +60,12 @@ fn modify_aa(
         With<Camera>,
     >,
     mut msaa: ResMut<Msaa>,
+    #[cfg(feature = "dlss")] dlss_available: Option<Res<DlssAvailable>>,
     mut commands: Commands,
 ) {
+    #[cfg(feature = "dlss")]
+    let (camera_entity, fxaa, taa, fsr2, dlss) = camera.single_mut();
+    #[cfg(not(feature = "dlss"))]
     let (camera_entity, fxaa, taa, fsr2) = camera.single_mut();
     let mut camera = commands.entity(camera_entity);
 
@@ -53,6 +75,8 @@ fn modify_aa(
         camera.remove::<Fxaa>();
         camera.remove::<TemporalAntialiasBundle>();
         camera.remove::<Fsr2Bundle>();
+        #[cfg(feature = "dlss")]
+        camera.remove::<DlssBundle>();
     }
 
     // MSAA
@@ -60,6 +84,8 @@ fn modify_aa(
         camera.remove::<Fxaa>();
         camera.remove::<TemporalAntialiasBundle>();
         camera.remove::<Fsr2Bundle>();
+        #[cfg(feature = "dlss")]
+        camera.remove::<DlssBundle>();
 
         *msaa = Msaa::Sample4;
     }
@@ -82,6 +108,8 @@ fn modify_aa(
         *msaa = Msaa::Off;
         camera.remove::<TemporalAntialiasBundle>();
         camera.remove::<Fsr2Bundle>();
+        #[cfg(feature = "dlss")]
+        camera.remove::<DlssBundle>();
 
         camera.insert(Fxaa::default());
     }
@@ -115,6 +143,8 @@ fn modify_aa(
         *msaa = Msaa::Off;
         camera.remove::<Fxaa>();
         camera.remove::<Fsr2Bundle>();
+        #[cfg(feature = "dlss")]
+        camera.remove::<DlssBundle>();
 
         camera.insert(TemporalAntialiasBundle::default());
     }
@@ -124,6 +154,8 @@ fn modify_aa(
         *msaa = Msaa::Off;
         camera.remove::<Fxaa>();
         camera.remove::<TemporalAntialiasBundle>();
+        #[cfg(feature = "dlss")]
+        camera.remove::<DlssBundle>();
 
         camera.insert(Fsr2Bundle::default());
     }
@@ -154,10 +186,30 @@ fn modify_aa(
             fsr2.sharpness = fsr2.sharpness.clamp(0.0, 1.0);
         }
     }
+
+    // DLSS
+    #[cfg(feature = "dlss")]
+    if keys.just_pressed(KeyCode::Key6) && dlss.is_none() && dlss_available.is_some() {
+        *msaa = Msaa::Off;
+        camera.remove::<Fxaa>();
+        camera.remove::<TemporalAntialiasBundle>();
+        camera.remove::<Fsr2Bundle>();
+
+        camera.insert(DlssBundle::default());
+    }
 }
 
 fn update_ui(
-    camera: Query<
+    #[cfg(feature = "dlss")] camera: Query<
+        (
+            Option<&Fxaa>,
+            Option<&TemporalAntialiasSettings>,
+            Option<&Fsr2Settings>,
+            Option<&DlssSettings>,
+        ),
+        With<Camera>,
+    >,
+    #[cfg(not(feature = "dlss"))] camera: Query<
         (
             Option<&Fxaa>,
             Option<&TemporalAntialiasSettings>,
@@ -166,8 +218,12 @@ fn update_ui(
         With<Camera>,
     >,
     msaa: Res<Msaa>,
+    #[cfg(feature = "dlss")] dlss_available: Option<Res<DlssAvailable>>,
     mut ui: Query<&mut Text>,
 ) {
+    #[cfg(feature = "dlss")]
+    let (fxaa, taa, fsr2, dlss) = camera.single();
+    #[cfg(not(feature = "dlss"))]
     let (fxaa, taa, fsr2) = camera.single();
 
     let mut ui = ui.single_mut();
@@ -203,6 +259,17 @@ fn update_ui(
         ui.push_str("(5) *FSR2*");
     } else {
         ui.push_str("(5) FSR2");
+    }
+
+    #[cfg(not(feature = "dlss"))]
+    ui.push_str("\n(6) DLSS (dlss feature disabled)");
+    #[cfg(feature = "dlss")]
+    if dlss_available.is_none() {
+        ui.push_str("\n(6) DLSS (not available)");
+    } else if dlss.is_some() {
+        ui.push_str("\n(6) *DLSS*");
+    } else {
+        ui.push_str("\n(6) DLSS");
     }
 
     if *msaa != Msaa::Off {
