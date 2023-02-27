@@ -2,6 +2,9 @@
 
 #[cfg(feature = "dlss")]
 use bevy::core_pipeline::dlss::{DlssAvailable, DlssBundle, DlssPlugin, DlssSettings};
+#[cfg(feature = "dlss")]
+use bevy::render::DlssProjectId;
+
 use bevy::{
     core_pipeline::{
         experimental::taa::{
@@ -17,10 +20,16 @@ use bevy::{
         texture::ImageSampler,
     },
 };
+
 use std::{f32::consts::PI, fmt::Write};
 
 fn main() {
     let mut app = App::new();
+
+    #[cfg(feature = "dlss")]
+    app.insert_resource(DlssProjectId(uuid::uuid!(
+        "5417916c-0291-4e3f-8f65-326c1858ab96"
+    )));
 
     app.insert_resource(Msaa::Off)
         .add_plugins(DefaultPlugins)
@@ -31,9 +40,7 @@ fn main() {
         .add_system(update_ui);
 
     #[cfg(feature = "dlss")]
-    app.add_plugin(DlssPlugin {
-        project_id: uuid::uuid!("5417916c-0291-4e3f-8f65-326c1858ab96"),
-    });
+    app.add_plugin(DlssPlugin);
 
     app.run();
 }

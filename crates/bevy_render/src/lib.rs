@@ -205,6 +205,8 @@ impl Plugin for RenderPlugin {
                     &instance,
                     &self.wgpu_settings,
                     &request_adapter_options,
+                    #[cfg(feature = "dlss")]
+                    app.world.resource::<DlssProjectId>().0,
                 ));
             debug!("Configured wgpu adapter Limits: {:#?}", device.limits());
             debug!("Configured wgpu adapter Features: {:#?}", device.features());
@@ -336,3 +338,7 @@ fn apply_extract_commands(render_world: &mut World) {
             .apply_system_buffers(render_world);
     });
 }
+
+#[cfg(feature = "dlss")]
+#[derive(Resource)]
+pub struct DlssProjectId(pub uuid::Uuid);

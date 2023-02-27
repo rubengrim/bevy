@@ -83,7 +83,7 @@ dynamic_linking = ["bevy_diagnostic/dynamic_linking"]
 android_shared_stdcxx = ["bevy_audio/android_shared_stdcxx"]
 
 # NVIDIA DLSS
-dlss = ["bevy_core_pipeline/dlss"]
+dlss = ["bevy_core_pipeline/dlss", "bevy_render/dlss"]
 
 [dependencies]
 # bevy

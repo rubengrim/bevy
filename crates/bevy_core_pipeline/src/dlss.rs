@@ -4,9 +4,11 @@ use bevy_ecs::{
     prelude::{Bundle, Component},
     system::Resource,
 };
-use bevy_render::{camera::TemporalJitter, prelude::Msaa, renderer::RenderDevice, RenderApp};
+use bevy_render::{
+    camera::TemporalJitter, prelude::Msaa, renderer::RenderDevice, DlssProjectId, RenderApp,
+};
+use bevy_utils::tracing::info;
 use dlss_wgpu::DlssSdk;
-use uuid::Uuid;
 
 mod draw_3d_graph {
     pub mod node {
@@ -15,9 +17,7 @@ mod draw_3d_graph {
     }
 }
 
-pub struct DlssPlugin {
-    pub project_id: Uuid,
-}
+pub struct DlssPlugin;
 
 impl Plugin for DlssPlugin {
     fn build(&self, app: &mut App) {
@@ -33,12 +33,14 @@ impl Plugin for DlssPlugin {
                 .clone()
         };
 
-        let dlss_sdk = DlssSdk::new(self.project_id, render_device);
+        let project_id = app.world.resource::<DlssProjectId>().0;
+        let dlss_sdk = DlssSdk::new(project_id, render_device);
 
         if dlss_sdk.is_ok() {
             app.insert_resource(DlssAvailable)
                 .insert_resource(Msaa::Off);
         } else {
+            info!("DLSS not available");
             return;
         }
 

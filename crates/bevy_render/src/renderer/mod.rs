@@ -118,6 +118,7 @@ pub async fn initialize_renderer(
     instance: &Instance,
     options: &WgpuSettings,
     request_adapter_options: &RequestAdapterOptions<'_>,
+    #[cfg(feature = "dlss")] dlss_project_id: uuid::Uuid,
 ) -> (RenderDevice, RenderQueue, RenderAdapterInfo, RenderAdapter) {
     let adapter = instance
         .request_adapter(request_adapter_options)
@@ -257,17 +258,23 @@ pub async fn initialize_renderer(
         };
     }
 
+    let device_descriptor = wgpu::DeviceDescriptor {
+        label: options.device_label.as_ref().map(|a| a.as_ref()),
+        features,
+        limits,
+    };
+
+    #[cfg(not(feature = "dlss"))]
     let (device, queue) = adapter
-        .request_device(
-            &wgpu::DeviceDescriptor {
-                label: options.device_label.as_ref().map(|a| a.as_ref()),
-                features,
-                limits,
-            },
-            trace_path,
-        )
+        .request_device(&device_descriptor, trace_path)
         .await
         .unwrap();
+
+    #[cfg(feature = "dlss")]
+    let (device, queue) =
+        dlss_wgpu::request_device(dlss_project_id, &adapter, &device_descriptor, trace_path)
+            .unwrap();
+
     let queue = Arc::new(queue);
     let adapter = Arc::new(adapter);
     (
