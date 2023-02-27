@@ -238,7 +238,11 @@ fn update_ui(
 
     *ui = "Antialias Method\n".to_string();
 
-    if *msaa == Msaa::Off && fxaa.is_none() && taa.is_none() && fsr2.is_none() {
+    #[cfg(feature = "dlss")]
+    let dlss_off = dlss.is_none();
+    #[cfg(not(feature = "dlss"))]
+    let dlss_off = true;
+    if *msaa == Msaa::Off && fxaa.is_none() && taa.is_none() && fsr2.is_none() && dlss_off {
         ui.push_str("(1) *No AA*\n");
     } else {
         ui.push_str("(1) No AA\n");
