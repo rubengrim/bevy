@@ -36,8 +36,8 @@ fn prepare_world_normal(
 #ifndef VERTEX_TANGENTS
 #ifndef STANDARDMATERIAL_NORMAL_MAP
     // NOTE: When NOT using normal-mapping, if looking at the back face of a double-sided
-        // material, the normal needs to be inverted. This is a branchless version of that.
-        output = (f32(!double_sided || is_front) * 2.0 - 1.0) * output;
+    // material, the normal needs to be inverted. This is a branchless version of that.
+    output = (f32(!double_sided || is_front) * 2.0 - 1.0) * output;
 #endif
 #endif
     return output;
@@ -209,10 +209,10 @@ fn pbr(
         if ((in.flags & MESH_FLAGS_SHADOW_RECEIVER_BIT) != 0u
                 && (point_lights.data[light_id].flags & POINT_LIGHT_FLAGS_SHADOWS_ENABLED_BIT) != 0u) {
             shadow = fetch_point_shadow(light_id, in.world_position, in.world_normal);
+        }
+        let light_contrib = point_light(in.world_position.xyz, light_id, roughness, NdotV, in.N, in.V, R, F0, f_ab, diffuse_color);
+        direct_light += light_contrib * shadow;
     }
-    let light_contrib = point_light(in.world_position.xyz, light_id, roughness, NdotV, in.N, in.V, R, F0, f_ab, diffuse_color);
-    direct_light += light_contrib * shadow;
-}
 
     // Spot lights (direct)
     for (var i: u32 = offset_and_counts[0] + offset_and_counts[1]; i < offset_and_counts[0] + offset_and_counts[1] + offset_and_counts[2]; i = i + 1u) {
@@ -287,7 +287,7 @@ fn apply_fog(input_color: vec4<f32>, fragment_world_position: vec3<f32>, view_wo
     let distance = length(view_to_world);
 
     var scattering = vec3<f32>(0.0);
-    if (fog.directional_light_color.a > 0.0) {
+    if fog.directional_light_color.a > 0.0 {
         let view_to_world_normalized = view_to_world / distance;
         let n_directional_lights = lights.n_directional_lights;
         for (var i: u32 = 0u; i < n_directional_lights; i = i + 1u) {
@@ -302,13 +302,13 @@ fn apply_fog(input_color: vec4<f32>, fragment_world_position: vec3<f32>, view_wo
         }
     }
 
-    if (fog.mode == FOG_MODE_LINEAR) {
+    if fog.mode == FOG_MODE_LINEAR {
         return linear_fog(input_color, distance, scattering);
-    } else if (fog.mode == FOG_MODE_EXPONENTIAL) {
+    } else if fog.mode == FOG_MODE_EXPONENTIAL {
         return exponential_fog(input_color, distance, scattering);
-    } else if (fog.mode == FOG_MODE_EXPONENTIAL_SQUARED) {
+    } else if fog.mode == FOG_MODE_EXPONENTIAL_SQUARED {
         return exponential_squared_fog(input_color, distance, scattering);
-    } else if (fog.mode == FOG_MODE_ATMOSPHERIC) {
+    } else if fog.mode == FOG_MODE_ATMOSPHERIC {
         return atmospheric_fog(input_color, distance, scattering);
     } else {
         return input_color;
@@ -327,10 +327,10 @@ fn premultiply_alpha(standard_material_flags: u32, color: vec4<f32>) -> vec4<f32
     //
     //     result = 1 * src_color + (1 - src_alpha) * dst_color
     let alpha_mode = standard_material_flags & STANDARD_MATERIAL_FLAGS_ALPHA_MODE_RESERVED_BITS;
-    if (alpha_mode == STANDARD_MATERIAL_FLAGS_ALPHA_MODE_BLEND) {
+    if alpha_mode == STANDARD_MATERIAL_FLAGS_ALPHA_MODE_BLEND {
         // Here, we premultiply `src_color` by `src_alpha` (ahead of time, here in the shader)
-            //
-            //     src_color *= src_alpha
+        //
+        //     src_color *= src_alpha
         //
         // We end up with:
         //
@@ -339,10 +339,10 @@ fn premultiply_alpha(standard_material_flags: u32, color: vec4<f32>) -> vec4<f32
         //
         // Which is the blend operation for regular alpha blending `BlendState::ALPHA_BLENDING`
         return vec4<f32>(color.rgb * color.a, color.a);
-    } else if (alpha_mode == STANDARD_MATERIAL_FLAGS_ALPHA_MODE_ADD) {
+    } else if alpha_mode == STANDARD_MATERIAL_FLAGS_ALPHA_MODE_ADD {
         // Here, we premultiply `src_color` by `src_alpha`, and replace `src_alpha` with 0.0:
-            //
-            //     src_color *= src_alpha
+        //
+        //     src_color *= src_alpha
         //     src_alpha = 0.0
         //
         // We end up with:
@@ -354,11 +354,11 @@ fn premultiply_alpha(standard_material_flags: u32, color: vec4<f32>) -> vec4<f32
         return vec4<f32>(color.rgb * color.a, 0.0);
     } else {
         // Here, we don't do anything, so that we get premultiplied alpha blending. (As expected)
-            return color.rgba;
-        }
+        return color.rgba;
+    }
 #endif
-    // `Multiply` uses its own `BlendState`, but we still need to premultiply here in the
-    // shader so that we get correct results as we tweak the alpha channel
+// `Multiply` uses its own `BlendState`, but we still need to premultiply here in the
+// shader so that we get correct results as we tweak the alpha channel
 #ifdef BLEND_MULTIPLY
     // The blend function is:
     //
