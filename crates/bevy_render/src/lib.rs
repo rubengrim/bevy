@@ -200,7 +200,7 @@ impl Plugin for RenderPlugin {
                 compatible_surface: surface.as_ref(),
                 ..Default::default()
             };
-            let (device, queue, adapter_info, render_adapter) =
+            let (device, queue, adapter_info, render_adapter, dlss_supported) =
                 futures_lite::future::block_on(renderer::initialize_renderer(
                     &instance,
                     &self.wgpu_settings,
@@ -215,6 +215,10 @@ impl Plugin for RenderPlugin {
                 .insert_resource(adapter_info.clone())
                 .insert_resource(render_adapter.clone())
                 .init_resource::<ScratchMainWorld>();
+
+            if dlss_supported {
+                app.insert_resource(DlssAvailable);
+            }
 
             let pipeline_cache = PipelineCache::new(device.clone());
             let asset_server = app.world.resource::<AssetServer>().clone();
@@ -342,3 +346,6 @@ fn apply_extract_commands(render_world: &mut World) {
 #[cfg(feature = "dlss")]
 #[derive(Resource)]
 pub struct DlssProjectId(pub uuid::Uuid);
+
+#[derive(Resource)]
+pub struct DlssAvailable;

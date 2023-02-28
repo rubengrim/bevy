@@ -1,9 +1,9 @@
 //! This example compares different anti-aliasing methods.
 
 #[cfg(feature = "dlss")]
-use bevy::core_pipeline::dlss::{DlssAvailable, DlssBundle, DlssPlugin, DlssSettings};
+use bevy::core_pipeline::dlss::{DlssBundle, DlssPlugin, DlssSettings};
 #[cfg(feature = "dlss")]
-use bevy::render::DlssProjectId;
+use bevy::render::{DlssAvailable, DlssProjectId};
 
 use bevy::{
     core_pipeline::{

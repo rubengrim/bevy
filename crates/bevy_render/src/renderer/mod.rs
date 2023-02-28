@@ -120,7 +120,13 @@ pub async fn initialize_renderer(
     options: &WgpuSettings,
     request_adapter_options: &RequestAdapterOptions<'_>,
     #[cfg(feature = "dlss")] dlss_project_id: uuid::Uuid,
-) -> (RenderDevice, RenderQueue, RenderAdapterInfo, RenderAdapter) {
+) -> (
+    RenderDevice,
+    RenderQueue,
+    RenderAdapterInfo,
+    RenderAdapter,
+    bool,
+) {
     let adapter = instance
         .request_adapter(request_adapter_options)
         .await
@@ -271,10 +277,16 @@ pub async fn initialize_renderer(
         .await
         .unwrap();
 
+    #[allow(unused_mut)]
+    let mut dlss_supported = false;
+
     #[cfg(feature = "dlss")]
     let (device, queue) = {
         match dlss_wgpu::request_device(dlss_project_id, &adapter, &device_descriptor, trace_path) {
-            Ok(x) => x,
+            Ok(x) => {
+                dlss_supported = true;
+                x
+            }
             Err(_) => adapter
                 .request_device(&device_descriptor, trace_path)
                 .await
@@ -289,6 +301,7 @@ pub async fn initialize_renderer(
         RenderQueue(queue),
         RenderAdapterInfo(adapter_info),
         RenderAdapter(adapter),
+        dlss_supported,
     )
 }
 
