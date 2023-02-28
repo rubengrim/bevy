@@ -22,7 +22,7 @@ use std::cmp::Reverse;
 pub use camera_3d::*;
 pub use main_pass_3d_node::*;
 
-use bevy_app::{App, Plugin};
+use bevy_app::{App, IntoSystemAppConfig, Plugin};
 use bevy_ecs::prelude::*;
 use bevy_render::{
     camera::{Camera, ExtractedCamera},
@@ -38,8 +38,8 @@ use bevy_render::{
         TextureUsages,
     },
     renderer::RenderDevice,
-    texture::{BevyDefault, CachedTexture, TextureCache},
-    view::{ExtractedView, ViewDepthTexture, ViewTarget},
+    texture::TextureCache,
+    view::ViewDepthTexture,
     Extract, ExtractSchedule, RenderApp, RenderSet,
 };
 use bevy_utils::{FloatOrd, HashMap};
@@ -67,9 +67,9 @@ impl Plugin for Core3dPlugin {
             .init_resource::<DrawFunctions<Opaque3d>>()
             .init_resource::<DrawFunctions<AlphaMask3d>>()
             .init_resource::<DrawFunctions<Transparent3d>>()
-            .add_system_to_schedule(ExtractSchedule, extract_core_3d_camera_phases)
+            .add_system(extract_core_3d_camera_phases.in_schedule(ExtractSchedule))
             .add_system(
-                prepare_core_3d_textures
+                prepare_core_3d_depth_textures
                     .in_set(RenderSet::Prepare)
                     .after(bevy_render::view::prepare_windows),
             )
@@ -266,24 +266,13 @@ pub fn extract_core_3d_camera_phases(
     }
 }
 
-#[derive(Component)]
-pub struct MainPass3dTexture {
-    pub texture: CachedTexture,
-}
-
-pub fn prepare_core_3d_textures(
+pub fn prepare_core_3d_depth_textures(
     mut commands: Commands,
     mut texture_cache: ResMut<TextureCache>,
     msaa: Res<Msaa>,
     render_device: Res<RenderDevice>,
     views_3d: Query<
-        (
-            Entity,
-            &ExtractedCamera,
-            &ExtractedView,
-            &Camera3d,
-            Option<&DepthPrepass>,
-        ),
+        (Entity, &ExtractedCamera, Option<&DepthPrepass>),
         (
             With<RenderPhase<Opaque3d>>,
             With<RenderPhase<AlphaMask3d>>,
@@ -291,17 +280,13 @@ pub fn prepare_core_3d_textures(
         ),
     >,
 ) {
-    let mut depth_textures = HashMap::default();
-    for (entity, camera, view, camera_3d, depth_prepass) in &views_3d {
+    let mut textures = HashMap::default();
+    for (entity, camera, depth_prepass) in &views_3d {
         let Some(physical_target_size) = camera.physical_target_size else {
             continue;
         };
 
-        let mut entity = commands.entity(entity);
-
-        let texture_size = camera_3d.render_resolution.unwrap_or(physical_target_size);
-
-        let depth = depth_textures
+        let cached_texture = textures
             .entry(camera.target.clone())
             .or_insert_with(|| {
                 // Default usage required to write to the depth texture
@@ -311,13 +296,16 @@ pub fn prepare_core_3d_textures(
                     usage |= TextureUsages::COPY_SRC;
                 }
 
+                // The size of the depth texture
+                let size = Extent3d {
+                    depth_or_array_layers: 1,
+                    width: physical_target_size.x,
+                    height: physical_target_size.y,
+                };
+
                 let descriptor = TextureDescriptor {
                     label: Some("view_depth_texture"),
-                    size: Extent3d {
-                        depth_or_array_layers: 1,
-                        width: texture_size.x,
-                        height: texture_size.y,
-                    },
+                    size,
                     mip_level_count: 1,
                     sample_count: msaa.samples(),
                     dimension: TextureDimension::D2,
@@ -331,35 +319,9 @@ pub fn prepare_core_3d_textures(
             })
             .clone();
 
-        entity.insert(ViewDepthTexture {
-            texture: depth.texture,
-            view: depth.default_view,
+        commands.entity(entity).insert(ViewDepthTexture {
+            texture: cached_texture.texture,
+            view: cached_texture.default_view,
         });
-
-        if let Some(render_resolution) = camera_3d.render_resolution {
-            if render_resolution != physical_target_size {
-                let descriptor = TextureDescriptor {
-                    label: Some("view_main_pass_3d_texture"),
-                    size: Extent3d {
-                        depth_or_array_layers: 1,
-                        width: texture_size.x,
-                        height: texture_size.y,
-                    },
-                    mip_level_count: 1,
-                    sample_count: msaa.samples(),
-                    dimension: TextureDimension::D2,
-                    format: match view.hdr {
-                        true => ViewTarget::TEXTURE_FORMAT_HDR,
-                        false => TextureFormat::bevy_default(),
-                    },
-                    usage: TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
-                    view_formats: &[],
-                };
-
-                entity.insert(MainPass3dTexture {
-                    texture: texture_cache.get(&render_device, descriptor),
-                });
-            }
-        }
     }
 }

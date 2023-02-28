@@ -3,7 +3,6 @@ use crate::{
     tonemapping::{DebandDither, Tonemapping},
 };
 use bevy_ecs::prelude::*;
-use bevy_math::UVec2;
 use bevy_reflect::{Reflect, ReflectDeserialize, ReflectSerialize};
 use bevy_render::{
     camera::{Camera, CameraRenderGraph, Projection},
@@ -24,9 +23,6 @@ pub struct Camera3d {
     pub clear_color: ClearColorConfig,
     /// The depth clear operation to perform for the main 3d pass.
     pub depth_load_op: Camera3dDepthLoadOp,
-    /// The resolution to render the main 3d pass at.
-    /// If None, the full viewport resolution is used.
-    pub render_resolution: Option<UVec2>,
 }
 
 /// The depth clear operation to perform for the main 3d pass.
