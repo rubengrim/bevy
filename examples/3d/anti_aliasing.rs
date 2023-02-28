@@ -222,7 +222,7 @@ fn update_ui(
     } else if dlss.is_some() {
         ui.push_str("\n(5) *DLSS*");
     } else {
-        ui.push_str("\n(45 DLSS");
+        ui.push_str("\n(5) DLSS");
     }
 
     if *msaa != Msaa::Off {
