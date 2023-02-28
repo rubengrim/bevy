@@ -501,7 +501,6 @@ pub fn prepare_prepass_textures(
         (
             Entity,
             &ExtractedCamera,
-            &Camera3d,
             Option<&DepthPrepass>,
             Option<&NormalPrepass>,
             Option<&VelocityPrepass>,
@@ -515,16 +514,15 @@ pub fn prepare_prepass_textures(
     let mut depth_textures = HashMap::default();
     let mut normal_textures = HashMap::default();
     let mut velocity_textures = HashMap::default();
-    for (entity, camera, camera_3d, depth_prepass, normal_prepass, velocity_prepass) in &views_3d {
+    for (entity, camera, depth_prepass, normal_prepass, velocity_prepass) in &views_3d {
         let Some(physical_target_size) = camera.physical_target_size else {
             continue;
         };
 
-        let texture_size = camera_3d.render_resolution.unwrap_or(physical_target_size);
         let size = Extent3d {
             depth_or_array_layers: 1,
-            width: texture_size.x,
-            height: texture_size.y,
+            width: physical_target_size.x,
+            height: physical_target_size.y,
         };
 
         let cached_depth_texture = depth_prepass.is_some().then(|| {
