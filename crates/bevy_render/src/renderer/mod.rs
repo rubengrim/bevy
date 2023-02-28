@@ -18,7 +18,8 @@ use bevy_time::TimeSender;
 use bevy_utils::Instant;
 use std::sync::Arc;
 use wgpu::{
-    Adapter, AdapterInfo, CommandBuffer, CommandEncoder, Instance, Queue, RequestAdapterOptions,
+    Adapter, AdapterInfo, CommandBuffer, CommandEncoder, DeviceDescriptor, Instance, Queue,
+    RequestAdapterOptions,
 };
 
 /// Updates the [`RenderGraph`] with all of its nodes and then runs it to render the entire frame.
@@ -258,7 +259,7 @@ pub async fn initialize_renderer(
         };
     }
 
-    let device_descriptor = wgpu::DeviceDescriptor {
+    let device_descriptor = DeviceDescriptor {
         label: options.device_label.as_ref().map(|a| a.as_ref()),
         features,
         limits,
@@ -271,9 +272,15 @@ pub async fn initialize_renderer(
         .unwrap();
 
     #[cfg(feature = "dlss")]
-    let (device, queue) =
-        dlss_wgpu::request_device(dlss_project_id, &adapter, &device_descriptor, trace_path)
-            .unwrap();
+    let (device, queue) = {
+        match dlss_wgpu::request_device(dlss_project_id, &adapter, &device_descriptor, trace_path) {
+            Ok(x) => x,
+            Err(_) => adapter
+                .request_device(&device_descriptor, trace_path)
+                .await
+                .unwrap(),
+        }
+    };
 
     let queue = Arc::new(queue);
     let adapter = Arc::new(adapter);
