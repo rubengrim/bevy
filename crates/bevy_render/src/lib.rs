@@ -217,6 +217,7 @@ impl Plugin for RenderPlugin {
                 .init_resource::<ScratchMainWorld>();
 
             if dlss_supported {
+                #[cfg(feature = "dlss")]
                 app.insert_resource(DlssAvailable);
             }
 
@@ -347,5 +348,6 @@ fn apply_extract_commands(render_world: &mut World) {
 #[derive(Resource)]
 pub struct DlssProjectId(pub uuid::Uuid);
 
+#[cfg(feature = "dlss")]
 #[derive(Resource)]
 pub struct DlssAvailable;

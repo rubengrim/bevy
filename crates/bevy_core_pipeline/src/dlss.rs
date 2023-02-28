@@ -47,7 +47,7 @@ impl Plugin for DlssPlugin {
 
         let render_app = app.get_sub_app_mut(RenderApp).unwrap();
 
-        render_app.insert_non_send_resource(DlssSdkResource(dlss_sdk.unwrap()));
+        render_app.insert_non_send_resource(dlss_sdk.unwrap());
     }
 }
 
@@ -61,5 +61,3 @@ pub struct DlssBundle {
 
 #[derive(Component, Clone, Default)]
 pub struct DlssSettings {}
-
-struct DlssSdkResource(DlssSdk<RenderDevice>);
