@@ -1,7 +1,6 @@
 use bevy_app::{CoreSet, Plugin};
 use bevy_asset::{load_internal_asset, AssetServer, Handle, HandleUntyped};
 use bevy_core_pipeline::{
-    fsr2::prepare_fsr2,
     prelude::Camera3d,
     prepass::{
         AlphaMask3dPrepass, DepthPrepass, NormalPrepass, Opaque3dPrepass, VelocityPrepass,
@@ -105,8 +104,7 @@ where
             .add_system(
                 prepare_prepass_textures
                     .in_set(RenderSet::Prepare)
-                    .after(bevy_render::view::prepare_windows)
-                    .after(prepare_fsr2),
+                    .after(bevy_render::view::prepare_windows),
             )
             .add_system(prepare_previous_view_projection_uniforms.in_set(RenderSet::Prepare))
             .add_system(queue_prepass_view_bind_group::<M>.in_set(RenderSet::Queue))

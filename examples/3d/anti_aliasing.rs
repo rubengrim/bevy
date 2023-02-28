@@ -10,7 +10,6 @@ use bevy::{
         experimental::taa::{
             TemporalAntialiasBundle, TemporalAntialiasPlugin, TemporalAntialiasSettings,
         },
-        fsr2::{Fsr2Bundle, Fsr2Plugin, Fsr2QualityMode, Fsr2Settings},
         fxaa::{Fxaa, Sensitivity},
     },
     pbr::CascadeShadowConfigBuilder,
@@ -34,7 +33,6 @@ fn main() {
     app.insert_resource(Msaa::Off)
         .add_plugins(DefaultPlugins)
         .add_plugin(TemporalAntialiasPlugin)
-        .add_plugin(Fsr2Plugin)
         .add_startup_system(setup)
         .add_system(modify_aa)
         .add_system(update_ui);
@@ -52,7 +50,6 @@ fn modify_aa(
             Entity,
             Option<&mut Fxaa>,
             Option<&TemporalAntialiasSettings>,
-            Option<&mut Fsr2Settings>,
             Option<&mut DlssSettings>,
         ),
         With<Camera>,
@@ -62,7 +59,6 @@ fn modify_aa(
             Entity,
             Option<&mut Fxaa>,
             Option<&TemporalAntialiasSettings>,
-            Option<&mut Fsr2Settings>,
         ),
         With<Camera>,
     >,
@@ -71,9 +67,9 @@ fn modify_aa(
     mut commands: Commands,
 ) {
     #[cfg(feature = "dlss")]
-    let (camera_entity, fxaa, taa, fsr2, dlss) = camera.single_mut();
+    let (camera_entity, fxaa, taa, dlss) = camera.single_mut();
     #[cfg(not(feature = "dlss"))]
-    let (camera_entity, fxaa, taa, fsr2) = camera.single_mut();
+    let (camera_entity, fxaa, taa) = camera.single_mut();
     let mut camera = commands.entity(camera_entity);
 
     // No AA
@@ -81,7 +77,6 @@ fn modify_aa(
         *msaa = Msaa::Off;
         camera.remove::<Fxaa>();
         camera.remove::<TemporalAntialiasBundle>();
-        camera.remove::<Fsr2Bundle>();
         #[cfg(feature = "dlss")]
         camera.remove::<DlssBundle>();
     }
@@ -90,7 +85,6 @@ fn modify_aa(
     if keys.just_pressed(KeyCode::Key2) && *msaa == Msaa::Off {
         camera.remove::<Fxaa>();
         camera.remove::<TemporalAntialiasBundle>();
-        camera.remove::<Fsr2Bundle>();
         #[cfg(feature = "dlss")]
         camera.remove::<DlssBundle>();
 
@@ -114,7 +108,6 @@ fn modify_aa(
     if keys.just_pressed(KeyCode::Key3) && fxaa.is_none() {
         *msaa = Msaa::Off;
         camera.remove::<TemporalAntialiasBundle>();
-        camera.remove::<Fsr2Bundle>();
         #[cfg(feature = "dlss")]
         camera.remove::<DlssBundle>();
 
@@ -149,58 +142,18 @@ fn modify_aa(
     if keys.just_pressed(KeyCode::Key4) && taa.is_none() {
         *msaa = Msaa::Off;
         camera.remove::<Fxaa>();
-        camera.remove::<Fsr2Bundle>();
         #[cfg(feature = "dlss")]
         camera.remove::<DlssBundle>();
 
         camera.insert(TemporalAntialiasBundle::default());
     }
 
-    // FSR2
-    if keys.just_pressed(KeyCode::Key5) && fsr2.is_none() {
-        *msaa = Msaa::Off;
-        camera.remove::<Fxaa>();
-        camera.remove::<TemporalAntialiasBundle>();
-        #[cfg(feature = "dlss")]
-        camera.remove::<DlssBundle>();
-
-        camera.insert(Fsr2Bundle::default());
-    }
-
-    // FSR2 Settings
-    if let Some(mut fsr2) = fsr2 {
-        if keys.just_pressed(KeyCode::Q) {
-            fsr2.quality_mode = Fsr2QualityMode::UltraPerformance;
-        }
-        if keys.just_pressed(KeyCode::W) {
-            fsr2.quality_mode = Fsr2QualityMode::Performance;
-        }
-        if keys.just_pressed(KeyCode::E) {
-            fsr2.quality_mode = Fsr2QualityMode::Balanced;
-        }
-        if keys.just_pressed(KeyCode::R) {
-            fsr2.quality_mode = Fsr2QualityMode::Quality;
-        }
-
-        if keys.just_pressed(KeyCode::Minus) {
-            fsr2.sharpness -= 0.05;
-            fsr2.sharpness = (fsr2.sharpness * 100.0).round() / 100.0;
-            fsr2.sharpness = fsr2.sharpness.clamp(0.0, 1.0);
-        }
-        if keys.just_pressed(KeyCode::Equals) {
-            fsr2.sharpness += 0.05;
-            fsr2.sharpness = (fsr2.sharpness * 100.0).round() / 100.0;
-            fsr2.sharpness = fsr2.sharpness.clamp(0.0, 1.0);
-        }
-    }
-
     // DLSS
     #[cfg(feature = "dlss")]
-    if keys.just_pressed(KeyCode::Key6) && dlss.is_none() && dlss_available.is_some() {
+    if keys.just_pressed(KeyCode::Key5) && dlss.is_none() && dlss_available.is_some() {
         *msaa = Msaa::Off;
         camera.remove::<Fxaa>();
         camera.remove::<TemporalAntialiasBundle>();
-        camera.remove::<Fsr2Bundle>();
 
         camera.insert(DlssBundle::default());
     }
@@ -211,17 +164,12 @@ fn update_ui(
         (
             Option<&Fxaa>,
             Option<&TemporalAntialiasSettings>,
-            Option<&Fsr2Settings>,
             Option<&DlssSettings>,
         ),
         With<Camera>,
     >,
     #[cfg(not(feature = "dlss"))] camera: Query<
-        (
-            Option<&Fxaa>,
-            Option<&TemporalAntialiasSettings>,
-            Option<&Fsr2Settings>,
-        ),
+        (Option<&Fxaa>, Option<&TemporalAntialiasSettings>),
         With<Camera>,
     >,
     msaa: Res<Msaa>,
@@ -229,9 +177,9 @@ fn update_ui(
     mut ui: Query<&mut Text>,
 ) {
     #[cfg(feature = "dlss")]
-    let (fxaa, taa, fsr2, dlss) = camera.single();
+    let (fxaa, taa, dlss) = camera.single();
     #[cfg(not(feature = "dlss"))]
-    let (fxaa, taa, fsr2) = camera.single();
+    let (fxaa, taa) = camera.single();
 
     let mut ui = ui.single_mut();
     let ui = &mut ui.sections[0].value;
@@ -242,7 +190,7 @@ fn update_ui(
     let dlss_off = dlss.is_none();
     #[cfg(not(feature = "dlss"))]
     let dlss_off = true;
-    if *msaa == Msaa::Off && fxaa.is_none() && taa.is_none() && fsr2.is_none() && dlss_off {
+    if *msaa == Msaa::Off && fxaa.is_none() && taa.is_none() && dlss_off {
         ui.push_str("(1) *No AA*\n");
     } else {
         ui.push_str("(1) No AA\n");
@@ -261,26 +209,20 @@ fn update_ui(
     }
 
     if taa.is_some() {
-        ui.push_str("(4) *TAA*\n");
+        ui.push_str("(4) *TAA*");
     } else {
-        ui.push_str("(4) TAA\n");
-    }
-
-    if fsr2.is_some() {
-        ui.push_str("(5) *FSR2*");
-    } else {
-        ui.push_str("(5) FSR2");
+        ui.push_str("(4) TAA");
     }
 
     #[cfg(not(feature = "dlss"))]
-    ui.push_str("\n(6) DLSS (dlss feature disabled)");
+    ui.push_str("\n(5) DLSS (dlss feature disabled)");
     #[cfg(feature = "dlss")]
     if dlss_available.is_none() {
-        ui.push_str("\n(6) DLSS (not available)");
+        ui.push_str("\n(5) DLSS (not available)");
     } else if dlss.is_some() {
-        ui.push_str("\n(6) *DLSS*");
+        ui.push_str("\n(5) *DLSS*");
     } else {
-        ui.push_str("\n(6) DLSS");
+        ui.push_str("\n(45 DLSS");
     }
 
     if *msaa != Msaa::Off {
@@ -335,36 +277,6 @@ fn update_ui(
         } else {
             ui.push_str("(T) Extreme");
         }
-    }
-
-    if let Some(fsr2) = fsr2 {
-        ui.push_str("\n\n----------\n\nQuality Mode\n");
-
-        if fsr2.quality_mode == Fsr2QualityMode::UltraPerformance {
-            ui.push_str("(Q) *Ultra Performance*\n");
-        } else {
-            ui.push_str("(Q) Ultra Performance\n");
-        }
-
-        if fsr2.quality_mode == Fsr2QualityMode::Performance {
-            ui.push_str("(W) *Performance*\n");
-        } else {
-            ui.push_str("(W) Performance\n");
-        }
-
-        if fsr2.quality_mode == Fsr2QualityMode::Balanced {
-            ui.push_str("(E) *Balanced*\n");
-        } else {
-            ui.push_str("(E) Balanced\n");
-        }
-
-        if fsr2.quality_mode == Fsr2QualityMode::Quality {
-            ui.push_str("(R) *Quality*");
-        } else {
-            ui.push_str("(R) Quality");
-        }
-
-        write!(ui, "\n\nSharpness\n(-/+) {:.2}", fsr2.sharpness).unwrap();
     }
 }
 
