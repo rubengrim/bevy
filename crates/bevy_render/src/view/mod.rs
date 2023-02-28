@@ -6,19 +6,19 @@ pub use visibility::*;
 pub use window::*;
 
 use crate::{
-    camera::{ExtractedCamera, TemporalJitter},
+    camera::ExtractedCamera,
     extract_resource::{ExtractResource, ExtractResourcePlugin},
     prelude::{Image, Shader},
     render_asset::RenderAssets,
     render_phase::ViewRangefinder3d,
     render_resource::{DynamicUniformBuffer, ShaderType, Texture, TextureView},
     renderer::{RenderDevice, RenderQueue},
-    texture::{BevyDefault, CachedTexture, TextureCache},
+    texture::{BevyDefault, TextureCache},
     RenderApp, RenderSet,
 };
 use bevy_app::{App, Plugin};
 use bevy_ecs::prelude::*;
-use bevy_math::{Mat4, UVec4, Vec3, Vec4, Vec4Swizzles};
+use bevy_math::{Mat4, UVec4, Vec3, Vec4};
 use bevy_reflect::{Reflect, TypeUuid};
 use bevy_transform::components::GlobalTransform;
 use bevy_utils::HashMap;
@@ -154,7 +154,6 @@ impl Default for ColorGrading {
 #[derive(Clone, ShaderType)]
 pub struct ViewUniform {
     view_proj: Mat4,
-    unjittered_view_proj: Mat4,
     inverse_view_proj: Mat4,
     view: Mat4,
     inverse_view: Mat4,
@@ -200,7 +199,7 @@ impl ViewTarget {
         match &self.main_textures.sampled {
             Some(sampled_texture) => RenderPassColorAttachment {
                 view: sampled_texture,
-                resolve_target: Some(&self.main_texture().default_view),
+                resolve_target: Some(self.main_texture()),
                 ops,
             },
             None => self.get_unsampled_color_attachment(ops),
@@ -213,14 +212,14 @@ impl ViewTarget {
         ops: Operations<Color>,
     ) -> RenderPassColorAttachment {
         RenderPassColorAttachment {
-            view: &self.main_texture().default_view,
+            view: self.main_texture(),
             resolve_target: None,
             ops,
         }
     }
 
     /// The "main" unsampled texture.
-    pub fn main_texture(&self) -> &CachedTexture {
+    pub fn main_texture(&self) -> &TextureView {
         if self.main_texture.load(Ordering::SeqCst) == 0 {
             &self.main_textures.a
         } else {
@@ -236,9 +235,9 @@ impl ViewTarget {
     /// ahead of time.
     pub fn main_texture_other(&self) -> &TextureView {
         if self.main_texture.load(Ordering::SeqCst) == 0 {
-            &self.main_textures.b.default_view
+            &self.main_textures.b
         } else {
-            &self.main_textures.a.default_view
+            &self.main_textures.a
         }
     }
 
@@ -282,13 +281,13 @@ impl ViewTarget {
         // if the old main texture is a, then the post processing must write from a to b
         if old_is_a_main_texture == 0 {
             PostProcessWrite {
-                source: &self.main_textures.a.default_view,
-                destination: &self.main_textures.b.default_view,
+                source: &self.main_textures.a,
+                destination: &self.main_textures.b,
             }
         } else {
             PostProcessWrite {
-                source: &self.main_textures.b.default_view,
-                destination: &self.main_textures.a.default_view,
+                source: &self.main_textures.b,
+                destination: &self.main_textures.a,
             }
         }
     }
@@ -300,41 +299,31 @@ pub struct ViewDepthTexture {
     pub view: TextureView,
 }
 
-pub fn prepare_view_uniforms(
+fn prepare_view_uniforms(
     mut commands: Commands,
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
     mut view_uniforms: ResMut<ViewUniforms>,
-    views: Query<(Entity, &ExtractedView, Option<&TemporalJitter>)>,
+    views: Query<(Entity, &ExtractedView)>,
 ) {
     view_uniforms.uniforms.clear();
-
-    for (entity, camera, temporal_jitter) in &views {
-        let viewport = camera.viewport.as_vec4();
-        let unjittered_projection = camera.projection;
-        let mut projection = unjittered_projection;
-
-        if let Some(temporal_jitter) = temporal_jitter {
-            temporal_jitter.jitter_projection(&mut projection, viewport.zw());
-        }
-
+    for (entity, camera) in &views {
+        let projection = camera.projection;
         let inverse_projection = projection.inverse();
         let view = camera.transform.compute_matrix();
         let inverse_view = view.inverse();
-
         let view_uniforms = ViewUniformOffset {
             offset: view_uniforms.uniforms.push(ViewUniform {
                 view_proj: camera
                     .view_projection
                     .unwrap_or_else(|| projection * inverse_view),
-                unjittered_view_proj: unjittered_projection * inverse_view,
                 inverse_view_proj: view * inverse_projection,
                 view,
                 inverse_view,
                 projection,
                 inverse_projection,
                 world_position: camera.transform.translation(),
-                viewport,
+                viewport: camera.viewport.as_vec4(),
                 color_grading: camera.color_grading,
             }),
         };
@@ -349,8 +338,8 @@ pub fn prepare_view_uniforms(
 
 #[derive(Clone)]
 struct MainTargetTextures {
-    a: CachedTexture,
-    b: CachedTexture,
+    a: TextureView,
+    b: TextureView,
     sampled: Option<TextureView>,
 }
 
@@ -394,26 +383,29 @@ fn prepare_view_targets(
                             dimension: TextureDimension::D2,
                             format: main_texture_format,
                             usage: TextureUsages::RENDER_ATTACHMENT
-                                | TextureUsages::TEXTURE_BINDING
-                                | TextureUsages::STORAGE_BINDING,
+                                | TextureUsages::TEXTURE_BINDING,
                             // TODO: Consider changing this if main_texture_format is not sRGB
                             view_formats: &[],
                         };
                         MainTargetTextures {
-                            a: texture_cache.get(
-                                &render_device,
-                                TextureDescriptor {
-                                    label: Some("main_texture_a"),
-                                    ..descriptor
-                                },
-                            ),
-                            b: texture_cache.get(
-                                &render_device,
-                                TextureDescriptor {
-                                    label: Some("main_texture_b"),
-                                    ..descriptor
-                                },
-                            ),
+                            a: texture_cache
+                                .get(
+                                    &render_device,
+                                    TextureDescriptor {
+                                        label: Some("main_texture_a"),
+                                        ..descriptor
+                                    },
+                                )
+                                .default_view,
+                            b: texture_cache
+                                .get(
+                                    &render_device,
+                                    TextureDescriptor {
+                                        label: Some("main_texture_b"),
+                                        ..descriptor
+                                    },
+                                )
+                                .default_view,
                             sampled: (msaa.samples() > 1).then(|| {
                                 texture_cache
                                     .get(
