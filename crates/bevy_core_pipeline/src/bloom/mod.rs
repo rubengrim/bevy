@@ -24,7 +24,6 @@ use bevy_render::{
 #[cfg(feature = "trace")]
 use bevy_utils::tracing::info_span;
 use bevy_utils::HashMap;
-use std::num::NonZeroU32;
 
 const BLOOM_SHADER_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 929599476923908);
@@ -641,9 +640,7 @@ fn queue_bloom_bind_groups(
                 entries: &[
                     BindGroupEntry {
                         binding: 0,
-                        resource: BindingResource::TextureView(
-                            &view_target.main_texture().default_view,
-                        ),
+                        resource: BindingResource::TextureView(view_target.main_texture()),
                     },
                     BindGroupEntry {
                         binding: 1,
