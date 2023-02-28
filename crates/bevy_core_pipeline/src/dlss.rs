@@ -27,13 +27,12 @@ impl Plugin for DlssPlugin {
         }
 
         let project_id = app.world.resource::<DlssProjectId>().0;
-        let render_device = {
-            app.get_sub_app_mut(RenderApp)
-                .unwrap()
-                .world
-                .resource::<RenderDevice>()
-                .clone()
-        };
+        let render_device = app
+            .get_sub_app_mut(RenderApp)
+            .unwrap()
+            .world
+            .resource::<RenderDevice>()
+            .clone();
 
         let dlss_sdk = DlssSdk::new(project_id, render_device);
         if dlss_sdk.is_err() {
