@@ -38,6 +38,7 @@ impl Plugin for DlssPlugin {
 
         let dlss_sdk = DlssSdk::new(project_id, render_device);
         if dlss_sdk.is_err() {
+            app.world.remove_resource::<DlssAvailable>();
             info!("DLSS not available");
             return;
         }
