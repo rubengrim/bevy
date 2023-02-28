@@ -3,7 +3,7 @@ use crate::{
     prelude::Camera3d,
     prepass::{DepthPrepass, VelocityPrepass, ViewPrepassTextures},
 };
-use bevy_app::{App, Plugin};
+use bevy_app::{App, IntoSystemAppConfig, Plugin};
 use bevy_asset::{load_internal_asset, HandleUntyped};
 use bevy_core::FrameCount;
 use bevy_ecs::{
@@ -46,7 +46,7 @@ mod draw_3d_graph {
 const TAA_SHADER_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 656865235226276);
 
-/// Plugin for temporal antialiasing. Disables multisample antialiasing (MSAA).
+/// Plugin for temporal anti-aliasing. Disables multisample anti-aliasing (MSAA).
 pub struct TemporalAntialiasPlugin;
 
 impl Plugin for TemporalAntialiasPlugin {
@@ -61,7 +61,7 @@ impl Plugin for TemporalAntialiasPlugin {
         render_app
             .init_resource::<TAAPipeline>()
             .init_resource::<SpecializedRenderPipelines<TAAPipeline>>()
-            .add_system_to_schedule(ExtractSchedule, extract_taa_settings)
+            .add_system(extract_taa_settings.in_schedule(ExtractSchedule))
             .add_system(
                 prepare_taa_jitter
                     .before(prepare_view_uniforms)
@@ -95,7 +95,7 @@ impl Plugin for TemporalAntialiasPlugin {
     }
 }
 
-/// Bundle to apply temporal antialiasing.
+/// Bundle to apply temporal anti-aliasing.
 #[derive(Bundle, Default)]
 pub struct TemporalAntialiasBundle {
     pub settings: TemporalAntialiasSettings,
@@ -104,10 +104,10 @@ pub struct TemporalAntialiasBundle {
     pub velocity_prepass: VelocityPrepass,
 }
 
-/// Component to apply temporal antialiasing to a 3D perspective camera.
+/// Component to apply temporal anti-aliasing to a 3D perspective camera.
 ///
-/// Temporal antialiasing (TAA) is a form of image smoothing/filtering, like
-/// multisample antialiasing (MSAA), or fast approximate antialiasing (FXAA).
+/// Temporal anti-aliasing (TAA) is a form of image smoothing/filtering, like
+/// multisample anti-aliasing (MSAA), or fast approximate anti-aliasing (FXAA).
 /// TAA works by blending (averaging) each frame with the past few frames.
 ///
 /// # Tradeoffs
