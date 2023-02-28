@@ -20,7 +20,7 @@ use bevy::{
     },
 };
 
-use std::{f32::consts::PI, fmt::Write};
+use std::f32::consts::PI;
 
 fn main() {
     let mut app = App::new();
