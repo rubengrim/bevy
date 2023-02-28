@@ -1,10 +1,9 @@
+pub use bevy_render::{DlssAvailable, DlssProjectId};
+
 use crate::prepass::{DepthPrepass, VelocityPrepass};
 use bevy_app::{App, Plugin};
 use bevy_ecs::prelude::{Bundle, Component};
-use bevy_render::{
-    camera::TemporalJitter, prelude::Msaa, renderer::RenderDevice, DlssAvailable, DlssProjectId,
-    RenderApp,
-};
+use bevy_render::{camera::TemporalJitter, prelude::Msaa, renderer::RenderDevice, RenderApp};
 use bevy_utils::tracing::info;
 use dlss_wgpu::DlssSdk;
 
