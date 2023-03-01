@@ -1,11 +1,23 @@
 pub use bevy_render::{DlssAvailable, DlssProjectId};
 
-use crate::prepass::{DepthPrepass, VelocityPrepass};
-use bevy_app::{App, Plugin};
-use bevy_ecs::prelude::{Bundle, Component};
-use bevy_render::{camera::TemporalJitter, prelude::Msaa, renderer::RenderDevice, RenderApp};
+use crate::{
+    prelude::Camera3d,
+    prepass::{DepthPrepass, VelocityPrepass},
+};
+use bevy_app::{App, IntoSystemAppConfig, Plugin};
+use bevy_ecs::{
+    prelude::{Bundle, Component, Entity},
+    query::With,
+    system::{Commands, ResMut},
+};
+use bevy_render::{
+    camera::TemporalJitter,
+    prelude::{Camera, Msaa, Projection},
+    renderer::RenderDevice,
+    ExtractSchedule, MainWorld, RenderApp,
+};
 use bevy_utils::tracing::info;
-use dlss_wgpu::DlssSdk;
+use dlss_wgpu::{DlssContext, DlssPreset, DlssSdk};
 
 mod draw_3d_graph {
     pub mod node {
@@ -45,7 +57,9 @@ impl Plugin for DlssPlugin {
 
         let render_app = app.get_sub_app_mut(RenderApp).unwrap();
 
-        render_app.insert_non_send_resource(dlss_sdk.unwrap());
+        render_app
+            .insert_non_send_resource(dlss_sdk.unwrap())
+            .add_system(extract_dlss_settings.in_schedule(ExtractSchedule));
     }
 }
 
@@ -58,4 +72,29 @@ pub struct DlssBundle {
 }
 
 #[derive(Component, Clone, Default)]
-pub struct DlssSettings {}
+pub struct DlssSettings {
+    pub preset: DlssPreset,
+    pub reset: bool,
+}
+
+fn extract_dlss_settings(mut commands: Commands, mut main_world: ResMut<MainWorld>) {
+    let mut cameras_3d = main_world
+        .query_filtered::<(Entity, &Camera, &Projection, &mut DlssSettings), (
+            With<Camera3d>,
+            With<TemporalJitter>,
+            With<DepthPrepass>,
+            With<VelocityPrepass>,
+        )>();
+
+    for (entity, camera, camera_projection, mut dlss_settings) in
+        cameras_3d.iter_mut(&mut main_world)
+    {
+        let has_perspective_projection = matches!(camera_projection, Projection::Perspective(_));
+        if camera.is_active && has_perspective_projection {
+            commands
+                .get_or_spawn(entity)
+                .insert((dlss_settings.clone(), camera_projection.clone()));
+            dlss_settings.reset = false;
+        }
+    }
+}
