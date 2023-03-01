@@ -1,4 +1,5 @@
 pub use bevy_render::{DlssAvailable, DlssProjectId};
+pub use dlss_wgpu::DlssPreset;
 
 use crate::{
     prelude::Camera3d,
@@ -17,7 +18,7 @@ use bevy_render::{
     ExtractSchedule, MainWorld, RenderApp,
 };
 use bevy_utils::tracing::info;
-use dlss_wgpu::{DlssContext, DlssPreset, DlssSdk};
+use dlss_wgpu::{DlssContext, DlssSdk};
 
 mod draw_3d_graph {
     pub mod node {
