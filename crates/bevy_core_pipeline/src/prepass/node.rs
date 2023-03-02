@@ -15,6 +15,8 @@ use bevy_render::{
 #[cfg(feature = "trace")]
 use bevy_utils::tracing::info_span;
 
+use crate::core_3d::ViewportOverride;
+
 use super::{AlphaMask3dPrepass, Opaque3dPrepass, ViewPrepassTextures};
 
 /// Render node used by the prepass.
@@ -28,6 +30,7 @@ pub struct PrepassNode {
             &'static RenderPhase<AlphaMask3dPrepass>,
             &'static ViewDepthTexture,
             &'static ViewPrepassTextures,
+            Option<&'static ViewportOverride>,
         ),
         With<ExtractedView>,
     >,
@@ -65,6 +68,7 @@ impl Node for PrepassNode {
             alpha_mask_prepass_phase,
             view_depth_texture,
             view_prepass_textures,
+            viewport_override,
         )) = self.main_view_query.get_manual(world, view_entity) else {
             return Ok(());
         };
@@ -114,7 +118,8 @@ impl Node for PrepassNode {
                 }),
             });
 
-            if let Some(viewport) = camera.viewport.as_ref() {
+            let viewport = viewport_override.map_or(camera.viewport.as_ref(), |v| Some(&v.0));
+            if let Some(viewport) = viewport {
                 render_pass.set_camera_viewport(viewport);
             }
 

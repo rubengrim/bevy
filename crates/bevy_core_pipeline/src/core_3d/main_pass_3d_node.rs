@@ -15,7 +15,7 @@ use bevy_render::{
 #[cfg(feature = "trace")]
 use bevy_utils::tracing::info_span;
 
-use super::Camera3dDepthLoadOp;
+use super::{Camera3dDepthLoadOp, ViewportOverride};
 
 pub struct MainPass3dNode {
     query: QueryState<
@@ -29,6 +29,7 @@ pub struct MainPass3dNode {
             &'static ViewDepthTexture,
             Option<&'static DepthPrepass>,
             Option<&'static NormalPrepass>,
+            Option<&'static ViewportOverride>,
         ),
         With<ExtractedView>,
     >,
@@ -70,10 +71,13 @@ impl Node for MainPass3dNode {
             depth,
             depth_prepass,
             normal_prepass,
+            viewport_override,
         )) = self.query.get_manual(world, view_entity) else {
             // No window
             return Ok(());
         };
+
+        let viewport = viewport_override.map_or(camera.viewport.as_ref(), |v| Some(&v.0));
 
         // Always run opaque pass to ensure screen is cleared
         {
@@ -115,7 +119,7 @@ impl Node for MainPass3dNode {
                 }),
             });
 
-            if let Some(viewport) = camera.viewport.as_ref() {
+            if let Some(viewport) = viewport {
                 render_pass.set_camera_viewport(viewport);
             }
 
@@ -146,7 +150,7 @@ impl Node for MainPass3dNode {
                 }),
             });
 
-            if let Some(viewport) = camera.viewport.as_ref() {
+            if let Some(viewport) = viewport {
                 render_pass.set_camera_viewport(viewport);
             }
 
@@ -182,7 +186,7 @@ impl Node for MainPass3dNode {
                 }),
             });
 
-            if let Some(viewport) = camera.viewport.as_ref() {
+            if let Some(viewport) = viewport {
                 render_pass.set_camera_viewport(viewport);
             }
 

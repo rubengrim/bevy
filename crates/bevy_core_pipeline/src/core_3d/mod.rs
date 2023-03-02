@@ -25,7 +25,7 @@ pub use main_pass_3d_node::*;
 use bevy_app::{App, IntoSystemAppConfig, Plugin};
 use bevy_ecs::prelude::*;
 use bevy_render::{
-    camera::{Camera, ExtractedCamera},
+    camera::{Camera, ExtractedCamera, Viewport},
     extract_component::ExtractComponentPlugin,
     prelude::Msaa,
     render_graph::{EmptyNode, RenderGraph, SlotInfo, SlotType},
@@ -325,3 +325,6 @@ pub fn prepare_core_3d_depth_textures(
         });
     }
 }
+
+#[derive(Component)]
+pub struct ViewportOverride(pub Viewport);
