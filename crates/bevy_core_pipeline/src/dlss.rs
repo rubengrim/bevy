@@ -88,7 +88,7 @@ pub struct DlssSettings {
 
 struct DlssResource {
     sdk: Rc<DlssSdk<RenderDevice>>,
-    context_cache: HashMap<(UVec2, DlssPreset), DlssContext<RenderDevice>>,
+    context_cache: HashMap<(UVec2, DlssPreset), (DlssContext<RenderDevice>, bool)>,
 }
 
 fn extract_dlss_settings(mut commands: Commands, mut main_world: ResMut<MainWorld>) {
