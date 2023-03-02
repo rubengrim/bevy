@@ -7,15 +7,17 @@ use crate::{
 };
 use bevy_app::{App, IntoSystemAppConfig, Plugin};
 use bevy_ecs::{
-    prelude::{Bundle, Component, Entity},
+    prelude::{Bundle, Component, Entity, NonSendMut, Query},
     query::With,
+    schedule::IntoSystemConfig,
     system::{Commands, ResMut},
 };
 use bevy_render::{
     camera::TemporalJitter,
     prelude::{Camera, Msaa, Projection},
     renderer::RenderDevice,
-    ExtractSchedule, MainWorld, RenderApp,
+    view::ExtractedView,
+    ExtractSchedule, MainWorld, RenderApp, RenderSet,
 };
 use bevy_utils::tracing::info;
 use dlss_wgpu::{DlssContext, DlssSdk};
@@ -60,7 +62,8 @@ impl Plugin for DlssPlugin {
 
         render_app
             .insert_non_send_resource(dlss_sdk.unwrap())
-            .add_system(extract_dlss_settings.in_schedule(ExtractSchedule));
+            .add_system(extract_dlss_settings.in_schedule(ExtractSchedule))
+            .add_system(prepare_dlss.in_set(RenderSet::Prepare));
     }
 }
 
@@ -79,7 +82,7 @@ pub struct DlssSettings {
 }
 
 fn extract_dlss_settings(mut commands: Commands, mut main_world: ResMut<MainWorld>) {
-    let mut cameras_3d = main_world
+    let mut query = main_world
         .query_filtered::<(Entity, &Camera, &Projection, &mut DlssSettings), (
             With<Camera3d>,
             With<TemporalJitter>,
@@ -87,15 +90,21 @@ fn extract_dlss_settings(mut commands: Commands, mut main_world: ResMut<MainWorl
             With<VelocityPrepass>,
         )>();
 
-    for (entity, camera, camera_projection, mut dlss_settings) in
-        cameras_3d.iter_mut(&mut main_world)
-    {
+    for (entity, camera, camera_projection, mut dlss_settings) in query.iter_mut(&mut main_world) {
         let has_perspective_projection = matches!(camera_projection, Projection::Perspective(_));
         if camera.is_active && has_perspective_projection {
             commands
                 .get_or_spawn(entity)
                 .insert((dlss_settings.clone(), camera_projection.clone()));
+
             dlss_settings.reset = false;
         }
     }
+}
+
+fn prepare_dlss(
+    dlss_sdk: NonSendMut<DlssSdk<RenderDevice>>,
+    mut query: Query<(Entity, &ExtractedView, &DlssSettings, &mut TemporalJitter)>,
+) {
+    // TODO: Create DLSS context, set TemporalJitter, and add ViewportOverride
 }
