@@ -12,6 +12,7 @@ use bevy_ecs::{
     schedule::IntoSystemConfig,
     system::{Commands, ResMut},
 };
+use bevy_math::UVec2;
 use bevy_render::{
     camera::TemporalJitter,
     prelude::{Camera, Msaa, Projection},
@@ -19,8 +20,9 @@ use bevy_render::{
     view::ExtractedView,
     ExtractSchedule, MainWorld, RenderApp, RenderSet,
 };
-use bevy_utils::tracing::info;
+use bevy_utils::{tracing::info, HashMap};
 use dlss_wgpu::{DlssContext, DlssSdk};
+use std::rc::Rc;
 
 mod draw_3d_graph {
     pub mod node {
@@ -61,7 +63,10 @@ impl Plugin for DlssPlugin {
         let render_app = app.get_sub_app_mut(RenderApp).unwrap();
 
         render_app
-            .insert_non_send_resource(dlss_sdk.unwrap())
+            .insert_non_send_resource(DlssResource {
+                sdk: dlss_sdk.unwrap(),
+                context_cache: HashMap::new(),
+            })
             .add_system(extract_dlss_settings.in_schedule(ExtractSchedule))
             .add_system(prepare_dlss.in_set(RenderSet::Prepare));
     }
@@ -79,6 +84,11 @@ pub struct DlssBundle {
 pub struct DlssSettings {
     pub preset: DlssPreset,
     pub reset: bool,
+}
+
+struct DlssResource {
+    sdk: Rc<DlssSdk<RenderDevice>>,
+    context_cache: HashMap<(UVec2, DlssPreset), DlssContext<RenderDevice>>,
 }
 
 fn extract_dlss_settings(mut commands: Commands, mut main_world: ResMut<MainWorld>) {
@@ -103,7 +113,7 @@ fn extract_dlss_settings(mut commands: Commands, mut main_world: ResMut<MainWorl
 }
 
 fn prepare_dlss(
-    dlss_sdk: NonSendMut<DlssSdk<RenderDevice>>,
+    dlss: NonSendMut<DlssResource>,
     mut query: Query<(Entity, &ExtractedView, &DlssSettings, &mut TemporalJitter)>,
 ) {
     // TODO: Create DLSS context, set TemporalJitter, and add ViewportOverride
