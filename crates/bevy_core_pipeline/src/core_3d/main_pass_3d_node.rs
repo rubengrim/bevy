@@ -115,7 +115,6 @@ impl Node for MainPass3dNode {
                 }),
             });
 
-            // TODO: viewport_override
             if let Some(viewport) = camera.viewport.as_ref() {
                 render_pass.set_camera_viewport(viewport);
             }
@@ -147,7 +146,6 @@ impl Node for MainPass3dNode {
                 }),
             });
 
-            // TODO: viewport_override
             if let Some(viewport) = camera.viewport.as_ref() {
                 render_pass.set_camera_viewport(viewport);
             }
@@ -184,7 +182,6 @@ impl Node for MainPass3dNode {
                 }),
             });
 
-            // TODO: viewport_override
             if let Some(viewport) = camera.viewport.as_ref() {
                 render_pass.set_camera_viewport(viewport);
             }

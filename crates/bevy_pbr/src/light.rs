@@ -1280,7 +1280,6 @@ pub(crate) fn assign_lights_to_clusters(
             continue;
         }
 
-        // TODO: viewport_override
         let Some(screen_size) = camera.physical_viewport_size() else {
             clusters.clear();
             continue;

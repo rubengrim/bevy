@@ -91,8 +91,6 @@ pub struct ComputedCameraValues {
 pub struct Camera {
     /// If set, this camera will render to the given [`Viewport`] rectangle within the configured [`RenderTarget`].
     pub viewport: Option<Viewport>,
-    /// Optional resolution to use instead of the viewport size.
-    pub viewport_override: Option<UVec2>,
     /// Cameras with a higher order are rendered later, and thus on top of lower order cameras.
     pub order: isize,
     /// If this is set to `true`, this camera will be rendered to its specified [`RenderTarget`]. If `false`, this
@@ -118,7 +116,6 @@ impl Default for Camera {
             is_active: true,
             order: 0,
             viewport: None,
-            viewport_override: None,
             computed: Default::default(),
             target: Default::default(),
             hdr: false,

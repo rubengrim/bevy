@@ -1090,7 +1090,6 @@ pub fn prepare_lights(
             directional_lights: gpu_directional_lights,
             ambient_color: Vec4::from_slice(&ambient_light.color.as_linear_rgba_f32())
                 * ambient_light.brightness,
-            // TODO: viewport_override
             cluster_factors: Vec4::new(
                 clusters.dimensions.x as f32 / extracted_view.viewport.z as f32,
                 clusters.dimensions.y as f32 / extracted_view.viewport.w as f32,
