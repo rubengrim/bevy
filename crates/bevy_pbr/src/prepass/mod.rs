@@ -3,8 +3,9 @@ use bevy_asset::{load_internal_asset, AssetServer, Handle, HandleUntyped};
 use bevy_core_pipeline::{
     prelude::Camera3d,
     prepass::{
-        AlphaMask3dPrepass, DepthPrepass, NormalPrepass, Opaque3dPrepass, VelocityPrepass,
-        ViewPrepassTextures, DEPTH_PREPASS_FORMAT, NORMAL_PREPASS_FORMAT, VELOCITY_PREPASS_FORMAT,
+        AlphaMask3dPrepass, DepthPrepass, MotionVectorPrepass, NormalPrepass, Opaque3dPrepass,
+        ViewPrepassTextures, DEPTH_PREPASS_FORMAT, MOTION_VECTOR_PREPASS_FORMAT,
+        NORMAL_PREPASS_FORMAT,
     },
 };
 use bevy_ecs::{
@@ -27,16 +28,16 @@ use bevy_render::{
     },
     render_resource::{
         BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
-        BindGroupLayoutEntry, BindingType, BlendState, BufferBindingType, ColorTargetState,
-        ColorWrites, CompareFunction, DepthBiasState, DepthStencilState, DynamicUniformBuffer,
-        Extent3d, FragmentState, FrontFace, MultisampleState, PipelineCache, PolygonMode,
-        PrimitiveState, RenderPipelineDescriptor, Shader, ShaderDefVal, ShaderRef, ShaderStages,
-        ShaderType, SpecializedMeshPipeline, SpecializedMeshPipelineError,
+        BindGroupLayoutEntry, BindingResource, BindingType, BlendState, BufferBindingType,
+        ColorTargetState, ColorWrites, CompareFunction, DepthBiasState, DepthStencilState,
+        DynamicUniformBuffer, Extent3d, FragmentState, FrontFace, MultisampleState, PipelineCache,
+        PolygonMode, PrimitiveState, RenderPipelineDescriptor, Shader, ShaderDefVal, ShaderRef,
+        ShaderStages, ShaderType, SpecializedMeshPipeline, SpecializedMeshPipelineError,
         SpecializedMeshPipelines, StencilFaceState, StencilState, TextureDescriptor,
-        TextureDimension, TextureUsages, VertexState,
+        TextureDimension, TextureSampleType, TextureUsages, TextureViewDimension, VertexState,
     },
     renderer::{RenderDevice, RenderQueue},
-    texture::TextureCache,
+    texture::{FallbackImagesDepth, FallbackImagesMsaa, TextureCache},
     view::{ExtractedView, Msaa, ViewUniform, ViewUniformOffset, ViewUniforms, VisibleEntities},
     Extract, ExtractSchedule, RenderApp, RenderSet,
 };
@@ -44,9 +45,9 @@ use bevy_transform::prelude::GlobalTransform;
 use bevy_utils::{tracing::error, HashMap};
 
 use crate::{
-    AlphaMode, DrawMesh, Material, MaterialPipeline, MaterialPipelineKey, MeshPipeline,
-    MeshPipelineKey, MeshUniform, RenderMaterials, SetMaterialBindGroup, SetMeshBindGroup,
-    MAX_CASCADES_PER_LIGHT, MAX_DIRECTIONAL_LIGHTS,
+    prepare_lights, AlphaMode, DrawMesh, Material, MaterialPipeline, MaterialPipelineKey,
+    MeshPipeline, MeshPipelineKey, MeshUniform, RenderMaterials, SetMaterialBindGroup,
+    SetMeshBindGroup, MAX_CASCADES_PER_LIGHT, MAX_DIRECTIONAL_LIGHTS,
 };
 
 use std::{hash::Hash, marker::PhantomData};
@@ -106,7 +107,17 @@ where
                     .in_set(RenderSet::Prepare)
                     .after(bevy_render::view::prepare_windows),
             )
-            .add_system(prepare_previous_view_projection_uniforms.in_set(RenderSet::Prepare))
+            .add_system(
+                apply_system_buffers
+                    .in_set(RenderSet::Prepare)
+                    .in_set(PrepassLightsViewFlush)
+                    .after(prepare_lights),
+            )
+            .add_system(
+                prepare_previous_view_projection_uniforms
+                    .in_set(RenderSet::Prepare)
+                    .after(PrepassLightsViewFlush),
+            )
             .add_system(queue_prepass_view_bind_group::<M>.in_set(RenderSet::Queue))
             .add_system(queue_prepass_material_meshes::<M>.in_set(RenderSet::Queue))
             .add_system(sort_phase_system::<Opaque3dPrepass>.in_set(RenderSet::PhaseSort))
@@ -129,7 +140,7 @@ pub struct PreviousViewProjection {
 
 pub fn update_previous_view_projections(
     mut commands: Commands,
-    query: Query<(Entity, &Camera, &GlobalTransform), (With<Camera3d>, With<VelocityPrepass>)>,
+    query: Query<(Entity, &Camera, &GlobalTransform), (With<Camera3d>, With<MotionVectorPrepass>)>,
 ) {
     for (entity, camera, camera_transform) in &query {
         commands.entity(entity).insert(PreviousViewProjection {
@@ -143,7 +154,7 @@ pub struct PreviousGlobalTransform(pub Mat4);
 
 pub fn update_mesh_previous_global_transforms(
     mut commands: Commands,
-    views: Query<&Camera, (With<Camera3d>, With<VelocityPrepass>)>,
+    views: Query<&Camera, (With<Camera3d>, With<MotionVectorPrepass>)>,
     meshes: Query<(Entity, &GlobalTransform), With<Handle<Mesh>>>,
 ) {
     let should_run = views.iter().any(|camera| camera.is_active);
@@ -252,6 +263,13 @@ where
             shader_defs.push("ALPHA_MASK".into());
         }
 
+        let blend_key = key
+            .mesh_key
+            .intersection(MeshPipelineKey::BLEND_RESERVED_BITS);
+        if blend_key == MeshPipelineKey::BLEND_PREMULTIPLIED_ALPHA {
+            shader_defs.push("BLEND_PREMULTIPLIED_ALPHA".into());
+        }
+
         if layout.contains(Mesh::ATTRIBUTE_POSITION) {
             shader_defs.push("VERTEX_POSITIONS".into());
             vertex_attributes.push(Mesh::ATTRIBUTE_POSITION.at_shader_location(0));
@@ -265,6 +283,9 @@ where
             "MAX_CASCADES_PER_LIGHT".to_string(),
             MAX_CASCADES_PER_LIGHT as u32,
         ));
+        if key.mesh_key.contains(MeshPipelineKey::DEPTH_CLAMP_ORTHO) {
+            shader_defs.push("DEPTH_CLAMP_ORTHO".into());
+        }
 
         if layout.contains(Mesh::ATTRIBUTE_UV_0) {
             shader_defs.push("VERTEX_UVS".into());
@@ -281,8 +302,18 @@ where
             }
         }
 
-        if key.mesh_key.contains(MeshPipelineKey::VELOCITY_PREPASS) {
-            shader_defs.push("VELOCITY_PREPASS".into());
+        if key
+            .mesh_key
+            .contains(MeshPipelineKey::MOTION_VECTOR_PREPASS)
+        {
+            shader_defs.push("MOTION_VECTOR_PREPASS".into());
+        }
+
+        if key
+            .mesh_key
+            .intersects(MeshPipelineKey::NORMAL_PREPASS | MeshPipelineKey::MOTION_VECTOR_PREPASS)
+        {
+            shader_defs.push("PREPASS_FRAGMENT".into());
         }
 
         if layout.contains(Mesh::ATTRIBUTE_JOINT_INDEX)
@@ -298,13 +329,14 @@ where
 
         let vertex_buffer_layout = layout.get_layout(&vertex_attributes)?;
 
-        // The fragment shader is only used when the normal or velocity prepass is enabled or the material uses an alpha mask
-        let fragment = if key.mesh_key.contains(MeshPipelineKey::NORMAL_PREPASS)
-            || key.mesh_key.contains(MeshPipelineKey::VELOCITY_PREPASS)
-            || key.mesh_key.contains(MeshPipelineKey::ALPHA_MASK)
+        // The fragment shader is only used when the normal prepass or motion vectors prepass
+        // is enabled or the material uses alpha cutoff values
+        let fragment = if key.mesh_key.intersects(
+            MeshPipelineKey::NORMAL_PREPASS
+                | MeshPipelineKey::MOTION_VECTOR_PREPASS
+                | MeshPipelineKey::ALPHA_MASK,
+        ) || blend_key == MeshPipelineKey::BLEND_PREMULTIPLIED_ALPHA
         {
-            shader_defs.push("PREPASS_FRAGMENT".into());
-
             // Use the fragment shader from the material if present
             let frag_shader_handle = if let Some(handle) = &self.material_fragment_shader {
                 handle.clone()
@@ -312,7 +344,7 @@ where
                 PREPASS_SHADER_HANDLE.typed::<Shader>()
             };
 
-            // Setup prepass fragment targets - normals in slot 0 (or None if not needed), velocity in slot 1
+            // Setup prepass fragment targets - normals in slot 0 (or None if not needed), motion vectors in slot 1
             let mut targets = vec![];
             if key.mesh_key.contains(MeshPipelineKey::NORMAL_PREPASS) {
                 targets.push(Some(ColorTargetState {
@@ -320,12 +352,18 @@ where
                     blend: Some(BlendState::REPLACE),
                     write_mask: ColorWrites::ALL,
                 }));
-            } else {
+            } else if key
+                .mesh_key
+                .contains(MeshPipelineKey::MOTION_VECTOR_PREPASS)
+            {
                 targets.push(None);
             }
-            if key.mesh_key.contains(MeshPipelineKey::VELOCITY_PREPASS) {
+            if key
+                .mesh_key
+                .contains(MeshPipelineKey::MOTION_VECTOR_PREPASS)
+            {
                 targets.push(Some(ColorTargetState {
-                    format: VELOCITY_PREPASS_FORMAT,
+                    format: MOTION_VECTOR_PREPASS_FORMAT,
                     blend: Some(BlendState::REPLACE),
                     write_mask: ColorWrites::ALL,
                 }));
@@ -400,6 +438,93 @@ where
     }
 }
 
+pub fn get_bind_group_layout_entries(
+    bindings: [u32; 3],
+    multisampled: bool,
+) -> [BindGroupLayoutEntry; 3] {
+    [
+        // Depth texture
+        BindGroupLayoutEntry {
+            binding: bindings[0],
+            visibility: ShaderStages::FRAGMENT,
+            ty: BindingType::Texture {
+                multisampled,
+                sample_type: TextureSampleType::Depth,
+                view_dimension: TextureViewDimension::D2,
+            },
+            count: None,
+        },
+        // Normal texture
+        BindGroupLayoutEntry {
+            binding: bindings[1],
+            visibility: ShaderStages::FRAGMENT,
+            ty: BindingType::Texture {
+                multisampled,
+                sample_type: TextureSampleType::Float { filterable: true },
+                view_dimension: TextureViewDimension::D2,
+            },
+            count: None,
+        },
+        // Motion Vectors texture
+        BindGroupLayoutEntry {
+            binding: bindings[2],
+            visibility: ShaderStages::FRAGMENT,
+            ty: BindingType::Texture {
+                multisampled,
+                sample_type: TextureSampleType::Float { filterable: true },
+                view_dimension: TextureViewDimension::D2,
+            },
+            count: None,
+        },
+    ]
+}
+
+pub fn get_bindings<'a>(
+    prepass_textures: Option<&'a ViewPrepassTextures>,
+    fallback_images: &'a mut FallbackImagesMsaa,
+    fallback_depths: &'a mut FallbackImagesDepth,
+    msaa: &'a Msaa,
+    bindings: [u32; 3],
+) -> [BindGroupEntry<'a>; 3] {
+    let depth_view = match prepass_textures.and_then(|x| x.depth.as_ref()) {
+        Some(texture) => &texture.default_view,
+        None => {
+            &fallback_depths
+                .image_for_samplecount(msaa.samples())
+                .texture_view
+        }
+    };
+
+    let normal_motion_vectors_fallback = &fallback_images
+        .image_for_samplecount(msaa.samples())
+        .texture_view;
+
+    let normal_view = match prepass_textures.and_then(|x| x.normal.as_ref()) {
+        Some(texture) => &texture.default_view,
+        None => normal_motion_vectors_fallback,
+    };
+
+    let motion_vectors_view = match prepass_textures.and_then(|x| x.motion_vectors.as_ref()) {
+        Some(texture) => &texture.default_view,
+        None => normal_motion_vectors_fallback,
+    };
+
+    [
+        BindGroupEntry {
+            binding: bindings[0],
+            resource: BindingResource::TextureView(depth_view),
+        },
+        BindGroupEntry {
+            binding: bindings[1],
+            resource: BindingResource::TextureView(normal_view),
+        },
+        BindGroupEntry {
+            binding: bindings[2],
+            resource: BindingResource::TextureView(motion_vectors_view),
+        },
+    ]
+}
+
 // Extract the render phases for the prepass
 pub fn extract_camera_prepass_phase(
     mut commands: Commands,
@@ -410,7 +535,7 @@ pub fn extract_camera_prepass_phase(
                 &Camera,
                 Option<&DepthPrepass>,
                 Option<&NormalPrepass>,
-                Option<&VelocityPrepass>,
+                Option<&MotionVectorPrepass>,
                 Option<&PreviousViewProjection>,
             ),
             With<Camera3d>,
@@ -422,14 +547,17 @@ pub fn extract_camera_prepass_phase(
         camera,
         depth_prepass,
         normal_prepass,
-        velocity_prepass,
+        motion_vector_prepass,
         maybe_previous_view_proj,
     ) in cameras_3d.iter()
     {
         if camera.is_active {
             let mut entity = commands.get_or_spawn(entity);
 
-            if depth_prepass.is_some() || normal_prepass.is_some() || velocity_prepass.is_some() {
+            if depth_prepass.is_some()
+                || normal_prepass.is_some()
+                || motion_vector_prepass.is_some()
+            {
                 entity.insert((
                     RenderPhase::<Opaque3dPrepass>::default(),
                     RenderPhase::<AlphaMask3dPrepass>::default(),
@@ -442,8 +570,8 @@ pub fn extract_camera_prepass_phase(
             if normal_prepass.is_some() {
                 entity.insert(NormalPrepass);
             }
-            if velocity_prepass.is_some() {
-                entity.insert(VelocityPrepass);
+            if motion_vector_prepass.is_some() {
+                entity.insert(MotionVectorPrepass);
             }
 
             if let Some(previous_view) = maybe_previous_view_proj {
@@ -503,7 +631,7 @@ pub fn prepare_prepass_textures(
             &ExtractedCamera,
             Option<&DepthPrepass>,
             Option<&NormalPrepass>,
-            Option<&VelocityPrepass>,
+            Option<&MotionVectorPrepass>,
         ),
         (
             With<RenderPhase<Opaque3dPrepass>>,
@@ -513,8 +641,8 @@ pub fn prepare_prepass_textures(
 ) {
     let mut depth_textures = HashMap::default();
     let mut normal_textures = HashMap::default();
-    let mut velocity_textures = HashMap::default();
-    for (entity, camera, depth_prepass, normal_prepass, velocity_prepass) in &views_3d {
+    let mut motion_vectors_textures = HashMap::default();
+    for (entity, camera, depth_prepass, normal_prepass, motion_vector_prepass) in &views_3d {
         let Some(physical_target_size) = camera.physical_target_size else {
             continue;
         };
@@ -568,19 +696,19 @@ pub fn prepare_prepass_textures(
                 .clone()
         });
 
-        let cached_velocities_texture = velocity_prepass.is_some().then(|| {
-            velocity_textures
+        let cached_motion_vectors_texture = motion_vector_prepass.is_some().then(|| {
+            motion_vectors_textures
                 .entry(camera.target.clone())
                 .or_insert_with(|| {
                     texture_cache.get(
                         &render_device,
                         TextureDescriptor {
-                            label: Some("prepass_velocity_texture"),
+                            label: Some("prepass_motion_vectors_textures"),
                             size,
                             mip_level_count: 1,
                             sample_count: msaa.samples(),
                             dimension: TextureDimension::D2,
-                            format: VELOCITY_PREPASS_FORMAT,
+                            format: MOTION_VECTOR_PREPASS_FORMAT,
                             usage: TextureUsages::RENDER_ATTACHMENT
                                 | TextureUsages::TEXTURE_BINDING,
                             view_formats: &[],
@@ -593,7 +721,7 @@ pub fn prepare_prepass_textures(
         commands.entity(entity).insert(ViewPrepassTextures {
             depth: cached_depth_texture,
             normal: cached_normals_texture,
-            velocity: cached_velocities_texture,
+            motion_vectors: cached_motion_vectors_texture,
             size,
         });
     }
@@ -652,7 +780,7 @@ pub fn queue_prepass_material_meshes<M: Material>(
         &mut RenderPhase<AlphaMask3dPrepass>,
         Option<&DepthPrepass>,
         Option<&NormalPrepass>,
-        Option<&VelocityPrepass>,
+        Option<&MotionVectorPrepass>,
     )>,
 ) where
     M::Data: PartialEq + Eq + Hash + Clone,
@@ -672,7 +800,7 @@ pub fn queue_prepass_material_meshes<M: Material>(
         mut alpha_mask_phase,
         depth_prepass,
         normal_prepass,
-        velocity_prepass,
+        motion_vector_prepass,
     ) in &mut views
     {
         let mut view_key = MeshPipelineKey::from_msaa_samples(msaa.samples());
@@ -682,8 +810,8 @@ pub fn queue_prepass_material_meshes<M: Material>(
         if normal_prepass.is_some() {
             view_key |= MeshPipelineKey::NORMAL_PREPASS;
         }
-        if velocity_prepass.is_some() {
-            view_key |= MeshPipelineKey::VELOCITY_PREPASS;
+        if motion_vector_prepass.is_some() {
+            view_key |= MeshPipelineKey::MOTION_VECTOR_PREPASS;
         }
 
         let rangefinder = view.rangefinder3d();
@@ -797,3 +925,6 @@ pub type DrawPrepass<M> = (
     SetMeshBindGroup<2>,
     DrawMesh,
 );
+
+#[derive(Debug, Hash, PartialEq, Eq, Clone, SystemSet)]
+struct PrepassLightsViewFlush;
