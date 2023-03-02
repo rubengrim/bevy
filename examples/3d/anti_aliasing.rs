@@ -218,7 +218,7 @@ fn update_ui(
     ui.push_str("\n(5) DLSS (dlss feature disabled)");
     #[cfg(feature = "dlss")]
     if dlss_available.is_none() {
-        ui.push_str("\n(5) DLSS (not available)");
+        ui.push_str("\n(X) DLSS (not available)");
     } else if dlss.is_some() {
         ui.push_str("\n(5) *DLSS*");
     } else {
