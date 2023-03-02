@@ -69,6 +69,8 @@ impl Plugin for DlssPlugin {
             })
             .add_system(extract_dlss_settings.in_schedule(ExtractSchedule))
             .add_system(prepare_dlss.in_set(RenderSet::Prepare));
+
+        // TODO: Render node
     }
 }
 
@@ -113,8 +115,9 @@ fn extract_dlss_settings(mut commands: Commands, mut main_world: ResMut<MainWorl
 }
 
 fn prepare_dlss(
-    dlss: NonSendMut<DlssResource>,
     mut query: Query<(Entity, &ExtractedView, &DlssSettings, &mut TemporalJitter)>,
+    dlss: NonSendMut<DlssResource>,
+    mut commands: Commands,
 ) {
     // TODO: Create DLSS context, set TemporalJitter, and add ViewportOverride
 }
