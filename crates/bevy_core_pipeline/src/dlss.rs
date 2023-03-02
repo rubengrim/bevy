@@ -3,7 +3,7 @@ pub use dlss_wgpu::DlssPreset;
 
 use crate::{
     prelude::Camera3d,
-    prepass::{DepthPrepass, VelocityPrepass},
+    prepass::{DepthPrepass, MotionVectorPrepass},
 };
 use bevy_app::{App, IntoSystemAppConfig, Plugin};
 use bevy_ecs::{
@@ -72,7 +72,7 @@ pub struct DlssBundle {
     pub settings: DlssSettings,
     pub jitter: TemporalJitter,
     pub depth_prepass: DepthPrepass,
-    pub velocity_prepass: VelocityPrepass,
+    pub motion_vector_prepass: MotionVectorPrepass,
 }
 
 #[derive(Component, Clone, Default)]
@@ -87,7 +87,7 @@ fn extract_dlss_settings(mut commands: Commands, mut main_world: ResMut<MainWorl
             With<Camera3d>,
             With<TemporalJitter>,
             With<DepthPrepass>,
-            With<VelocityPrepass>,
+            With<MotionVectorPrepass>,
         )>();
 
     for (entity, camera, camera_projection, mut dlss_settings) in query.iter_mut(&mut main_world) {
