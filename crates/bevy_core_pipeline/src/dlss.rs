@@ -4,27 +4,31 @@ pub use dlss_wgpu::DlssPreset;
 use crate::{
     core_3d::ViewportOverride,
     prelude::Camera3d,
-    prepass::{DepthPrepass, MotionVectorPrepass},
+    prepass::{DepthPrepass, MotionVectorPrepass, ViewPrepassTextures},
 };
 use bevy_app::{App, IntoSystemAppConfig, Plugin};
 use bevy_core::FrameCount;
 use bevy_ecs::{
     prelude::{Bundle, Component, Entity, NonSendMut, Query},
-    query::With,
+    query::{QueryState, With},
     schedule::IntoSystemConfig,
     system::{Commands, Res, ResMut},
+    world::World,
 };
 use bevy_math::{UVec2, Vec4Swizzles};
 use bevy_render::{
-    camera::{TemporalJitter, Viewport},
+    camera::{ExtractedCamera, TemporalJitter, Viewport},
     prelude::{Camera, Msaa, Projection},
+    render_graph::{Node, NodeRunError, RenderGraph, RenderGraphContext, SlotInfo, SlotType},
     render_resource::{CommandEncoder, CommandEncoderDescriptor},
-    renderer::{RenderDevice, RenderQueue},
-    view::ExtractedView,
+    renderer::{RenderAdapter, RenderContext, RenderDevice, RenderQueue},
+    view::{prepare_view_uniforms, ExtractedView, ViewTarget},
     ExtractSchedule, MainWorld, RenderApp, RenderSet,
 };
 use bevy_utils::{tracing::info, HashMap};
-use dlss_wgpu::{DlssContext, DlssFeatureFlags, DlssSdk};
+use dlss_wgpu::{
+    DlssContext, DlssExposure, DlssFeatureFlags, DlssRenderParameters, DlssSdk, DlssTexture,
+};
 use std::{
     mem,
     rc::Rc,
@@ -93,7 +97,7 @@ impl Plugin for DlssPlugin {
             draw_3d_graph::node::DLSS,
             DlssNode::IN_VIEW,
         );
-        // MAIN_PASS -> TAA -> START_POST_PROCESSING
+        // MAIN_PASS -> TAA -> BLOOM / TONEMAPPING
         draw_3d_graph.add_node_edge(
             crate::core_3d::graph::node::MAIN_PASS,
             draw_3d_graph::node::DLSS,
@@ -102,15 +106,18 @@ impl Plugin for DlssPlugin {
             draw_3d_graph::node::DLSS,
             crate::core_3d::graph::node::BLOOM,
         );
-        // TODO: START_POST_PROCESSING
-        // draw_3d_graph.add_node_edge(
-        //     draw_3d_graph::node::DLSS,
-        //     crate::core_3d::graph::node::TONEMAPPING,
-        // );
+        draw_3d_graph.add_node_edge(
+            draw_3d_graph::node::DLSS,
+            crate::core_3d::graph::node::BLOOM,
+        );
+        draw_3d_graph.add_node_edge(
+            draw_3d_graph::node::DLSS,
+            crate::core_3d::graph::node::TONEMAPPING,
+        );
     }
 }
 
-struct DlssNode {
+pub struct DlssNode {
     view_query: QueryState<(
         &'static ExtractedView,
         &'static DlssSettings,
@@ -150,16 +157,10 @@ impl Node for DlssNode {
         let _dlss_span = info_span!("dlss").entered();
 
         let view_entity = graph.get_input_entity(Self::IN_VIEW)?;
-        let dlss = world.resource::<DlssResource>();
-        // let (
-        //     Ok((camera, view_target, taa_history_textures, prepass_textures, taa_pipeline_id)),
-        //     Some(pipelines),
-        //     Some(pipeline_cache),
-        // ) = (
-        //     self.view_query.get_manual(world, view_entity),
-        // ) else {
-        //     return Ok(());
-        // };
+        let adapter = world.resource::<RenderAdapter>();
+        let dlss = world.non_send_resource::<DlssResource>();
+        let Ok((view, dlss_settings, viewport_override, temporal_jitter, view_target, prepass_textures))
+            = self.view_query.get_manual(world, view_entity) else { return Ok(()); };
         let (
             Some(prepass_motion_vectors_texture),
             Some(prepass_depth_texture),
@@ -169,19 +170,50 @@ impl Node for DlssNode {
         ) else {
             return Ok(());
         };
-
         let render_resolution = viewport_override.0.physical_size;
         let upscaled_resolution = view.viewport.zw();
-        let dlss_context = dlss.get_context(
-            upscaled_resolution,
-            dlss_settings.preset,
-            view.hdr,
-            render_context.command_encoder(),
-            render_context.render_device,
-        );
+        let mut dlss_context = dlss.get_context(upscaled_resolution, dlss_settings.preset);
         let view_target = view_target.post_process_write();
 
-        dlss_context.render(todo!());
+        dlss_context
+            .render(
+                DlssRenderParameters {
+                    color: DlssTexture {
+                        texture: todo!(),
+                        view: todo!(),
+                        subresource_range: todo!(),
+                        usages: todo!(),
+                    },
+                    depth: DlssTexture {
+                        texture: todo!(),
+                        view: todo!(),
+                        subresource_range: todo!(),
+                        usages: todo!(),
+                    },
+                    motion_vectors: DlssTexture {
+                        texture: todo!(),
+                        view: todo!(),
+                        subresource_range: todo!(),
+                        usages: todo!(),
+                    },
+                    exposure: DlssExposure::Automatic,
+                    transparency_mask: None, // TODO
+                    bias: None,              // TODO
+                    dlss_output: DlssTexture {
+                        texture: todo!(),
+                        view: todo!(),
+                        subresource_range: todo!(),
+                        usages: todo!(),
+                    },
+                    reset: dlss_settings.reset,
+                    jitter_offset: temporal_jitter.offset - 0.5,
+                    partial_texture_size: Some(render_resolution),
+                    motion_vector_scale: Some(render_resolution.as_vec2()),
+                },
+                render_context.command_encoder(),
+                &adapter.0,
+            )
+            .expect("Failed to render DLSS");
 
         Ok(())
     }
@@ -207,7 +239,7 @@ struct DlssResource {
 }
 
 impl DlssResource {
-    fn get_context(
+    fn get_or_create_context(
         &mut self,
         upscaled_resolution: UVec2,
         dlss_preset: DlssPreset,
@@ -242,7 +274,7 @@ impl DlssResource {
                     dlss_preset,
                     dlss_feature_flags,
                     &dlss_sdk,
-                    &mut maybe_command_encoder.unwrap(),
+                    maybe_command_encoder.as_mut().unwrap(),
                 )
                 .expect("Failed to create DlssContext");
 
@@ -251,6 +283,17 @@ impl DlssResource {
 
         dlss_context.1 = true;
         dlss_context.0.lock().unwrap()
+    }
+
+    fn get_context(
+        &self,
+        upscaled_resolution: UVec2,
+        dlss_preset: DlssPreset,
+    ) -> MutexGuard<DlssContext<RenderDevice>> {
+        self.context_cache[&(upscaled_resolution, dlss_preset)]
+            .0
+            .lock()
+            .unwrap()
     }
 
     fn drop_stale_contexts(&mut self) {
@@ -296,9 +339,9 @@ fn prepare_dlss(
 ) {
     let mut maybe_command_encoder = None;
 
-    for (entity, view, dlss_settings, camera, mut temporal_jitter) in &mut query {
+    for (entity, view, camera, dlss_settings, mut temporal_jitter) in &mut query {
         let upscaled_resolution = view.viewport.zw();
-        let dlss_context = dlss.get_context(
+        let dlss_context = dlss.get_or_create_context(
             upscaled_resolution,
             dlss_settings.preset,
             view.hdr,
@@ -307,12 +350,13 @@ fn prepare_dlss(
         );
         let render_resolution = dlss_context.max_render_resolution();
 
-        temporal_jitter.offset = dlss_context.suggested_jitter(frame_count.0) + 0.5;
+        temporal_jitter.offset =
+            dlss_context.suggested_jitter(frame_count.0, render_resolution) + 0.5;
 
         commands.entity(entity).insert(ViewportOverride(Viewport {
             physical_position: view.viewport.xy(),
             physical_size: render_resolution,
-            depth: camera.viewport.map(|v| v.depth).unwap_or(0.0..1.0),
+            depth: camera.viewport.clone().map(|v| v.depth).unwrap_or(0.0..1.0),
         }));
     }
 
