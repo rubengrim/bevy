@@ -13,7 +13,7 @@ use crate::{
     render_phase::ViewRangefinder3d,
     render_resource::{DynamicUniformBuffer, ShaderType, Texture, TextureView},
     renderer::{RenderDevice, RenderQueue},
-    texture::{BevyDefault, TextureCache},
+    texture::{BevyDefault, CachedTexture, TextureCache},
     RenderApp, RenderSet,
 };
 use bevy_app::{App, Plugin};
@@ -193,6 +193,8 @@ pub struct ViewTarget {
 pub struct PostProcessWrite<'a> {
     pub source: &'a TextureView,
     pub destination: &'a TextureView,
+    pub source_texture: &'a Texture,
+    pub destination_texture: &'a Texture,
 }
 
 impl ViewTarget {
@@ -226,9 +228,9 @@ impl ViewTarget {
     /// The "main" unsampled texture.
     pub fn main_texture(&self) -> &TextureView {
         if self.main_texture.load(Ordering::SeqCst) == 0 {
-            &self.main_textures.a
+            &self.main_textures.a.default_view
         } else {
-            &self.main_textures.b
+            &self.main_textures.b.default_view
         }
     }
 
@@ -240,9 +242,9 @@ impl ViewTarget {
     /// ahead of time.
     pub fn main_texture_other(&self) -> &TextureView {
         if self.main_texture.load(Ordering::SeqCst) == 0 {
-            &self.main_textures.b
+            &self.main_textures.b.default_view
         } else {
-            &self.main_textures.a
+            &self.main_textures.a.default_view
         }
     }
 
@@ -286,13 +288,17 @@ impl ViewTarget {
         // if the old main texture is a, then the post processing must write from a to b
         if old_is_a_main_texture == 0 {
             PostProcessWrite {
-                source: &self.main_textures.a,
-                destination: &self.main_textures.b,
+                source: &self.main_textures.a.default_view,
+                destination: &self.main_textures.b.default_view,
+                source_texture: &self.main_textures.a.texture,
+                destination_texture: &self.main_textures.b.texture,
             }
         } else {
             PostProcessWrite {
-                source: &self.main_textures.b,
-                destination: &self.main_textures.a,
+                source: &self.main_textures.b.default_view,
+                destination: &self.main_textures.a.default_view,
+                source_texture: &self.main_textures.b.texture,
+                destination_texture: &self.main_textures.a.texture,
             }
         }
     }
@@ -353,8 +359,8 @@ pub fn prepare_view_uniforms(
 
 #[derive(Clone)]
 struct MainTargetTextures {
-    a: TextureView,
-    b: TextureView,
+    a: CachedTexture,
+    b: CachedTexture,
     sampled: Option<TextureView>,
     /// 0 represents `main_textures.a`, 1 represents `main_textures.b`
     /// This is shared across view targets with the same render target
@@ -401,29 +407,26 @@ fn prepare_view_targets(
                             dimension: TextureDimension::D2,
                             format: main_texture_format,
                             usage: TextureUsages::RENDER_ATTACHMENT
-                                | TextureUsages::TEXTURE_BINDING,
+                                | TextureUsages::TEXTURE_BINDING
+                                | TextureUsages::STORAGE_BINDING,
                             // TODO: Consider changing this if main_texture_format is not sRGB
                             view_formats: &[],
                         };
                         MainTargetTextures {
-                            a: texture_cache
-                                .get(
-                                    &render_device,
-                                    TextureDescriptor {
-                                        label: Some("main_texture_a"),
-                                        ..descriptor
-                                    },
-                                )
-                                .default_view,
-                            b: texture_cache
-                                .get(
-                                    &render_device,
-                                    TextureDescriptor {
-                                        label: Some("main_texture_b"),
-                                        ..descriptor
-                                    },
-                                )
-                                .default_view,
+                            a: texture_cache.get(
+                                &render_device,
+                                TextureDescriptor {
+                                    label: Some("main_texture_a"),
+                                    ..descriptor
+                                },
+                            ),
+                            b: texture_cache.get(
+                                &render_device,
+                                TextureDescriptor {
+                                    label: Some("main_texture_b"),
+                                    ..descriptor
+                                },
+                            ),
                             sampled: (msaa.samples() > 1).then(|| {
                                 texture_cache
                                     .get(

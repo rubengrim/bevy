@@ -15,6 +15,7 @@ use bevy::{
     pbr::CascadeShadowConfigBuilder,
     prelude::*,
     render::{
+        pipelined_rendering::PipelinedRenderingPlugin,
         render_resource::{Extent3d, SamplerDescriptor, TextureDimension, TextureFormat},
         texture::ImageSampler,
     },
@@ -31,7 +32,8 @@ fn main() {
     )));
 
     app.insert_resource(Msaa::Off)
-        .add_plugins(DefaultPlugins)
+        // TODO: Get pipelined rendering working with DLSS
+        .add_plugins(DefaultPlugins.build().disable::<PipelinedRenderingPlugin>())
         .add_plugin(TemporalAntialiasPlugin)
         .add_startup_system(setup)
         .add_system(modify_aa)
