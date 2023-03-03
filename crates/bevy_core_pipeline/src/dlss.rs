@@ -108,10 +108,6 @@ impl Plugin for DlssPlugin {
         );
         draw_3d_graph.add_node_edge(
             draw_3d_graph::node::DLSS,
-            crate::core_3d::graph::node::BLOOM,
-        );
-        draw_3d_graph.add_node_edge(
-            draw_3d_graph::node::DLSS,
             crate::core_3d::graph::node::TONEMAPPING,
         );
     }
