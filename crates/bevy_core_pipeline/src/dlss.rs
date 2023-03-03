@@ -2,27 +2,34 @@ pub use bevy_render::{DlssAvailable, DlssProjectId};
 pub use dlss_wgpu::DlssPreset;
 
 use crate::{
+    core_3d::ViewportOverride,
     prelude::Camera3d,
     prepass::{DepthPrepass, MotionVectorPrepass},
 };
 use bevy_app::{App, IntoSystemAppConfig, Plugin};
+use bevy_core::FrameCount;
 use bevy_ecs::{
     prelude::{Bundle, Component, Entity, NonSendMut, Query},
     query::With,
     schedule::IntoSystemConfig,
-    system::{Commands, ResMut},
+    system::{Commands, Res, ResMut},
 };
-use bevy_math::UVec2;
+use bevy_math::{UVec2, Vec4Swizzles};
 use bevy_render::{
-    camera::TemporalJitter,
+    camera::{TemporalJitter, Viewport},
     prelude::{Camera, Msaa, Projection},
-    renderer::RenderDevice,
+    render_resource::{CommandEncoder, CommandEncoderDescriptor},
+    renderer::{RenderDevice, RenderQueue},
     view::ExtractedView,
     ExtractSchedule, MainWorld, RenderApp, RenderSet,
 };
 use bevy_utils::{tracing::info, HashMap};
-use dlss_wgpu::{DlssContext, DlssSdk};
-use std::rc::Rc;
+use dlss_wgpu::{DlssContext, DlssFeatureFlags, DlssSdk};
+use std::{
+    mem,
+    rc::Rc,
+    sync::{Mutex, MutexGuard},
+};
 
 mod draw_3d_graph {
     pub mod node {
@@ -90,7 +97,60 @@ pub struct DlssSettings {
 
 struct DlssResource {
     sdk: Rc<DlssSdk<RenderDevice>>,
-    context_cache: HashMap<(UVec2, DlssPreset), (DlssContext<RenderDevice>, bool)>,
+    context_cache: HashMap<(UVec2, DlssPreset), (Mutex<DlssContext<RenderDevice>>, bool)>,
+}
+
+impl DlssResource {
+    fn get_context(
+        &mut self,
+        upscaled_resolution: UVec2,
+        dlss_preset: DlssPreset,
+        hdr: bool,
+        maybe_command_encoder: &mut Option<CommandEncoder>,
+        render_device: &RenderDevice,
+    ) -> MutexGuard<DlssContext<RenderDevice>> {
+        let dlss_sdk = Rc::clone(&self.sdk);
+
+        let mut dlss_context = self
+            .context_cache
+            .entry((upscaled_resolution, dlss_preset))
+            .or_insert_with(|| {
+                if maybe_command_encoder.is_none() {
+                    *maybe_command_encoder = Some(render_device.create_command_encoder(
+                        &CommandEncoderDescriptor {
+                            label: Some("dlss_context_creation_command_encoder"),
+                        },
+                    ));
+                }
+
+                let mut dlss_feature_flags = DlssFeatureFlags::LowResolutionMotionVectors
+                    | DlssFeatureFlags::InvertedDepth
+                    | DlssFeatureFlags::AutoExposure
+                    | DlssFeatureFlags::PartialTextureInputs;
+                if hdr {
+                    dlss_feature_flags |= DlssFeatureFlags::HighDynamicRange;
+                }
+
+                let dlss_context = DlssContext::new(
+                    todo!(),
+                    dlss_preset,
+                    dlss_feature_flags,
+                    &dlss_sdk,
+                    &mut maybe_command_encoder.unwrap(),
+                )
+                .expect("Failed to create DlssContext");
+
+                (Mutex::new(dlss_context), true)
+            });
+
+        dlss_context.1 = true;
+        dlss_context.0.lock().unwrap()
+    }
+
+    fn drop_stale_contexts(&mut self) {
+        self.context_cache
+            .retain(|_, (_, in_use)| mem::take(in_use));
+    }
 }
 
 fn extract_dlss_settings(mut commands: Commands, mut main_world: ResMut<MainWorld>) {
@@ -116,8 +176,40 @@ fn extract_dlss_settings(mut commands: Commands, mut main_world: ResMut<MainWorl
 
 fn prepare_dlss(
     mut query: Query<(Entity, &ExtractedView, &DlssSettings, &mut TemporalJitter)>,
-    dlss: NonSendMut<DlssResource>,
+    mut dlss: NonSendMut<DlssResource>,
+    render_device: Res<RenderDevice>,
+    render_queue: Res<RenderQueue>,
+    frame_count: Res<FrameCount>,
     mut commands: Commands,
 ) {
-    // TODO: Create DLSS context, set TemporalJitter, and add ViewportOverride
+    let mut maybe_command_encoder = None;
+
+    for (entity, view, dlss_settings, mut temporal_jitter) in &mut query {
+        let upscaled_resolution = view.viewport.zw();
+        let dlss_context = dlss.get_context(
+            upscaled_resolution,
+            dlss_settings.preset,
+            view.hdr,
+            &mut maybe_command_encoder,
+            &render_device,
+        );
+        let render_resolution = dlss_context.max_render_resolution();
+
+        commands.entity(entity).insert(ViewportOverride(Viewport {
+            physical_position: todo!(),
+            physical_size: todo!(),
+            depth: todo!(),
+        }));
+
+        // TODO: Move jitter calculations into dlss_wgpu
+        // let ratio = upscaled_resolution.as_vec2() / render_resolution.as_vec2();
+        // let phase_count = (8.0 * ratio * ratio).round() as usize;
+        temporal_jitter.offset = todo!();
+    }
+
+    if let Some(command_encoder) = maybe_command_encoder {
+        render_queue.submit([command_encoder.finish()]);
+    }
+
+    dlss.drop_stale_contexts();
 }
