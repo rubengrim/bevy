@@ -371,7 +371,7 @@ fn prepare_dlss(
             &mut maybe_command_encoder,
             &render_device,
         );
-        let render_resolution = dlss_context.max_render_resolution();
+        let render_resolution = dlss_context.render_resolution();
 
         temporal_jitter.offset =
             dlss_context.suggested_jitter(frame_count.0, render_resolution) + 0.5;
