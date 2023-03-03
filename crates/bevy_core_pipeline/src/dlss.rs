@@ -75,7 +75,11 @@ impl Plugin for DlssPlugin {
                 context_cache: HashMap::new(),
             })
             .add_system(extract_dlss_settings.in_schedule(ExtractSchedule))
-            .add_system(prepare_dlss.in_set(RenderSet::Prepare));
+            .add_system(
+                prepare_dlss
+                    .in_set(RenderSet::Prepare)
+                    .before(prepare_view_uniforms),
+            );
 
         // TODO: Render node
     }
@@ -132,7 +136,7 @@ impl DlssResource {
                 }
 
                 let dlss_context = DlssContext::new(
-                    todo!(),
+                    upscaled_resolution,
                     dlss_preset,
                     dlss_feature_flags,
                     &dlss_sdk,
@@ -175,7 +179,13 @@ fn extract_dlss_settings(mut commands: Commands, mut main_world: ResMut<MainWorl
 }
 
 fn prepare_dlss(
-    mut query: Query<(Entity, &ExtractedView, &DlssSettings, &mut TemporalJitter)>,
+    mut query: Query<(
+        Entity,
+        &ExtractedView,
+        &ExtractedCamera,
+        &DlssSettings,
+        &mut TemporalJitter,
+    )>,
     mut dlss: NonSendMut<DlssResource>,
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
@@ -184,7 +194,7 @@ fn prepare_dlss(
 ) {
     let mut maybe_command_encoder = None;
 
-    for (entity, view, dlss_settings, mut temporal_jitter) in &mut query {
+    for (entity, view, dlss_settings, camera, mut temporal_jitter) in &mut query {
         let upscaled_resolution = view.viewport.zw();
         let dlss_context = dlss.get_context(
             upscaled_resolution,
@@ -195,16 +205,13 @@ fn prepare_dlss(
         );
         let render_resolution = dlss_context.max_render_resolution();
 
-        commands.entity(entity).insert(ViewportOverride(Viewport {
-            physical_position: todo!(),
-            physical_size: todo!(),
-            depth: todo!(),
-        }));
+        temporal_jitter.offset = dlss_context.suggested_jitter(frame_count.0) + 0.5;
 
-        // TODO: Move jitter calculations into dlss_wgpu
-        // let ratio = upscaled_resolution.as_vec2() / render_resolution.as_vec2();
-        // let phase_count = (8.0 * ratio * ratio).round() as usize;
-        temporal_jitter.offset = todo!();
+        commands.entity(entity).insert(ViewportOverride(Viewport {
+            physical_position: view.viewport.xy(),
+            physical_size: render_resolution,
+            depth: camera.viewport.map(|v| v.depth).unwap_or(0.0..1.0),
+        }));
     }
 
     if let Some(command_encoder) = maybe_command_encoder {
