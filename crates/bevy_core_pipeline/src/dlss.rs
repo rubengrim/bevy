@@ -81,7 +81,109 @@ impl Plugin for DlssPlugin {
                     .before(prepare_view_uniforms),
             );
 
-        // TODO: Render node
+        let dlss_node = DlssNode::new(&mut render_app.world);
+        let mut graph = render_app.world.resource_mut::<RenderGraph>();
+        let draw_3d_graph = graph
+            .get_sub_graph_mut(crate::core_3d::graph::NAME)
+            .unwrap();
+        draw_3d_graph.add_node(draw_3d_graph::node::DLSS, dlss_node);
+        draw_3d_graph.add_slot_edge(
+            draw_3d_graph.input_node().id,
+            crate::core_3d::graph::input::VIEW_ENTITY,
+            draw_3d_graph::node::DLSS,
+            DlssNode::IN_VIEW,
+        );
+        // MAIN_PASS -> TAA -> START_POST_PROCESSING
+        draw_3d_graph.add_node_edge(
+            crate::core_3d::graph::node::MAIN_PASS,
+            draw_3d_graph::node::DLSS,
+        );
+        draw_3d_graph.add_node_edge(
+            draw_3d_graph::node::DLSS,
+            crate::core_3d::graph::node::BLOOM,
+        );
+        // TODO: START_POST_PROCESSING
+        // draw_3d_graph.add_node_edge(
+        //     draw_3d_graph::node::DLSS,
+        //     crate::core_3d::graph::node::TONEMAPPING,
+        // );
+    }
+}
+
+struct DlssNode {
+    view_query: QueryState<(
+        &'static ExtractedView,
+        &'static DlssSettings,
+        &'static ViewportOverride,
+        &'static TemporalJitter,
+        &'static ViewTarget,
+        &'static ViewPrepassTextures,
+    )>,
+}
+
+impl DlssNode {
+    const IN_VIEW: &'static str = "view";
+
+    fn new(world: &mut World) -> Self {
+        Self {
+            view_query: QueryState::new(world),
+        }
+    }
+}
+
+impl Node for DlssNode {
+    fn input(&self) -> Vec<SlotInfo> {
+        vec![SlotInfo::new(Self::IN_VIEW, SlotType::Entity)]
+    }
+
+    fn update(&mut self, world: &mut World) {
+        self.view_query.update_archetypes(world);
+    }
+
+    fn run(
+        &self,
+        graph: &mut RenderGraphContext,
+        render_context: &mut RenderContext,
+        world: &World,
+    ) -> Result<(), NodeRunError> {
+        #[cfg(feature = "trace")]
+        let _dlss_span = info_span!("dlss").entered();
+
+        let view_entity = graph.get_input_entity(Self::IN_VIEW)?;
+        let dlss = world.resource::<DlssResource>();
+        // let (
+        //     Ok((camera, view_target, taa_history_textures, prepass_textures, taa_pipeline_id)),
+        //     Some(pipelines),
+        //     Some(pipeline_cache),
+        // ) = (
+        //     self.view_query.get_manual(world, view_entity),
+        // ) else {
+        //     return Ok(());
+        // };
+        let (
+            Some(prepass_motion_vectors_texture),
+            Some(prepass_depth_texture),
+        ) = (
+            &prepass_textures.motion_vectors,
+            &prepass_textures.depth,
+        ) else {
+            return Ok(());
+        };
+
+        let render_resolution = viewport_override.0.physical_size;
+        let upscaled_resolution = view.viewport.zw();
+        let dlss_context = dlss.get_context(
+            upscaled_resolution,
+            dlss_settings.preset,
+            view.hdr,
+            render_context.command_encoder(),
+            render_context.render_device,
+        );
+        let view_target = view_target.post_process_write();
+
+        dlss_context.render(todo!());
+
+        Ok(())
     }
 }
 
