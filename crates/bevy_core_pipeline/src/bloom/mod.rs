@@ -4,13 +4,7 @@ mod upsampling_pipeline;
 
 pub use settings::{BloomCompositeMode, BloomPrefilterSettings, BloomSettings};
 
-use crate::{
-    bloom::{
-        downsampling_pipeline::{prepare_downsampling_pipeline, BloomUniforms},
-        upsampling_pipeline::prepare_upsampling_pipeline,
-    },
-    core_2d, core_3d,
-};
+use crate::{core_2d, core_3d};
 use bevy_app::{App, Plugin};
 use bevy_asset::{load_internal_asset, HandleUntyped};
 use bevy_ecs::{
@@ -37,10 +31,12 @@ use bevy_render::{
 };
 #[cfg(feature = "trace")]
 use bevy_utils::tracing::info_span;
-
-use self::{
-    downsampling_pipeline::{BloomDownsamplingPipeline, BloomDownsamplingPipelineIds},
-    upsampling_pipeline::{BloomUpsamplingPipeline, UpsamplingPipelineIds},
+use downsampling_pipeline::{
+    prepare_downsampling_pipeline, BloomDownsamplingPipeline, BloomDownsamplingPipelineIds,
+    BloomUniforms,
+};
+use upsampling_pipeline::{
+    prepare_upsampling_pipeline, BloomUpsamplingPipeline, UpsamplingPipelineIds,
 };
 
 const BLOOM_SHADER_HANDLE: HandleUntyped =

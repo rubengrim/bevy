@@ -229,7 +229,7 @@ impl Node for DlssNode {
                         usages: TextureUsages::STORAGE_BINDING,
                     },
                     reset: dlss_settings.reset,
-                    jitter_offset: temporal_jitter.offset - 0.5,
+                    jitter_offset: temporal_jitter.offset,
                     partial_texture_size: Some(render_resolution),
                     motion_vector_scale: Some(render_resolution.as_vec2()),
                 },
@@ -373,8 +373,7 @@ fn prepare_dlss(
         );
         let render_resolution = dlss_context.render_resolution();
 
-        temporal_jitter.offset =
-            dlss_context.suggested_jitter(frame_count.0, render_resolution) + 0.5;
+        temporal_jitter.offset = dlss_context.suggested_jitter(frame_count.0, render_resolution);
 
         commands.entity(entity).insert(ViewportOverride(Viewport {
             physical_position: view.viewport.xy(),
