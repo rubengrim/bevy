@@ -2,7 +2,7 @@
 
 #[cfg(feature = "dlss")]
 use bevy::core_pipeline::dlss::{
-    DlssAvailable, DlssBundle, DlssPlugin, DlssProjectId, DlssSettings,
+    DlssAvailable, DlssBundle, DlssPlugin, DlssPreset, DlssProjectId, DlssSettings,
 };
 
 use bevy::{
@@ -159,6 +159,32 @@ fn modify_aa(
 
         camera.insert(DlssBundle::default());
     }
+
+    // DLSS Settings
+    #[cfg(feature = "dlss")]
+    if let Some(mut dlss) = dlss {
+        if keys.just_pressed(KeyCode::Q) {
+            dlss.preset = DlssPreset::Auto;
+        }
+        if keys.just_pressed(KeyCode::W) {
+            dlss.preset = DlssPreset::Native;
+        }
+        if keys.just_pressed(KeyCode::E) {
+            dlss.preset = DlssPreset::UltraQuality;
+        }
+        if keys.just_pressed(KeyCode::R) {
+            dlss.preset = DlssPreset::Quality;
+        }
+        if keys.just_pressed(KeyCode::T) {
+            dlss.preset = DlssPreset::Balanced;
+        }
+        if keys.just_pressed(KeyCode::Y) {
+            dlss.preset = DlssPreset::Performance;
+        }
+        if keys.just_pressed(KeyCode::U) {
+            dlss.preset = DlssPreset::UltraPerformance;
+        }
+    }
 }
 
 fn update_ui(
@@ -278,6 +304,53 @@ fn update_ui(
             ui.push_str("(T) *Extreme*");
         } else {
             ui.push_str("(T) Extreme");
+        }
+    }
+
+    #[cfg(feature = "dlss")]
+    if let Some(dlss) = dlss {
+        ui.push_str("\n\n----------\n\nPreset\n");
+
+        if dlss.preset == DlssPreset::Auto {
+            ui.push_str("(Q) *Auto*\n");
+        } else {
+            ui.push_str("(Q) Auto\n");
+        }
+
+        if dlss.preset == DlssPreset::Native {
+            ui.push_str("(W) *Native*\n");
+        } else {
+            ui.push_str("(W) Native\n");
+        }
+
+        if dlss.preset == DlssPreset::UltraQuality {
+            ui.push_str("(E) *UltraQuality*\n");
+        } else {
+            ui.push_str("(E) UltraQuality\n");
+        }
+
+        if dlss.preset == DlssPreset::Quality {
+            ui.push_str("(R) *Quality*\n");
+        } else {
+            ui.push_str("(R) Quality\n");
+        }
+
+        if dlss.preset == DlssPreset::Balanced {
+            ui.push_str("(T) *Balanced*\n");
+        } else {
+            ui.push_str("(T) Balanced\n");
+        }
+
+        if dlss.preset == DlssPreset::Performance {
+            ui.push_str("(Y) *Performance*\n");
+        } else {
+            ui.push_str("(Y) Performance\n");
+        }
+
+        if dlss.preset == DlssPreset::UltraPerformance {
+            ui.push_str("(U) *UltraPerformance*");
+        } else {
+            ui.push_str("(U) UltraPerformance");
         }
     }
 }
