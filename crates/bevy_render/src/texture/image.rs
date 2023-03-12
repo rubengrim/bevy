@@ -388,7 +388,7 @@ impl Image {
     /// Whether the texture format is compressed or uncompressed
     pub fn is_compressed(&self) -> bool {
         let required_features = self.texture_descriptor.format.required_features();
-        required_features.contains(wgpu::Features::TEXTURE_COMPRESSION_ASTC_LDR)
+        required_features.contains(wgpu::Features::TEXTURE_COMPRESSION_ASTC)
             || required_features.contains(wgpu::Features::TEXTURE_COMPRESSION_BC)
             || required_features.contains(wgpu::Features::TEXTURE_COMPRESSION_ETC2)
     }
@@ -562,7 +562,7 @@ bitflags::bitflags! {
 impl CompressedImageFormats {
     pub fn from_features(features: wgpu::Features) -> Self {
         let mut supported_compressed_formats = Self::default();
-        if features.contains(wgpu::Features::TEXTURE_COMPRESSION_ASTC_LDR) {
+        if features.contains(wgpu::Features::TEXTURE_COMPRESSION_ASTC) {
             supported_compressed_formats |= Self::ASTC_LDR;
         }
         if features.contains(wgpu::Features::TEXTURE_COMPRESSION_BC) {
