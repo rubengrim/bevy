@@ -109,9 +109,11 @@ impl Plugin for MeshRenderPlugin {
                 .init_resource::<MeshPipeline>()
                 .init_resource::<SkinnedMeshUniform>()
                 .add_systems((extract_meshes, extract_skinned_meshes).in_schedule(ExtractSchedule))
-                .add_system(prepare_skinned_meshes.in_set(RenderSet::Prepare))
-                .add_system(queue_mesh_bind_group.in_set(RenderSet::Queue))
-                .add_system(queue_mesh_view_bind_groups.in_set(RenderSet::Queue));
+                .add_systems((
+                    prepare_skinned_meshes.in_set(RenderSet::Prepare),
+                    queue_mesh_bind_group.in_set(RenderSet::Queue),
+                    queue_mesh_view_bind_groups.in_set(RenderSet::Queue),
+                ));
         }
     }
 }
@@ -574,7 +576,7 @@ bitflags::bitflags! {
         const DEBAND_DITHER                     = (1 << 2);
         const DEPTH_PREPASS                     = (1 << 3);
         const NORMAL_PREPASS                    = (1 << 4);
-        const MOTION_VECTOR_PREPASS            = (1 << 5);
+        const MOTION_VECTOR_PREPASS             = (1 << 5);
         const ALPHA_MASK                        = (1 << 6);
         const ENVIRONMENT_MAP                   = (1 << 7);
         const DEPTH_CLAMP_ORTHO                 = (1 << 8);
