@@ -152,9 +152,6 @@ impl Node for DlssNode {
         render_context: &mut RenderContext,
         world: &World,
     ) -> Result<(), NodeRunError> {
-        #[cfg(feature = "trace")]
-        let _dlss_span = info_span!("dlss").entered();
-
         let view_entity = graph.get_input_entity(Self::IN_VIEW)?;
         let adapter = world.resource::<RenderAdapter>();
         let dlss = world.non_send_resource::<DlssResource>();
