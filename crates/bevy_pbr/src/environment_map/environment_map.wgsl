@@ -1,6 +1,5 @@
 #define_import_path bevy_pbr::environment_map
 
-
 struct EnvironmentMapLight {
     diffuse: vec3<f32>,
     specular: vec3<f32>,
