@@ -8,10 +8,10 @@ pub const FULLSCREEN_SHADER_HANDLE: HandleUntyped =
 /// uses the [`FULLSCREEN_SHADER_HANDLE`] to output a
 /// ```wgsl
 /// struct FullscreenVertexOutput {
-///     [[builtin(position)]]
-///     position: vec4<f32>;
-///     [[location(0)]]
-///     uv: vec2<f32>;
+///     @builtin(position)
+///     position: vec4<f32>,
+///     @location(0)
+///     uv: vec2<f32>,
 /// };
 /// ```
 /// from the vertex shader.
