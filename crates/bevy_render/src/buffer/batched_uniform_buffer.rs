@@ -93,6 +93,5 @@ impl<T: ShaderType + ShaderSize + WriteInto + Clone> BatchedUniformBuffer<T> {
 #[derive(ShaderType)]
 struct Batch<T: ShaderType + ShaderSize> {
     len: ArrayLength,
-    #[size(runtime)]
     values: Vec<T>,
 }
