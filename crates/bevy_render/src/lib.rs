@@ -3,6 +3,7 @@ compile_error!("bevy_render cannot compile for a 16-bit platform.");
 
 extern crate core;
 
+pub mod buffer;
 pub mod camera;
 pub mod color;
 pub mod extract_component;
