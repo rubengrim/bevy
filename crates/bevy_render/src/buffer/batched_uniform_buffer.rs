@@ -4,7 +4,7 @@ use crate::{
     renderer::{RenderDevice, RenderQueue},
 };
 use bevy_ecs::system::Resource;
-use encase::{private::WriteInto, ArrayLength, ShaderSize, ShaderType};
+use encase::{private::WriteInto, ShaderSize, ShaderType};
 use std::{mem, num::NonZeroU64};
 use wgpu::{BindingResource, Limits};
 
@@ -18,23 +18,24 @@ use wgpu::{BindingResource, Limits};
 /// WGSL usage: TODO
 #[derive(Resource)]
 pub struct BatchedUniformBuffer<T: ShaderType + ShaderSize> {
-    buffer: DynamicUniformBuffer<Batch<T>>,
+    buffer: DynamicUniformBuffer<Vec<T>>,
     current_batch: Vec<T>,
     current_dynamic_offset: u32,
-    max_uniform_buffer_binding_size: u32,
+    batch_size: u32,
 }
 
-impl<T: ShaderType + ShaderSize + WriteInto + Clone> BatchedUniformBuffer<T> {
+impl<T: ShaderType + ShaderSize + WriteInto> BatchedUniformBuffer<T> {
     pub fn min_element_size() -> NonZeroU64 {
-        Batch::<T>::min_size()
+        todo!()
     }
 
     pub fn new(limits: &Limits) -> Self {
+        let batch_size = todo!("limits.max_uniform_buffer_binding_size");
         Self {
             buffer: DynamicUniformBuffer::default(),
-            current_batch: Vec::new(),
+            current_batch: Vec::with_capacity(batch_size as usize / 4),
             current_dynamic_offset: 0,
-            max_uniform_buffer_binding_size: limits.max_uniform_buffer_binding_size,
+            batch_size,
         }
     }
 
@@ -47,14 +48,16 @@ impl<T: ShaderType + ShaderSize + WriteInto + Clone> BatchedUniformBuffer<T> {
     }
 
     pub fn push(&mut self, value: T) -> BufferIndex<T> {
-        if self.batch_full() {
+        let len = self.current_batch.len() as u32;
+
+        if len == self.batch_size {
             self.push_batch();
         }
 
         self.current_batch.push(value);
 
         BufferIndex {
-            array_index: self.current_batch.len() as u32 - 1,
+            array_index: len,
             dynamic_offset: Some(self.current_dynamic_offset),
             array_type: Default::default(),
         }
@@ -71,27 +74,11 @@ impl<T: ShaderType + ShaderSize + WriteInto + Clone> BatchedUniformBuffer<T> {
         self.buffer.clear();
     }
 
-    fn batch_full(&self) -> bool {
-        todo!()
-    }
-
     fn push_batch(&mut self) {
         let current_batch = mem::take(&mut self.current_batch);
 
-        self.buffer.push(Batch {
-            len: ArrayLength,
-            values: current_batch,
-        });
+        self.buffer.push(current_batch);
 
         self.current_dynamic_offset += 1;
     }
-}
-
-/// An entry in [`BatchedUniformBuffer`].
-///
-/// Each batch can be up to `wgpu::Limits::max_uniform_buffer_binding_size` (default 64kb).
-#[derive(ShaderType)]
-struct Batch<T: ShaderType + ShaderSize> {
-    len: ArrayLength,
-    values: Vec<T>,
 }
