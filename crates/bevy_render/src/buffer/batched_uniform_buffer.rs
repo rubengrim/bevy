@@ -47,7 +47,7 @@ impl<T: ShaderType + ShaderSize + WriteInto + Clone> BatchedUniformBuffer<T> {
     }
 
     pub fn push(&mut self, value: T) -> BufferIndex<T> {
-        if todo!("Push batch when batch is full") {
+        if self.batch_full() {
             self.push_batch();
         }
 
@@ -69,6 +69,10 @@ impl<T: ShaderType + ShaderSize + WriteInto + Clone> BatchedUniformBuffer<T> {
     pub fn clear(&mut self) {
         self.current_batch.clear();
         self.buffer.clear();
+    }
+
+    fn batch_full(&self) -> bool {
+        todo!()
     }
 
     fn push_batch(&mut self) {
