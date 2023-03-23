@@ -149,7 +149,7 @@ impl Node for BloomNode {
     ) -> Result<(), NodeRunError> {
         let downsampling_pipeline_res = world.resource::<BloomDownsamplingPipeline>();
         let pipeline_cache = world.resource::<PipelineCache>();
-        let uniforms = world.resource::<GpuBuffer<BloomUniforms>>();
+        let uniforms = world.resource::<GpuComponentUniforms<BloomUniforms>>();
         let view_entity = graph.view_entity();
         let Ok((
             camera,
