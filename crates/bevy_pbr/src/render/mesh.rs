@@ -452,16 +452,11 @@ impl FromWorld for MeshPipeline {
                 entries: &layout_entries(clustered_forward_buffer_binding_type, true),
             });
 
-        let mesh_binding = BindGroupLayoutEntry {
-            binding: 0,
-            visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
-            ty: BindingType::Buffer {
-                ty: BufferBindingType::Uniform,
-                has_dynamic_offset: true,
-                min_binding_size: Some(MeshUniform::min_size()),
-            },
-            count: None,
-        };
+        let mesh_binding = GpuBuffer::<MeshUniform>::binding_layout(
+            0,
+            ShaderStages::VERTEX_FRAGMENT,
+            &render_device,
+        );
 
         let mesh_layout = render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             entries: &[mesh_binding],

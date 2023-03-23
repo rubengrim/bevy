@@ -3,4 +3,8 @@
 #import bevy_sprite::mesh2d_types
 
 @group(2) @binding(0)
-var<uniform> mesh: Mesh2d;
+#if AVAILABLE_STORAGE_BUFFER_BINDINGS >= 3
+var<storage> mesh: Mesh2d;
+#else
+var<uniform> mesh: array<Mesh2d>;
+#endif
