@@ -12,11 +12,14 @@ var<uniform> globals: Globals;
 // Material bindings will be in @group(1)
 
 @group(2) @binding(0)
-var<uniform> mesh: Mesh;
+#if AVAILABLE_STORAGE_BUFFER_BINDINGS >= 3
+var<storage> mesh: Mesh;
+#else
+var<uniform> mesh: array<Mesh>;
+#endif
 
 #ifdef SKINNED
 @group(2) @binding(1)
 var<uniform> joint_matrices: SkinnedMesh;
 #import bevy_pbr::skinning
 #endif
-
