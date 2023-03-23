@@ -1,6 +1,6 @@
 use crate::{
     render_resource::{GpuBuffer, GpuBufferable},
-    renderer::{RenderAdapter, RenderDevice, RenderQueue},
+    renderer::{RenderDevice, RenderQueue},
     view::ComputedVisibility,
     Extract, ExtractSchedule, Render, RenderApp, RenderSet,
 };
@@ -63,7 +63,7 @@ impl<C: Component + GpuBufferable> Plugin for GpuBufferComponentPlugin<C> {
         if let Ok(render_app) = app.get_sub_app_mut(RenderApp) {
             render_app
                 .insert_resource(GpuBuffer::<C>::new(
-                    render_app.world.resource::<RenderAdapter>(),
+                    render_app.world.resource::<RenderDevice>(),
                 ))
                 .add_systems(
                     Render,

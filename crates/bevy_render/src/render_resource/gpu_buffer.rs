@@ -1,7 +1,7 @@
 use super::DynamicStorageBuffer;
 use crate::{
     render_resource::BatchedUniformBuffer,
-    renderer::{RenderAdapter, RenderDevice, RenderQueue},
+    renderer::{RenderDevice, RenderQueue},
 };
 use bevy_ecs::{prelude::Component, system::Resource};
 use encase::{private::WriteInto, ShaderSize, ShaderType};
@@ -18,9 +18,10 @@ pub enum GpuBuffer<T: GpuBufferable> {
 }
 
 impl<T: GpuBufferable> GpuBuffer<T> {
-    pub fn new(adapter: &RenderAdapter) -> Self {
-        if cfg!(feature = "webgl") {
-            GpuBuffer::Uniform(BatchedUniformBuffer::new(&adapter.limits()))
+    pub fn new(device: &RenderDevice) -> Self {
+        let limits = device.limits();
+        if limits.max_storage_buffers_per_shader_stage == 0 {
+            GpuBuffer::Uniform(BatchedUniformBuffer::new(&limits))
         } else {
             GpuBuffer::Storage(DynamicStorageBuffer::default())
         }
@@ -51,11 +52,15 @@ impl<T: GpuBufferable> GpuBuffer<T> {
         }
     }
 
-    pub fn binding_layout(binding: u32, visibility: ShaderStages) -> BindGroupLayoutEntry {
+    pub fn binding_layout(
+        binding: u32,
+        visibility: ShaderStages,
+        device: &RenderDevice,
+    ) -> BindGroupLayoutEntry {
         BindGroupLayoutEntry {
             binding,
             visibility,
-            ty: if cfg!(feature = "webgl") {
+            ty: if device.limits().max_storage_buffers_per_shader_stage == 0 {
                 BindingType::Buffer {
                     ty: BufferBindingType::Uniform,
                     has_dynamic_offset: true,

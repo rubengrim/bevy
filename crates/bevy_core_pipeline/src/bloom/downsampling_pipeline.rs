@@ -62,7 +62,8 @@ impl FromWorld for BloomDownsamplingPipeline {
         };
 
         // Downsampling settings binding
-        let settings = GpuBuffer::<BloomUniforms>::binding_layout(2, ShaderStages::FRAGMENT);
+        let settings =
+            GpuBuffer::<BloomUniforms>::binding_layout(2, ShaderStages::FRAGMENT, &render_device);
 
         // Bind group layout
         let bind_group_layout =

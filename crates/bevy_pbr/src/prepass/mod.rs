@@ -172,7 +172,11 @@ impl<M: Material> FromWorld for PrepassPipeline<M> {
         let view_layout = render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             entries: &[
                 // View
-                GpuBuffer::<ViewUniform>::binding_layout(0, ShaderStages::VERTEX_FRAGMENT),
+                GpuBuffer::<ViewUniform>::binding_layout(
+                    0,
+                    ShaderStages::VERTEX_FRAGMENT,
+                    &render_device,
+                ),
                 // Globals
                 BindGroupLayoutEntry {
                     binding: 1,

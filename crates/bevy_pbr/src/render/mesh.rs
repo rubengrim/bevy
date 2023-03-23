@@ -286,14 +286,17 @@ impl FromWorld for MeshPipeline {
         let clustered_forward_buffer_binding_type = render_device
             .get_supported_read_only_binding_type(CLUSTERED_FORWARD_STORAGE_BUFFER_COUNT);
 
-        /// Returns the appropriate bind group layout vec based on the parameters
-        fn layout_entries(
-            clustered_forward_buffer_binding_type: BufferBindingType,
-            multisampled: bool,
-        ) -> Vec<BindGroupLayoutEntry> {
+        // Returns the appropriate bind group layout vec based on the parameters
+        let layout_entries = |clustered_forward_buffer_binding_type: BufferBindingType,
+                              multisampled: bool|
+         -> Vec<BindGroupLayoutEntry> {
             let mut entries = vec![
                 // View
-                GpuBuffer::<ViewUniform>::binding_layout(0, ShaderStages::VERTEX_FRAGMENT),
+                GpuBuffer::<ViewUniform>::binding_layout(
+                    0,
+                    ShaderStages::VERTEX_FRAGMENT,
+                    &render_device,
+                ),
                 // Lights
                 BindGroupLayoutEntry {
                     binding: 1,
@@ -431,7 +434,7 @@ impl FromWorld for MeshPipeline {
             }
 
             entries
-        }
+        };
 
         let view_layout = render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             label: Some("mesh_view_layout"),

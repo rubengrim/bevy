@@ -229,8 +229,10 @@ impl SpecializedRenderPipeline for TonemappingPipeline {
 
 impl FromWorld for TonemappingPipeline {
     fn from_world(render_world: &mut World) -> Self {
+        let render_device = render_world.resource::<RenderDevice>();
+
         let mut entries = vec![
-            GpuBuffer::<ViewUniform>::binding_layout(0, ShaderStages::FRAGMENT),
+            GpuBuffer::<ViewUniform>::binding_layout(0, ShaderStages::FRAGMENT, &render_device),
             BindGroupLayoutEntry {
                 binding: 1,
                 visibility: ShaderStages::FRAGMENT,

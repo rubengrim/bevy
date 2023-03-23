@@ -54,7 +54,11 @@ impl FromWorld for BloomUpsamplingPipeline {
                         count: None,
                     },
                     // BloomUniforms
-                    GpuBuffer::<BloomUniforms>::binding_layout(2, ShaderStages::FRAGMENT),
+                    GpuBuffer::<BloomUniforms>::binding_layout(
+                        2,
+                        ShaderStages::FRAGMENT,
+                        &render_device,
+                    ),
                 ],
             });
 
