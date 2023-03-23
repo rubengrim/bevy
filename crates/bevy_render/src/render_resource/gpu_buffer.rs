@@ -1,11 +1,11 @@
-use super::DynamicStorageBuffer;
+use super::StorageBuffer;
 use crate::{
     render_resource::BatchedUniformBuffer,
     renderer::{RenderDevice, RenderQueue},
 };
 use bevy_ecs::{prelude::Component, system::Resource};
 use encase::{private::WriteInto, ShaderSize, ShaderType};
-use std::marker::PhantomData;
+use std::{marker::PhantomData, mem};
 use wgpu::{BindGroupLayoutEntry, BindingResource, BindingType, BufferBindingType, ShaderStages};
 
 pub trait GpuBufferable: ShaderType + ShaderSize + WriteInto + Clone {}
@@ -14,7 +14,7 @@ impl<T: ShaderType + ShaderSize + WriteInto + Clone> GpuBufferable for T {}
 #[derive(Resource)]
 pub enum GpuBuffer<T: GpuBufferable> {
     Uniform(BatchedUniformBuffer<T>),
-    Storage(DynamicStorageBuffer<T>),
+    Storage((StorageBuffer<Vec<T>>, Vec<T>)),
 }
 
 impl<T: GpuBufferable> GpuBuffer<T> {
@@ -23,32 +23,39 @@ impl<T: GpuBufferable> GpuBuffer<T> {
         if limits.max_storage_buffers_per_shader_stage < 3 {
             GpuBuffer::Uniform(BatchedUniformBuffer::new(&limits))
         } else {
-            GpuBuffer::Storage(DynamicStorageBuffer::default())
+            GpuBuffer::Storage((StorageBuffer::default(), Vec::new()))
         }
     }
 
     pub fn clear(&mut self) {
         match self {
             GpuBuffer::Uniform(buffer) => buffer.clear(),
-            GpuBuffer::Storage(buffer) => buffer.clear(),
+            GpuBuffer::Storage((_, buffer)) => buffer.clear(),
         }
     }
 
     pub fn push(&mut self, value: T) -> GpuBufferIndex<T> {
         match self {
             GpuBuffer::Uniform(buffer) => buffer.push(value),
-            GpuBuffer::Storage(buffer) => GpuBufferIndex {
-                instance_index: buffer.push(value),
-                dynamic_offset: None,
-                element_type: PhantomData,
-            },
+            GpuBuffer::Storage((_, buffer)) => {
+                let instance_index = buffer.len() as u32;
+                buffer.push(value);
+                GpuBufferIndex {
+                    instance_index,
+                    dynamic_offset: None,
+                    element_type: PhantomData,
+                }
+            }
         }
     }
 
     pub fn write_buffer(&mut self, device: &RenderDevice, queue: &RenderQueue) {
         match self {
             GpuBuffer::Uniform(buffer) => buffer.write_buffer(device, queue),
-            GpuBuffer::Storage(buffer) => buffer.write_buffer(device, queue),
+            GpuBuffer::Storage((buffer, vec)) => {
+                buffer.set(mem::take(vec));
+                buffer.write_buffer(device, queue);
+            }
         }
     }
 
@@ -80,7 +87,7 @@ impl<T: GpuBufferable> GpuBuffer<T> {
     pub fn binding(&self) -> Option<BindingResource> {
         match self {
             GpuBuffer::Uniform(buffer) => buffer.binding(),
-            GpuBuffer::Storage(buffer) => buffer.binding(),
+            GpuBuffer::Storage((buffer, _)) => buffer.binding(),
         }
     }
 }
