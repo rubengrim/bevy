@@ -13,7 +13,7 @@ use bevy_reflect::TypeUuid;
 use bevy_render::{
     camera::ExtractedCamera,
     extract_component::ExtractComponentPlugin,
-    gpu_component::{GpuComponentUniformOffset, GpuUniformComponentPlugin},
+    gpu_component::{GpuComponentUniformOffset, GpuComponentUniforms, GpuUniformComponentPlugin},
     prelude::Color,
     render_graph::{Node, NodeRunError, RenderGraph, RenderGraphContext},
     render_resource::*,
@@ -382,7 +382,7 @@ fn queue_bloom_bind_groups(
     downsampling_pipeline: Res<BloomDownsamplingPipeline>,
     upsampling_pipeline: Res<BloomUpsamplingPipeline>,
     views: Query<(Entity, &BloomTexture)>,
-    uniforms: Res<GpuBuffer<BloomUniforms>>,
+    uniforms: Res<GpuComponentUniforms<BloomUniforms>>,
 ) {
     let sampler = &downsampling_pipeline.sampler;
 
