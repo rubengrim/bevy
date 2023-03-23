@@ -49,6 +49,7 @@ impl Plugin for BloomPlugin {
         app.register_type::<BloomPrefilterSettings>();
         app.register_type::<BloomCompositeMode>();
         app.add_plugin(ExtractComponentPlugin::<BloomSettings>::default());
+        // TODO: Remove GpuBuffer usage, switch back to uniform only
         app.add_plugin(GpuBufferComponentPlugin::<BloomUniforms>::default());
 
         let render_app = match app.get_sub_app_mut(RenderApp) {
