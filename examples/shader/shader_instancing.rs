@@ -10,7 +10,7 @@ use bevy::{
     prelude::*,
     render::{
         extract_component::{ExtractComponent, ExtractComponentPlugin},
-        mesh::{GpuBufferInfo, MeshVertexBufferLayout},
+        mesh::{GpuMeshBufferInfo, MeshVertexBufferLayout},
         render_asset::RenderAssets,
         render_phase::{
             AddRenderCommand, DrawFunctions, PhaseItem, RenderCommand, RenderCommandResult,
@@ -245,7 +245,7 @@ impl<P: PhaseItem> RenderCommand<P> for DrawMeshInstanced {
         pass.set_vertex_buffer(1, instance_buffer.buffer.slice(..));
 
         match &gpu_mesh.buffer_info {
-            GpuBufferInfo::Indexed {
+            GpuMeshBufferInfo::Indexed {
                 buffer,
                 index_format,
                 count,
@@ -253,7 +253,7 @@ impl<P: PhaseItem> RenderCommand<P> for DrawMeshInstanced {
                 pass.set_index_buffer(buffer.slice(..), 0, *index_format);
                 pass.draw_indexed(0..*count, 0, 0..instance_buffer.length as u32);
             }
-            GpuBufferInfo::NonIndexed { vertex_count } => {
+            GpuMeshBufferInfo::NonIndexed { vertex_count } => {
                 pass.draw(0..*vertex_count, 0..instance_buffer.length as u32);
             }
         }

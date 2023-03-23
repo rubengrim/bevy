@@ -809,14 +809,14 @@ impl From<&Indices> for IndexFormat {
 pub struct GpuMesh {
     /// Contains all attribute data for each vertex.
     pub vertex_buffer: Buffer,
-    pub buffer_info: GpuBufferInfo,
+    pub buffer_info: GpuMeshBufferInfo,
     pub primitive_topology: PrimitiveTopology,
     pub layout: MeshVertexBufferLayout,
 }
 
 /// The index/vertex buffer info of a [`GpuMesh`].
 #[derive(Debug, Clone)]
-pub enum GpuBufferInfo {
+pub enum GpuMeshBufferInfo {
     Indexed {
         /// Contains all index data of a mesh.
         buffer: Buffer,
@@ -851,10 +851,10 @@ impl RenderAsset for Mesh {
         });
 
         let buffer_info = mesh.get_index_buffer_bytes().map_or(
-            GpuBufferInfo::NonIndexed {
+            GpuMeshBufferInfo::NonIndexed {
                 vertex_count: mesh.count_vertices() as u32,
             },
-            |data| GpuBufferInfo::Indexed {
+            |data| GpuMeshBufferInfo::Indexed {
                 buffer: render_device.create_buffer_with_data(&BufferInitDescriptor {
                     usage: BufferUsages::INDEX,
                     contents: data,

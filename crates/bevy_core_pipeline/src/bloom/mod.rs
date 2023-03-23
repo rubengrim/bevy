@@ -12,9 +12,7 @@ use bevy_math::UVec2;
 use bevy_reflect::TypeUuid;
 use bevy_render::{
     camera::ExtractedCamera,
-    extract_component::{
-        DynamicUniformIndex, ExtractComponentPlugin, GpuBufferComponentPlugin, GpuComponentBuffer,
-    },
+    extract_component::{ExtractComponentPlugin, GpuBufferComponentPlugin},
     prelude::Color,
     render_graph::{Node, NodeRunError, RenderGraph, RenderGraphContext},
     render_resource::*,
@@ -23,8 +21,6 @@ use bevy_render::{
     view::ViewTarget,
     Render, RenderApp, RenderSet,
 };
-#[cfg(feature = "trace")]
-use bevy_utils::tracing::info_span;
 use downsampling_pipeline::{
     prepare_downsampling_pipeline, BloomDownsamplingPipeline, BloomDownsamplingPipelineIds,
     BloomUniforms,
@@ -121,7 +117,7 @@ pub struct BloomNode {
         &'static ViewTarget,
         &'static BloomTexture,
         &'static BloomBindGroups,
-        &'static DynamicUniformIndex<BloomUniforms>,
+        &'static GpuBufferIndex<BloomUniforms>,
         &'static BloomSettings,
         &'static UpsamplingPipelineIds,
         &'static BloomDownsamplingPipelineIds,
@@ -150,12 +146,9 @@ impl Node for BloomNode {
         render_context: &mut RenderContext,
         world: &World,
     ) -> Result<(), NodeRunError> {
-        #[cfg(feature = "trace")]
-        let _bloom_span = info_span!("bloom").entered();
-
         let downsampling_pipeline_res = world.resource::<BloomDownsamplingPipeline>();
         let pipeline_cache = world.resource::<PipelineCache>();
-        let uniforms = world.resource::<GpuComponentBuffer<BloomUniforms>>();
+        let uniforms = world.resource::<GpuBuffer<BloomUniforms>>();
         let view_entity = graph.view_entity();
         let Ok((
             camera,
@@ -182,6 +175,11 @@ impl Node for BloomNode {
             pipeline_cache.get_render_pipeline(upsampling_pipeline_ids.id_main),
             pipeline_cache.get_render_pipeline(upsampling_pipeline_ids.id_final),
         ) else { return Ok(()) };
+
+        let dynamic_offsets = match uniform_index.dynamic_offset {
+            Some(dynamic_offset) => vec![dynamic_offset],
+            None => vec![],
+        };
 
         render_context.command_encoder().push_debug_group("bloom");
 
@@ -225,7 +223,7 @@ impl Node for BloomNode {
             downsampling_first_pass.set_bind_group(
                 0,
                 &downsampling_first_bind_group,
-                &[uniform_index.index()],
+                &dynamic_offsets,
             );
             downsampling_first_pass.draw(0..3, 0..1);
         }
@@ -247,7 +245,7 @@ impl Node for BloomNode {
             downsampling_pass.set_bind_group(
                 0,
                 &bind_groups.downsampling_bind_groups[mip as usize - 1],
-                &[uniform_index.index()],
+                &dynamic_offsets,
             );
             downsampling_pass.draw(0..3, 0..1);
         }
@@ -272,7 +270,7 @@ impl Node for BloomNode {
             upsampling_pass.set_bind_group(
                 0,
                 &bind_groups.upsampling_bind_groups[(bloom_texture.mip_count - mip - 1) as usize],
-                &[uniform_index.index()],
+                &dynamic_offsets,
             );
             let blend = compute_blend_factor(
                 bloom_settings,
@@ -302,7 +300,7 @@ impl Node for BloomNode {
             upsampling_final_pass.set_bind_group(
                 0,
                 &bind_groups.upsampling_bind_groups[(bloom_texture.mip_count - 1) as usize],
-                &[uniform_index.index()],
+                &dynamic_offsets,
             );
             if let Some(viewport) = camera.viewport.as_ref() {
                 upsampling_final_pass.set_camera_viewport(viewport);
@@ -388,7 +386,7 @@ fn queue_bloom_bind_groups(
     downsampling_pipeline: Res<BloomDownsamplingPipeline>,
     upsampling_pipeline: Res<BloomUpsamplingPipeline>,
     views: Query<(Entity, &BloomTexture)>,
-    uniforms: Res<GpuComponentBuffer<BloomUniforms>>,
+    uniforms: Res<GpuBuffer<BloomUniforms>>,
 ) {
     let sampler = &downsampling_pipeline.sampler;
 

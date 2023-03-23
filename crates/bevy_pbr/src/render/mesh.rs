@@ -20,11 +20,11 @@ use bevy_ecs::{
 use bevy_math::{Mat3A, Mat4, Vec2};
 use bevy_reflect::TypeUuid;
 use bevy_render::{
-    extract_component::{DynamicUniformIndex, GpuBufferComponentPlugin, GpuComponentBuffer},
+    extract_component::GpuBufferComponentPlugin,
     globals::{GlobalsBuffer, GlobalsUniform},
     mesh::{
         skinning::{SkinnedMesh, SkinnedMeshInverseBindposes},
-        GpuBufferInfo, Mesh, MeshVertexBufferLayout,
+        GpuMeshBufferInfo, Mesh, MeshVertexBufferLayout,
     },
     prelude::Msaa,
     render_asset::RenderAssets,
@@ -855,10 +855,10 @@ pub fn queue_mesh_bind_group(
     mut commands: Commands,
     mesh_pipeline: Res<MeshPipeline>,
     render_device: Res<RenderDevice>,
-    mesh_uniforms: Res<GpuComponentBuffer<MeshUniform>>,
+    mesh_uniforms: Res<GpuBuffer<MeshUniform>>,
     skinned_mesh_uniform: Res<SkinnedMeshUniform>,
 ) {
-    if let Some(mesh_binding) = mesh_uniforms.buffer().binding() {
+    if let Some(mesh_binding) = mesh_uniforms.binding() {
         let mut mesh_bind_group = MeshBindGroup {
             normal: render_device.create_bind_group(&BindGroupDescriptor {
                 entries: &[BindGroupEntry {
@@ -1113,7 +1113,7 @@ impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetMeshBindGroup<I> {
     type Param = SRes<MeshBindGroup>;
     type ViewWorldQuery = ();
     type ItemWorldQuery = (
-        Read<DynamicUniformIndex<MeshUniform>>,
+        Read<GpuBufferIndex<MeshUniform>>,
         Option<Read<SkinnedMeshJoints>>,
     );
     #[inline]
@@ -1124,18 +1124,20 @@ impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetMeshBindGroup<I> {
         mesh_bind_group: SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
+        let mut dynamic_offsets = vec![];
+        if let Some(mesh_offset) = mesh_index.dynamic_offset {
+            dynamic_offsets.push(mesh_offset);
+        }
+
         if let Some(joints) = skinned_mesh_joints {
+            dynamic_offsets.push(joints.index);
             pass.set_bind_group(
                 I,
                 mesh_bind_group.into_inner().skinned.as_ref().unwrap(),
-                &[mesh_index.index(), joints.index],
+                &dynamic_offsets,
             );
         } else {
-            pass.set_bind_group(
-                I,
-                &mesh_bind_group.into_inner().normal,
-                &[mesh_index.index()],
-            );
+            pass.set_bind_group(I, &mesh_bind_group.into_inner().normal, &dynamic_offsets);
         }
         RenderCommandResult::Success
     }
@@ -1157,7 +1159,7 @@ impl<P: PhaseItem> RenderCommand<P> for DrawMesh {
         if let Some(gpu_mesh) = meshes.into_inner().get(mesh_handle) {
             pass.set_vertex_buffer(0, gpu_mesh.vertex_buffer.slice(..));
             match &gpu_mesh.buffer_info {
-                GpuBufferInfo::Indexed {
+                GpuMeshBufferInfo::Indexed {
                     buffer,
                     index_format,
                     count,
@@ -1165,7 +1167,7 @@ impl<P: PhaseItem> RenderCommand<P> for DrawMesh {
                     pass.set_index_buffer(buffer.slice(..), 0, *index_format);
                     pass.draw_indexed(0..*count, 0, 0..1);
                 }
-                GpuBufferInfo::NonIndexed { vertex_count } => {
+                GpuMeshBufferInfo::NonIndexed { vertex_count } => {
                     pass.draw(0..*vertex_count, 0..1);
                 }
             }

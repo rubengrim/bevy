@@ -9,9 +9,9 @@ use bevy_ecs::{
 use bevy_math::{Mat4, Vec2};
 use bevy_reflect::{Reflect, TypeUuid};
 use bevy_render::{
-    extract_component::{DynamicUniformIndex, GpuBufferComponentPlugin, GpuComponentBuffer},
+    extract_component::GpuBufferComponentPlugin,
     globals::{GlobalsBuffer, GlobalsUniform},
-    mesh::{GpuBufferInfo, Mesh, MeshVertexBufferLayout},
+    mesh::{GpuMeshBufferInfo, Mesh, MeshVertexBufferLayout},
     render_asset::RenderAssets,
     render_phase::{PhaseItem, RenderCommand, RenderCommandResult, TrackedRenderPass},
     render_resource::*,
@@ -475,9 +475,9 @@ pub fn queue_mesh2d_bind_group(
     mut commands: Commands,
     mesh2d_pipeline: Res<Mesh2dPipeline>,
     render_device: Res<RenderDevice>,
-    mesh2d_uniforms: Res<GpuComponentBuffer<Mesh2dUniform>>,
+    mesh2d_uniforms: Res<GpuBuffer<Mesh2dUniform>>,
 ) {
-    if let Some(binding) = mesh2d_uniforms.buffer().binding() {
+    if let Some(binding) = mesh2d_uniforms.binding() {
         commands.insert_resource(Mesh2dBindGroup {
             value: render_device.create_bind_group(&BindGroupDescriptor {
                 entries: &[BindGroupEntry {
@@ -555,20 +555,23 @@ pub struct SetMesh2dBindGroup<const I: usize>;
 impl<P: PhaseItem, const I: usize> RenderCommand<P> for SetMesh2dBindGroup<I> {
     type Param = SRes<Mesh2dBindGroup>;
     type ViewWorldQuery = ();
-    type ItemWorldQuery = Read<DynamicUniformIndex<Mesh2dUniform>>;
+    type ItemWorldQuery = Read<GpuBufferIndex<Mesh2dUniform>>;
 
     #[inline]
     fn render<'w>(
         _item: &P,
         _view: (),
-        mesh2d_index: &'_ DynamicUniformIndex<Mesh2dUniform>,
+        mesh2d_index: ROQueryItem<'_, Self::ItemWorldQuery>,
         mesh2d_bind_group: SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
         pass.set_bind_group(
             I,
             &mesh2d_bind_group.into_inner().value,
-            &[mesh2d_index.index()],
+            &match mesh2d_index.dynamic_offset {
+                Some(dynamic_offset) => vec![dynamic_offset],
+                None => vec![],
+            },
         );
         RenderCommandResult::Success
     }
@@ -591,7 +594,7 @@ impl<P: PhaseItem> RenderCommand<P> for DrawMesh2d {
         if let Some(gpu_mesh) = meshes.into_inner().get(&mesh_handle.0) {
             pass.set_vertex_buffer(0, gpu_mesh.vertex_buffer.slice(..));
             match &gpu_mesh.buffer_info {
-                GpuBufferInfo::Indexed {
+                GpuMeshBufferInfo::Indexed {
                     buffer,
                     index_format,
                     count,
@@ -599,7 +602,7 @@ impl<P: PhaseItem> RenderCommand<P> for DrawMesh2d {
                     pass.set_index_buffer(buffer.slice(..), 0, *index_format);
                     pass.draw_indexed(0..*count, 0, 0..1);
                 }
-                GpuBufferInfo::NonIndexed { vertex_count } => {
+                GpuMeshBufferInfo::NonIndexed { vertex_count } => {
                     pass.draw(0..*vertex_count, 0..1);
                 }
             }

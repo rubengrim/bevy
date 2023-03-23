@@ -56,7 +56,6 @@ pub trait ExtractComponent: Component {
 ///
 /// Therefore it sets up the [`RenderSet::Prepare`](crate::RenderSet::Prepare) step
 /// for the specified [`ExtractComponent`].
-#[derive(Default)]
 pub struct GpuBufferComponentPlugin<C: Component + GpuBufferable>(PhantomData<C>);
 
 impl<C: Component + GpuBufferable> Plugin for GpuBufferComponentPlugin<C> {
@@ -71,6 +70,12 @@ impl<C: Component + GpuBufferable> Plugin for GpuBufferComponentPlugin<C> {
                     prepare_uniform_components::<C>.in_set(RenderSet::Prepare),
                 );
         }
+    }
+}
+
+impl<C: Component + GpuBufferable> Default for GpuBufferComponentPlugin<C> {
+    fn default() -> Self {
+        Self(PhantomData::<C>)
     }
 }
 
