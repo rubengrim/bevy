@@ -13,7 +13,7 @@ use bevy::{
     prelude::*,
     render::{
         extract_component::{
-            ComponentUniforms, ExtractComponent, ExtractComponentPlugin, UniformComponentPlugin,
+            ExtractComponent, ExtractComponentPlugin, GpuBufferComponentPlugin, GpuComponentBuffer,
         },
         render_graph::{Node, NodeRunError, RenderGraph, RenderGraphContext},
         render_resource::{
@@ -58,7 +58,7 @@ impl Plugin for PostProcessPlugin {
             // The settings will also be the data used in the shader.
             // This plugin will prepare the component for the GPU by creating a uniform buffer
             // and writing the data to that buffer every frame.
-            .add_plugin(UniformComponentPlugin::<PostProcessSettings>::default());
+            .add_plugin(GpuBufferComponentPlugin::<PostProcessSettings>::default());
 
         // We need to get the render app from the main app
         let Ok(render_app) = app.get_sub_app_mut(RenderApp) else {
@@ -160,8 +160,8 @@ impl Node for PostProcessNode {
         };
 
         // Get the settings uniform binding
-        let settings_uniforms = world.resource::<ComponentUniforms<PostProcessSettings>>();
-        let Some(settings_binding) = settings_uniforms.uniforms().binding() else {
+        let settings_uniforms = world.resource::<GpuComponentBuffer<PostProcessSettings>>();
+        let Some(settings_binding) = settings_uniforms.buffer().binding() else {
             return Ok(());
         };
 

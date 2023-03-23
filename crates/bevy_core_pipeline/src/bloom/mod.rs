@@ -13,7 +13,7 @@ use bevy_reflect::TypeUuid;
 use bevy_render::{
     camera::ExtractedCamera,
     extract_component::{
-        ComponentUniforms, DynamicUniformIndex, ExtractComponentPlugin, UniformComponentPlugin,
+        DynamicUniformIndex, ExtractComponentPlugin, GpuBufferComponentPlugin, GpuComponentBuffer,
     },
     prelude::Color,
     render_graph::{Node, NodeRunError, RenderGraph, RenderGraphContext},
@@ -53,7 +53,7 @@ impl Plugin for BloomPlugin {
         app.register_type::<BloomPrefilterSettings>();
         app.register_type::<BloomCompositeMode>();
         app.add_plugin(ExtractComponentPlugin::<BloomSettings>::default());
-        app.add_plugin(UniformComponentPlugin::<BloomUniforms>::default());
+        app.add_plugin(GpuBufferComponentPlugin::<BloomUniforms>::default());
 
         let render_app = match app.get_sub_app_mut(RenderApp) {
             Ok(render_app) => render_app,
@@ -155,7 +155,7 @@ impl Node for BloomNode {
 
         let downsampling_pipeline_res = world.resource::<BloomDownsamplingPipeline>();
         let pipeline_cache = world.resource::<PipelineCache>();
-        let uniforms = world.resource::<ComponentUniforms<BloomUniforms>>();
+        let uniforms = world.resource::<GpuComponentBuffer<BloomUniforms>>();
         let view_entity = graph.view_entity();
         let Ok((
             camera,
@@ -388,7 +388,7 @@ fn queue_bloom_bind_groups(
     downsampling_pipeline: Res<BloomDownsamplingPipeline>,
     upsampling_pipeline: Res<BloomUpsamplingPipeline>,
     views: Query<(Entity, &BloomTexture)>,
-    uniforms: Res<ComponentUniforms<BloomUniforms>>,
+    uniforms: Res<GpuComponentBuffer<BloomUniforms>>,
 ) {
     let sampler = &downsampling_pipeline.sampler;
 

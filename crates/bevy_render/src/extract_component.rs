@@ -1,6 +1,6 @@
 use crate::{
-    render_resource::{encase::internal::WriteInto, DynamicUniformBuffer, ShaderType},
-    renderer::{RenderDevice, RenderQueue},
+    render_resource::{GpuBuffer, GpuBufferable},
+    renderer::{RenderAdapter, RenderDevice, RenderQueue},
     view::ComputedVisibility,
     Extract, ExtractSchedule, Render, RenderApp, RenderSet,
 };
@@ -12,23 +12,9 @@ use bevy_ecs::{
     query::{QueryItem, ReadOnlyWorldQuery, WorldQuery},
     system::lifetimeless::Read,
 };
-use std::{marker::PhantomData, ops::Deref};
+use std::marker::PhantomData;
 
 pub use bevy_render_macros::ExtractComponent;
-
-/// Stores the index of a uniform inside of [`ComponentUniforms`].
-#[derive(Component)]
-pub struct DynamicUniformIndex<C: Component> {
-    index: u32,
-    marker: PhantomData<C>,
-}
-
-impl<C: Component> DynamicUniformIndex<C> {
-    #[inline]
-    pub fn index(&self) -> u32 {
-        self.index
-    }
-}
 
 /// Describes how a component gets extracted for rendering.
 ///
@@ -70,19 +56,16 @@ pub trait ExtractComponent: Component {
 ///
 /// Therefore it sets up the [`RenderSet::Prepare`](crate::RenderSet::Prepare) step
 /// for the specified [`ExtractComponent`].
-pub struct UniformComponentPlugin<C>(PhantomData<fn() -> C>);
+#[derive(Default)]
+pub struct GpuBufferComponentPlugin<C: Component + GpuBufferable>(PhantomData<C>);
 
-impl<C> Default for UniformComponentPlugin<C> {
-    fn default() -> Self {
-        Self(PhantomData)
-    }
-}
-
-impl<C: Component + ShaderType + WriteInto + Clone> Plugin for UniformComponentPlugin<C> {
+impl<C: Component + GpuBufferable> Plugin for GpuBufferComponentPlugin<C> {
     fn build(&self, app: &mut App) {
         if let Ok(render_app) = app.get_sub_app_mut(RenderApp) {
             render_app
-                .insert_resource(ComponentUniforms::<C>::default())
+                .insert_resource(GpuBuffer::<C>::new(
+                    render_app.world.resource::<RenderAdapter>(),
+                ))
                 .add_systems(
                     Render,
                     prepare_uniform_components::<C>.in_set(RenderSet::Prepare),
@@ -91,65 +74,24 @@ impl<C: Component + ShaderType + WriteInto + Clone> Plugin for UniformComponentP
     }
 }
 
-/// Stores all uniforms of the component type.
-#[derive(Resource)]
-pub struct ComponentUniforms<C: Component + ShaderType> {
-    uniforms: DynamicUniformBuffer<C>,
-}
-
-impl<C: Component + ShaderType> Deref for ComponentUniforms<C> {
-    type Target = DynamicUniformBuffer<C>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.uniforms
-    }
-}
-
-impl<C: Component + ShaderType> ComponentUniforms<C> {
-    #[inline]
-    pub fn uniforms(&self) -> &DynamicUniformBuffer<C> {
-        &self.uniforms
-    }
-}
-
-impl<C: Component + ShaderType> Default for ComponentUniforms<C> {
-    fn default() -> Self {
-        Self {
-            uniforms: Default::default(),
-        }
-    }
-}
-
 /// This system prepares all components of the corresponding component type.
 /// They are transformed into uniforms and stored in the [`ComponentUniforms`] resource.
-fn prepare_uniform_components<C: Component>(
+fn prepare_uniform_components<C: Component + GpuBufferable>(
     mut commands: Commands,
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
-    mut component_uniforms: ResMut<ComponentUniforms<C>>,
+    mut gpu_buffer: ResMut<GpuBuffer<C>>,
     components: Query<(Entity, &C)>,
-) where
-    C: ShaderType + WriteInto + Clone,
-{
-    component_uniforms.uniforms.clear();
+) {
+    gpu_buffer.clear();
+
     let entities = components
         .iter()
-        .map(|(entity, component)| {
-            (
-                entity,
-                DynamicUniformIndex::<C> {
-                    index: component_uniforms.uniforms.push(component.clone()),
-                    marker: PhantomData,
-                },
-            )
-        })
+        .map(|(entity, component)| (entity, gpu_buffer.push(component.clone())))
         .collect::<Vec<_>>();
     commands.insert_or_spawn_batch(entities);
 
-    component_uniforms
-        .uniforms
-        .write_buffer(&render_device, &render_queue);
+    gpu_buffer.write_buffer(&render_device, &render_queue);
 }
 
 /// This plugin extracts the components into the "render world".

@@ -1,7 +1,9 @@
+mod batched_uniform_buffer;
 mod bind_group;
 mod bind_group_layout;
 mod buffer;
 mod buffer_vec;
+mod gpu_buffer;
 mod pipeline;
 mod pipeline_cache;
 mod pipeline_specializer;
@@ -11,10 +13,12 @@ mod storage_buffer;
 mod texture;
 mod uniform_buffer;
 
+pub use batched_uniform_buffer::*;
 pub use bind_group::*;
 pub use bind_group_layout::*;
 pub use buffer::*;
 pub use buffer_vec::*;
+pub use gpu_buffer::*;
 pub use pipeline::*;
 pub use pipeline_cache::*;
 pub use pipeline_specializer::*;

@@ -20,7 +20,7 @@ use bevy_ecs::{
 use bevy_math::{Mat3A, Mat4, Vec2};
 use bevy_reflect::TypeUuid;
 use bevy_render::{
-    extract_component::{ComponentUniforms, DynamicUniformIndex, UniformComponentPlugin},
+    extract_component::{DynamicUniformIndex, GpuBufferComponentPlugin, GpuComponentBuffer},
     globals::{GlobalsBuffer, GlobalsUniform},
     mesh::{
         skinning::{SkinnedMesh, SkinnedMeshInverseBindposes},
@@ -101,7 +101,7 @@ impl Plugin for MeshRenderPlugin {
         load_internal_asset!(app, MESH_SHADER_HANDLE, "mesh.wgsl", Shader::from_wgsl);
         load_internal_asset!(app, SKINNING_HANDLE, "skinning.wgsl", Shader::from_wgsl);
 
-        app.add_plugin(UniformComponentPlugin::<MeshUniform>::default());
+        app.add_plugin(GpuBufferComponentPlugin::<MeshUniform>::default());
 
         if let Ok(render_app) = app.get_sub_app_mut(RenderApp) {
             render_app
@@ -855,10 +855,10 @@ pub fn queue_mesh_bind_group(
     mut commands: Commands,
     mesh_pipeline: Res<MeshPipeline>,
     render_device: Res<RenderDevice>,
-    mesh_uniforms: Res<ComponentUniforms<MeshUniform>>,
+    mesh_uniforms: Res<GpuComponentBuffer<MeshUniform>>,
     skinned_mesh_uniform: Res<SkinnedMeshUniform>,
 ) {
-    if let Some(mesh_binding) = mesh_uniforms.uniforms().binding() {
+    if let Some(mesh_binding) = mesh_uniforms.buffer().binding() {
         let mut mesh_bind_group = MeshBindGroup {
             normal: render_device.create_bind_group(&BindGroupDescriptor {
                 entries: &[BindGroupEntry {
