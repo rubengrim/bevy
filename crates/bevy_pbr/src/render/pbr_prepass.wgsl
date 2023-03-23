@@ -16,6 +16,7 @@ struct FragmentInput {
     @location(2) world_tangent: vec4<f32>,
 #endif // VERTEX_TANGENTS
 #endif // NORMAL_PREPASS
+    @location(3) instance_index: u32,
 };
 
 // Cutoff used for the premultiplied alpha modes BLEND and ADD.
@@ -51,10 +52,10 @@ fn prepass_alpha_discard(in: FragmentInput) {
     }
 #else // BLEND_PREMULTIPLIED_ALPHA || BLEND_ALPHA
     let alpha_mode = material.flags & STANDARD_MATERIAL_FLAGS_ALPHA_MODE_RESERVED_BITS;
-    if (alpha_mode == STANDARD_MATERIAL_FLAGS_ALPHA_MODE_BLEND || alpha_mode == STANDARD_MATERIAL_FLAGS_ALPHA_MODE_ADD) 
+    if (alpha_mode == STANDARD_MATERIAL_FLAGS_ALPHA_MODE_BLEND || alpha_mode == STANDARD_MATERIAL_FLAGS_ALPHA_MODE_ADD)
         && output_color.a < PREMULTIPLIED_ALPHA_CUTOFF {
         discard;
-    } else if alpha_mode == STANDARD_MATERIAL_FLAGS_ALPHA_MODE_PREMULTIPLIED 
+    } else if alpha_mode == STANDARD_MATERIAL_FLAGS_ALPHA_MODE_PREMULTIPLIED
         && all(output_color < vec4(PREMULTIPLIED_ALPHA_CUTOFF)) {
         discard;
     }
@@ -104,4 +105,3 @@ fn fragment(in: FragmentInput) {
 }
 
 #endif // NORMAL_PREPASS
-
