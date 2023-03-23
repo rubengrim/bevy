@@ -24,7 +24,7 @@ struct VertexOutput {
 @vertex
 fn vertex(vertex: Vertex) -> VertexOutput {
     var out: VertexOutput;
-    out.clip_position = mesh_position_local_to_clip(mesh[vertex.instance_index].model, vec4<f32>(vertex.position, 1.0));
+    out.clip_position = mesh_position_local_to_clip(meshes[vertex.instance_index].model, vec4<f32>(vertex.position, 1.0));
     out.blend_color = vertex.blend_color;
     return out;
 }

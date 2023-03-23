@@ -36,7 +36,7 @@ struct VertexOutput {
 fn vertex(vertex: Vertex) -> VertexOutput {
     var out: VertexOutput;
 
-    let mesh = mesh[vertex.instance_index];
+    let mesh = meshes[vertex.instance_index];
 
 #ifdef SKINNED
     var model = skin_model(vertex.joint_indices, vertex.joint_weights);
