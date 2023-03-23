@@ -20,7 +20,7 @@ pub enum GpuBuffer<T: GpuBufferable> {
 impl<T: GpuBufferable> GpuBuffer<T> {
     pub fn new(device: &RenderDevice) -> Self {
         let limits = device.limits();
-        if limits.max_storage_buffers_per_shader_stage == 0 {
+        if limits.max_storage_buffers_per_shader_stage < 3 {
             GpuBuffer::Uniform(BatchedUniformBuffer::new(&limits))
         } else {
             GpuBuffer::Storage(DynamicStorageBuffer::default())
@@ -60,7 +60,7 @@ impl<T: GpuBufferable> GpuBuffer<T> {
         BindGroupLayoutEntry {
             binding,
             visibility,
-            ty: if device.limits().max_storage_buffers_per_shader_stage == 0 {
+            ty: if device.limits().max_storage_buffers_per_shader_stage < 3 {
                 BindingType::Buffer {
                     ty: BufferBindingType::Uniform,
                     has_dynamic_offset: true,
