@@ -54,16 +54,7 @@ impl FromWorld for BloomUpsamplingPipeline {
                         count: None,
                     },
                     // BloomUniforms
-                    BindGroupLayoutEntry {
-                        binding: 2,
-                        ty: BindingType::Buffer {
-                            ty: BufferBindingType::Uniform,
-                            has_dynamic_offset: true,
-                            min_binding_size: Some(BloomUniforms::min_size()),
-                        },
-                        visibility: ShaderStages::FRAGMENT,
-                        count: None,
-                    },
+                    GpuBuffer::<BloomUniforms>::binding_layout(2, ShaderStages::FRAGMENT),
                 ],
             });
 

@@ -6,7 +6,7 @@ use crate::{
 use bevy_ecs::{prelude::Component, system::Resource};
 use encase::{private::WriteInto, ShaderSize, ShaderType};
 use std::marker::PhantomData;
-use wgpu::BindingResource;
+use wgpu::{BindGroupLayoutEntry, BindingResource, BindingType, BufferBindingType, ShaderStages};
 
 pub trait GpuBufferable: ShaderType + ShaderSize + WriteInto + Clone {}
 impl<T: ShaderType + ShaderSize + WriteInto + Clone> GpuBufferable for T {}
@@ -48,6 +48,27 @@ impl<T: GpuBufferable> GpuBuffer<T> {
         match self {
             GpuBuffer::Uniform(buffer) => buffer.write_buffer(device, queue),
             GpuBuffer::Storage(buffer) => buffer.write_buffer(device, queue),
+        }
+    }
+
+    pub fn binding_layout(binding: u32, visibility: ShaderStages) -> BindGroupLayoutEntry {
+        BindGroupLayoutEntry {
+            binding,
+            visibility,
+            ty: if cfg!(feature = "webgl") {
+                BindingType::Buffer {
+                    ty: BufferBindingType::Uniform,
+                    has_dynamic_offset: true,
+                    min_binding_size: Some(T::min_size()),
+                }
+            } else {
+                BindingType::Buffer {
+                    ty: BufferBindingType::Storage { read_only: true },
+                    has_dynamic_offset: false,
+                    min_binding_size: Some(T::min_size()),
+                }
+            },
+            count: None,
         }
     }
 

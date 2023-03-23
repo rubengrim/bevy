@@ -29,9 +29,9 @@ use bevy_render::{
         BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
         BindGroupLayoutEntry, BindingResource, BindingType, BlendState, BufferBindingType,
         ColorTargetState, ColorWrites, CompareFunction, DepthBiasState, DepthStencilState,
-        Extent3d, FragmentState, FrontFace, MultisampleState, PipelineCache, PolygonMode,
-        PrimitiveState, RenderPipelineDescriptor, Shader, ShaderDefVal, ShaderRef, ShaderStages,
-        ShaderType, SpecializedMeshPipeline, SpecializedMeshPipelineError,
+        Extent3d, FragmentState, FrontFace, GpuBuffer, MultisampleState, PipelineCache,
+        PolygonMode, PrimitiveState, RenderPipelineDescriptor, Shader, ShaderDefVal, ShaderRef,
+        ShaderStages, ShaderType, SpecializedMeshPipeline, SpecializedMeshPipelineError,
         SpecializedMeshPipelines, StencilFaceState, StencilState, TextureDescriptor,
         TextureDimension, TextureFormat, TextureSampleType, TextureUsages, TextureViewDimension,
         VertexState,
@@ -172,16 +172,7 @@ impl<M: Material> FromWorld for PrepassPipeline<M> {
         let view_layout = render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
             entries: &[
                 // View
-                BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::VERTEX_FRAGMENT,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Uniform,
-                        has_dynamic_offset: true,
-                        min_binding_size: Some(ViewUniform::min_size()),
-                    },
-                    count: None,
-                },
+                GpuBuffer::<ViewUniform>::binding_layout(0, ShaderStages::VERTEX_FRAGMENT),
                 // Globals
                 BindGroupLayoutEntry {
                     binding: 1,

@@ -230,16 +230,7 @@ impl SpecializedRenderPipeline for TonemappingPipeline {
 impl FromWorld for TonemappingPipeline {
     fn from_world(render_world: &mut World) -> Self {
         let mut entries = vec![
-            BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStages::FRAGMENT,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Uniform,
-                    has_dynamic_offset: true,
-                    min_binding_size: Some(ViewUniform::min_size()),
-                },
-                count: None,
-            },
+            GpuBuffer::<ViewUniform>::binding_layout(0, ShaderStages::FRAGMENT),
             BindGroupLayoutEntry {
                 binding: 1,
                 visibility: ShaderStages::FRAGMENT,
