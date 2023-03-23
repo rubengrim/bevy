@@ -38,7 +38,7 @@ impl<T: GpuBufferable> GpuBuffer<T> {
         match self {
             GpuBuffer::Uniform(buffer) => buffer.push(value),
             GpuBuffer::Storage(buffer) => GpuBufferIndex {
-                index: buffer.push(value),
+                instance_index: buffer.push(value),
                 dynamic_offset: None,
                 element_type: PhantomData,
             },
@@ -87,7 +87,7 @@ impl<T: GpuBufferable> GpuBuffer<T> {
 
 #[derive(Component)]
 pub struct GpuBufferIndex<T: GpuBufferable> {
-    pub index: u32,
+    pub instance_index: u32,
     pub dynamic_offset: Option<u32>,
     pub element_type: PhantomData<T>,
 }

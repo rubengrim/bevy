@@ -1152,7 +1152,7 @@ impl<P: PhaseItem> RenderCommand<P> for DrawMesh {
     ) -> RenderCommandResult {
         if let Some(gpu_mesh) = meshes.into_inner().get(mesh_handle) {
             pass.set_vertex_buffer(0, gpu_mesh.vertex_buffer.slice(..));
-            let instances = buffer_index.index..(buffer_index.index + 1);
+            let instances = buffer_index.instance_index..(buffer_index.instance_index + 1);
             match &gpu_mesh.buffer_info {
                 GpuMeshBufferInfo::Indexed {
                     buffer,

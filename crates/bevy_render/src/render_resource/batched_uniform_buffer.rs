@@ -52,7 +52,7 @@ impl<T: GpuBufferable> BatchedUniformBuffer<T> {
 
     pub fn push(&mut self, component: T) -> GpuBufferIndex<T> {
         let result = GpuBufferIndex {
-            index: self.temp.0.len() as u32,
+            instance_index: self.temp.0.len() as u32,
             dynamic_offset: Some(self.current_offset),
             element_type: PhantomData,
         };
