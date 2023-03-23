@@ -20,11 +20,7 @@ var input_texture: texture_2d<f32>;
 var s: sampler;
 
 @group(0) @binding(2)
-#if AVAILABLE_STORAGE_BUFFER_BINDINGS >= 3
-var<storage> uniforms: BloomUniforms;
-#else
-var<uniform> uniforms: array<BloomUniforms>;
-#endif
+var<uniform> uniforms: BloomUniforms;
 
 #ifdef FIRST_DOWNSAMPLE
 // https://catlikecoding.com/unity/tutorials/advanced-rendering/bloom/#3.4
