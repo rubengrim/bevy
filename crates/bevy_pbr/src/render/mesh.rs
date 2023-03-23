@@ -292,11 +292,16 @@ impl FromWorld for MeshPipeline {
          -> Vec<BindGroupLayoutEntry> {
             let mut entries = vec![
                 // View
-                GpuBuffer::<ViewUniform>::binding_layout(
-                    0,
-                    ShaderStages::VERTEX_FRAGMENT,
-                    &render_device,
-                ),
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStages::VERTEX_FRAGMENT,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
+                        has_dynamic_offset: true,
+                        min_binding_size: Some(ViewUniform::min_size()),
+                    },
+                    count: None,
+                },
                 // Lights
                 BindGroupLayoutEntry {
                     binding: 1,
