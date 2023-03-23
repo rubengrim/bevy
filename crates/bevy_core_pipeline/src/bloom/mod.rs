@@ -12,7 +12,8 @@ use bevy_math::UVec2;
 use bevy_reflect::TypeUuid;
 use bevy_render::{
     camera::ExtractedCamera,
-    extract_component::{ExtractComponentPlugin, GpuBufferComponentPlugin},
+    extract_component::ExtractComponentPlugin,
+    gpu_component::{GpuComponentUniformOffset, GpuUniformComponentPlugin},
     prelude::Color,
     render_graph::{Node, NodeRunError, RenderGraph, RenderGraphContext},
     render_resource::*,
@@ -49,8 +50,7 @@ impl Plugin for BloomPlugin {
         app.register_type::<BloomPrefilterSettings>();
         app.register_type::<BloomCompositeMode>();
         app.add_plugin(ExtractComponentPlugin::<BloomSettings>::default());
-        // TODO: Remove GpuBuffer usage, switch back to uniform only
-        app.add_plugin(GpuBufferComponentPlugin::<BloomUniforms>::default());
+        app.add_plugin(GpuUniformComponentPlugin::<BloomUniforms>::default());
 
         let render_app = match app.get_sub_app_mut(RenderApp) {
             Ok(render_app) => render_app,
@@ -118,7 +118,7 @@ pub struct BloomNode {
         &'static ViewTarget,
         &'static BloomTexture,
         &'static BloomBindGroups,
-        &'static GpuBufferIndex<BloomUniforms>,
+        &'static GpuComponentUniformOffset<BloomUniforms>,
         &'static BloomSettings,
         &'static UpsamplingPipelineIds,
         &'static BloomDownsamplingPipelineIds,
@@ -156,7 +156,7 @@ impl Node for BloomNode {
             view_target,
             bloom_texture,
             bind_groups,
-            uniform_index,
+            uniform_offset,
             bloom_settings,
             upsampling_pipeline_ids,
             downsampling_pipeline_ids,
@@ -176,11 +176,6 @@ impl Node for BloomNode {
             pipeline_cache.get_render_pipeline(upsampling_pipeline_ids.id_main),
             pipeline_cache.get_render_pipeline(upsampling_pipeline_ids.id_final),
         ) else { return Ok(()) };
-
-        let dynamic_offsets = match uniform_index.dynamic_offset {
-            Some(dynamic_offset) => vec![dynamic_offset],
-            None => vec![],
-        };
 
         render_context.command_encoder().push_debug_group("bloom");
 
@@ -224,7 +219,7 @@ impl Node for BloomNode {
             downsampling_first_pass.set_bind_group(
                 0,
                 &downsampling_first_bind_group,
-                &dynamic_offsets,
+                &[uniform_offset.0],
             );
             downsampling_first_pass.draw(0..3, 0..1);
         }
@@ -246,7 +241,7 @@ impl Node for BloomNode {
             downsampling_pass.set_bind_group(
                 0,
                 &bind_groups.downsampling_bind_groups[mip as usize - 1],
-                &dynamic_offsets,
+                &[uniform_offset.0],
             );
             downsampling_pass.draw(0..3, 0..1);
         }
@@ -271,7 +266,7 @@ impl Node for BloomNode {
             upsampling_pass.set_bind_group(
                 0,
                 &bind_groups.upsampling_bind_groups[(bloom_texture.mip_count - mip - 1) as usize],
-                &dynamic_offsets,
+                &[uniform_offset.0],
             );
             let blend = compute_blend_factor(
                 bloom_settings,
@@ -301,7 +296,7 @@ impl Node for BloomNode {
             upsampling_final_pass.set_bind_group(
                 0,
                 &bind_groups.upsampling_bind_groups[(bloom_texture.mip_count - 1) as usize],
-                &dynamic_offsets,
+                &[uniform_offset.0],
             );
             if let Some(viewport) = camera.viewport.as_ref() {
                 upsampling_final_pass.set_camera_viewport(viewport);

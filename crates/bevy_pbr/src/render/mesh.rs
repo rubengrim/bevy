@@ -20,8 +20,8 @@ use bevy_ecs::{
 use bevy_math::{Mat3A, Mat4, Vec2};
 use bevy_reflect::TypeUuid;
 use bevy_render::{
-    extract_component::GpuBufferComponentPlugin,
     globals::{GlobalsBuffer, GlobalsUniform},
+    gpu_component::GpuBufferComponentPlugin,
     mesh::{
         skinning::{SkinnedMesh, SkinnedMeshInverseBindposes},
         GpuMeshBufferInfo, Mesh, MeshVertexBufferLayout,

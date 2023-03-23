@@ -1,9 +1,4 @@
-use crate::{
-    render_resource::{GpuBuffer, GpuBufferable},
-    renderer::{RenderDevice, RenderQueue},
-    view::ComputedVisibility,
-    Extract, ExtractSchedule, Render, RenderApp, RenderSet,
-};
+use crate::{view::ComputedVisibility, Extract, ExtractSchedule, RenderApp};
 use bevy_app::{App, Plugin};
 use bevy_asset::{Asset, Handle};
 use bevy_ecs::{
@@ -45,58 +40,6 @@ pub trait ExtractComponent: Component {
 
     /// Defines how the component is transferred into the "render world".
     fn extract_component(item: QueryItem<'_, Self::Query>) -> Option<Self::Out>;
-}
-
-/// This plugin prepares the components of the corresponding type for the GPU
-/// by transforming them into uniforms.
-///
-/// They can then be accessed from the [`ComponentUniforms`] resource.
-/// For referencing the newly created uniforms a [`DynamicUniformIndex`] is inserted
-/// for every processed entity.
-///
-/// Therefore it sets up the [`RenderSet::Prepare`](crate::RenderSet::Prepare) step
-/// for the specified [`ExtractComponent`].
-pub struct GpuBufferComponentPlugin<C: Component + GpuBufferable>(PhantomData<C>);
-
-impl<C: Component + GpuBufferable> Plugin for GpuBufferComponentPlugin<C> {
-    fn build(&self, app: &mut App) {
-        if let Ok(render_app) = app.get_sub_app_mut(RenderApp) {
-            render_app
-                .insert_resource(GpuBuffer::<C>::new(
-                    render_app.world.resource::<RenderDevice>(),
-                ))
-                .add_systems(
-                    Render,
-                    prepare_uniform_components::<C>.in_set(RenderSet::Prepare),
-                );
-        }
-    }
-}
-
-impl<C: Component + GpuBufferable> Default for GpuBufferComponentPlugin<C> {
-    fn default() -> Self {
-        Self(PhantomData::<C>)
-    }
-}
-
-/// This system prepares all components of the corresponding component type.
-/// They are transformed into uniforms and stored in the [`ComponentUniforms`] resource.
-fn prepare_uniform_components<C: Component + GpuBufferable>(
-    mut commands: Commands,
-    render_device: Res<RenderDevice>,
-    render_queue: Res<RenderQueue>,
-    mut gpu_buffer: ResMut<GpuBuffer<C>>,
-    components: Query<(Entity, &C)>,
-) {
-    gpu_buffer.clear();
-
-    let entities = components
-        .iter()
-        .map(|(entity, component)| (entity, gpu_buffer.push(component.clone())))
-        .collect::<Vec<_>>();
-    commands.insert_or_spawn_batch(entities);
-
-    gpu_buffer.write_buffer(&render_device, &render_queue);
 }
 
 /// This plugin extracts the components into the "render world".

@@ -9,8 +9,8 @@ use bevy_ecs::{
 use bevy_math::{Mat4, Vec2};
 use bevy_reflect::{Reflect, TypeUuid};
 use bevy_render::{
-    extract_component::GpuBufferComponentPlugin,
     globals::{GlobalsBuffer, GlobalsUniform},
+    gpu_component::GpuBufferComponentPlugin,
     mesh::{GpuMeshBufferInfo, Mesh, MeshVertexBufferLayout},
     render_asset::RenderAssets,
     render_phase::{PhaseItem, RenderCommand, RenderCommandResult, TrackedRenderPass},
