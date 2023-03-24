@@ -527,7 +527,7 @@ impl FromWorld for MeshPipeline {
             }
         };
 
-        let mesh_uniform_batch_size = GpuBuffer::<MeshUniform>::batch_size(device);
+        let mesh_uniform_batch_size = GpuBuffer::<MeshUniform>::batch_size(&render_device);
 
         MeshPipeline {
             view_layout,
