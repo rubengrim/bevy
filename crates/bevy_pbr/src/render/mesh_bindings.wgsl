@@ -3,10 +3,10 @@
 #import bevy_pbr::mesh_types
 
 @group(2) @binding(0)
-#if AVAILABLE_STORAGE_BUFFER_BINDINGS >= 3
-var<storage> meshes: array<Mesh>;
+#ifdef MESH_UNIFORM_BATCH_SIZE
+var<uniform> meshes: array<Mesh, #{MESH_UNIFORM_BATCH_SIZE}>;
 #else
-var<uniform> meshes: array<Mesh>;
+var<storage> meshes: array<Mesh>;
 #endif
 
 #ifdef SKINNED

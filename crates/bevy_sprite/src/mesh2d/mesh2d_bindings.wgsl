@@ -4,7 +4,7 @@
 
 @group(2) @binding(0)
 #if AVAILABLE_STORAGE_BUFFER_BINDINGS >= 3
-var<storage> meshes: array<Mesh>;
+var<storage> meshes: array<Mesh2d>;
 #else
 var<uniform> meshes: array<Mesh2d>;
 #endif

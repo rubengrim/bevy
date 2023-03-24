@@ -24,11 +24,15 @@ pub struct BatchedUniformBuffer<T: GpuBufferable> {
 }
 
 impl<T: GpuBufferable> BatchedUniformBuffer<T> {
-    pub fn new(limits: &Limits) -> Self {
-        let capacity = (limits
+    pub fn batch_size(limits: &Limits) -> usize {
+        (limits
             .max_uniform_buffer_binding_size
             .min(MAX_REASONABLE_UNIFORM_BUFFER_BINDING_SIZE) as u64
-            / T::min_size().get()) as usize;
+            / T::min_size().get()) as usize
+    }
+
+    pub fn new(limits: &Limits) -> Self {
+        let capacity = Self::batch_size(limits);
         let alignment = limits.min_uniform_buffer_offset_alignment;
 
         Self {
