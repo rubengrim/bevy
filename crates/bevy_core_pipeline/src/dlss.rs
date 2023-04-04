@@ -355,7 +355,7 @@ fn prepare_dlss(
         let render_resolution = dlss_context.render_resolution();
 
         temporal_jitter.offset = dlss_context.suggested_jitter(frame_count.0, render_resolution);
-        mip_bias.0 = -1.0; // TODO
+        mip_bias.0 = dlss_context.suggested_mip_bias(render_resolution);
 
         commands.entity(entity).insert(ViewportOverride(Viewport {
             physical_position: view.viewport.xy(),
