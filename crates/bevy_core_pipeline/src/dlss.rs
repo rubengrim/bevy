@@ -6,27 +6,27 @@ use crate::{
     prelude::Camera3d,
     prepass::{DepthPrepass, MotionVectorPrepass, ViewPrepassTextures},
 };
-use bevy_app::{App, IntoSystemAppConfig, Plugin};
+use bevy_app::{App, Plugin};
 use bevy_core::FrameCount;
 use bevy_ecs::{
     prelude::{Bundle, Component, Entity, NonSendMut, Query},
     query::{QueryState, With},
-    schedule::IntoSystemConfig,
+    schedule::IntoSystemConfigs,
     system::{Commands, Res, ResMut},
-    world::World,
+    world::{FromWorld, World},
 };
 use bevy_math::{UVec2, Vec4Swizzles};
 use bevy_render::{
-    camera::{ExtractedCamera, TemporalJitter, Viewport},
+    camera::{ExtractedCamera, MipBias, TemporalJitter, Viewport},
     prelude::{Camera, Msaa, Projection},
-    render_graph::{Node, NodeRunError, RenderGraph, RenderGraphContext, SlotInfo, SlotType},
+    render_graph::{Node, NodeRunError, RenderGraphApp, RenderGraphContext},
     render_resource::{
         CommandEncoder, CommandEncoderDescriptor, ImageSubresourceRange, TextureAspect,
         TextureUsages,
     },
     renderer::{RenderAdapter, RenderContext, RenderDevice, RenderQueue},
     view::{prepare_view_uniforms, ExtractedView, ViewTarget},
-    ExtractSchedule, MainWorld, RenderApp, RenderSet,
+    ExtractSchedule, MainWorld, Render, RenderApp, RenderSet,
 };
 use bevy_utils::{tracing::info, HashMap};
 use dlss_wgpu::{
@@ -81,38 +81,26 @@ impl Plugin for DlssPlugin {
                 sdk: dlss_sdk.unwrap(),
                 context_cache: HashMap::new(),
             })
-            .add_system(extract_dlss_settings.in_schedule(ExtractSchedule))
-            .add_system(
+            .add_systems(ExtractSchedule, extract_dlss_settings)
+            .add_systems(
+                Render,
                 prepare_dlss
                     .in_set(RenderSet::Prepare)
                     .before(prepare_view_uniforms),
+            )
+            .add_render_graph_node::<DlssNode>(
+                crate::core_3d::graph::NAME,
+                draw_3d_graph::node::DLSS,
+            )
+            .add_render_graph_edges(
+                crate::core_3d::graph::NAME,
+                &[
+                    crate::core_3d::graph::node::END_MAIN_PASS,
+                    draw_3d_graph::node::DLSS,
+                    crate::core_3d::graph::node::BLOOM,
+                    crate::core_3d::graph::node::TONEMAPPING,
+                ],
             );
-
-        let dlss_node = DlssNode::new(&mut render_app.world);
-        let mut graph = render_app.world.resource_mut::<RenderGraph>();
-        let draw_3d_graph = graph
-            .get_sub_graph_mut(crate::core_3d::graph::NAME)
-            .unwrap();
-        draw_3d_graph.add_node(draw_3d_graph::node::DLSS, dlss_node);
-        draw_3d_graph.add_slot_edge(
-            draw_3d_graph.input_node().id,
-            crate::core_3d::graph::input::VIEW_ENTITY,
-            draw_3d_graph::node::DLSS,
-            DlssNode::IN_VIEW,
-        );
-        // MAIN_PASS -> TAA -> BLOOM / TONEMAPPING
-        draw_3d_graph.add_node_edge(
-            crate::core_3d::graph::node::MAIN_PASS,
-            draw_3d_graph::node::DLSS,
-        );
-        draw_3d_graph.add_node_edge(
-            draw_3d_graph::node::DLSS,
-            crate::core_3d::graph::node::BLOOM,
-        );
-        draw_3d_graph.add_node_edge(
-            draw_3d_graph::node::DLSS,
-            crate::core_3d::graph::node::TONEMAPPING,
-        );
     }
 }
 
@@ -127,10 +115,8 @@ pub struct DlssNode {
     )>,
 }
 
-impl DlssNode {
-    const IN_VIEW: &'static str = "view";
-
-    fn new(world: &mut World) -> Self {
+impl FromWorld for DlssNode {
+    fn from_world(world: &mut World) -> Self {
         Self {
             view_query: QueryState::new(world),
         }
@@ -138,10 +124,6 @@ impl DlssNode {
 }
 
 impl Node for DlssNode {
-    fn input(&self) -> Vec<SlotInfo> {
-        vec![SlotInfo::new(Self::IN_VIEW, SlotType::Entity)]
-    }
-
     fn update(&mut self, world: &mut World) {
         self.view_query.update_archetypes(world);
     }
@@ -152,11 +134,10 @@ impl Node for DlssNode {
         render_context: &mut RenderContext,
         world: &World,
     ) -> Result<(), NodeRunError> {
-        let view_entity = graph.get_input_entity(Self::IN_VIEW)?;
         let adapter = world.resource::<RenderAdapter>();
         let dlss = world.non_send_resource::<DlssResource>();
         let Ok((view, dlss_settings, viewport_override, temporal_jitter, view_target, prepass_textures))
-            = self.view_query.get_manual(world, view_entity) else { return Ok(()); };
+            = self.view_query.get_manual(world, graph.view_entity()) else { return Ok(()); };
         let (
             Some(prepass_motion_vectors_texture),
             Some(prepass_depth_texture),
@@ -334,9 +315,11 @@ fn extract_dlss_settings(mut commands: Commands, mut main_world: ResMut<MainWorl
     for (entity, camera, camera_projection, mut dlss_settings) in query.iter_mut(&mut main_world) {
         let has_perspective_projection = matches!(camera_projection, Projection::Perspective(_));
         if camera.is_active && has_perspective_projection {
-            commands
-                .get_or_spawn(entity)
-                .insert((dlss_settings.clone(), camera_projection.clone()));
+            commands.get_or_spawn(entity).insert((
+                dlss_settings.clone(),
+                camera_projection.clone(),
+                MipBias(0.0),
+            ));
 
             dlss_settings.reset = false;
         }
@@ -350,6 +333,7 @@ fn prepare_dlss(
         &ExtractedCamera,
         &DlssSettings,
         &mut TemporalJitter,
+        &mut MipBias,
     )>,
     mut dlss: NonSendMut<DlssResource>,
     render_device: Res<RenderDevice>,
@@ -359,7 +343,7 @@ fn prepare_dlss(
 ) {
     let mut maybe_command_encoder = None;
 
-    for (entity, view, camera, dlss_settings, mut temporal_jitter) in &mut query {
+    for (entity, view, camera, dlss_settings, mut temporal_jitter, mut mip_bias) in &mut query {
         let upscaled_resolution = view.viewport.zw();
         let dlss_context = dlss.get_or_create_context(
             upscaled_resolution,
@@ -371,6 +355,7 @@ fn prepare_dlss(
         let render_resolution = dlss_context.render_resolution();
 
         temporal_jitter.offset = dlss_context.suggested_jitter(frame_count.0, render_resolution);
+        mip_bias.0 = -1.0; // TODO
 
         commands.entity(entity).insert(ViewportOverride(Viewport {
             physical_position: view.viewport.xy(),

@@ -1,3 +1,4 @@
+use super::ViewportOverride;
 use crate::core_3d::Transparent3d;
 use bevy_ecs::prelude::*;
 use bevy_render::{
@@ -19,6 +20,7 @@ pub struct MainTransparentPass3dNode {
             &'static RenderPhase<Transparent3d>,
             &'static ViewTarget,
             &'static ViewDepthTexture,
+            Option<&'static ViewportOverride>,
         ),
         With<ExtractedView>,
     >,
@@ -49,6 +51,7 @@ impl Node for MainTransparentPass3dNode {
             transparent_phase,
             target,
             depth,
+            viewport_override,
         )) = self.query.get_manual(world, view_entity) else {
             // No window
             return Ok(());
@@ -83,7 +86,8 @@ impl Node for MainTransparentPass3dNode {
                 }),
             });
 
-            if let Some(viewport) = camera.viewport.as_ref() {
+            let viewport = viewport_override.map_or(camera.viewport.as_ref(), |v| Some(&v.0));
+            if let Some(viewport) = viewport {
                 render_pass.set_camera_viewport(viewport);
             }
 

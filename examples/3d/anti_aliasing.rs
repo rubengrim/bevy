@@ -19,6 +19,11 @@ use bevy::{
     },
 };
 
+#[cfg(feature = "dlss")]
+use bevy::core_pipeline::dlss::{
+    DlssAvailable, DlssBundle, DlssPlugin, DlssPreset, DlssProjectId, DlssSettings,
+};
+
 fn main() {
     let mut app = App::new();
 
@@ -228,6 +233,9 @@ fn update_ui(
     #[cfg(feature = "dlss")] dlss_available: Option<Res<DlssAvailable>>,
     mut ui: Query<&mut Text>,
 ) {
+    #[cfg(feature = "dlss")]
+    let (fxaa, taa, dlss, cas_settings) = camera.single();
+    #[cfg(not(feature = "dlss"))]
     let (fxaa, taa, cas_settings) = camera.single();
 
     let mut ui = ui.single_mut();
@@ -235,7 +243,12 @@ fn update_ui(
 
     *ui = "Antialias Method\n".to_string();
 
-    if *msaa == Msaa::Off && fxaa.is_none() && taa.is_none() {
+    #[cfg(feature = "dlss")]
+    let dlss_off = dlss.is_none();
+    #[cfg(not(feature = "dlss"))]
+    let dlss_off = true;
+
+    if *msaa == Msaa::Off && fxaa.is_none() && taa.is_none() && dlss_off {
         ui.push_str("(1) *No AA*\n");
     } else {
         ui.push_str("(1) No AA\n");
@@ -257,6 +270,17 @@ fn update_ui(
         ui.push_str("(4) *TAA*");
     } else {
         ui.push_str("(4) TAA");
+    }
+
+    #[cfg(not(feature = "dlss"))]
+    ui.push_str("\n(X) DLSS (dlss feature disabled)");
+    #[cfg(feature = "dlss")]
+    if dlss_available.is_none() {
+        ui.push_str("\n(X) DLSS (not available)");
+    } else if dlss.is_some() {
+        ui.push_str("\n(5) *DLSS*");
+    } else {
+        ui.push_str("\n(5) DLSS");
     }
 
     if *msaa != Msaa::Off {
