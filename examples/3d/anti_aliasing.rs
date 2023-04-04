@@ -1,14 +1,12 @@
 //! This example compares different anti-aliasing methods.
 
-#[cfg(feature = "dlss")]
-use bevy::core_pipeline::dlss::{
-    DlssAvailable, DlssBundle, DlssPlugin, DlssPreset, DlssProjectId, DlssSettings,
-};
+use std::f32::consts::PI;
 
 use bevy::{
     core_pipeline::{
+        contrast_adaptive_sharpening::ContrastAdaptiveSharpeningSettings,
         experimental::taa::{
-            TemporalAntialiasBundle, TemporalAntialiasPlugin, TemporalAntialiasSettings,
+            TemporalAntiAliasBundle, TemporalAntiAliasPlugin, TemporalAntiAliasSettings,
         },
         fxaa::{Fxaa, Sensitivity},
     },
@@ -21,8 +19,6 @@ use bevy::{
     },
 };
 
-use std::f32::consts::PI;
-
 fn main() {
     let mut app = App::new();
 
@@ -34,9 +30,9 @@ fn main() {
     app.insert_resource(Msaa::Off)
         // TODO: Get pipelined rendering working with DLSS
         .add_plugins(DefaultPlugins.build().disable::<PipelinedRenderingPlugin>())
-        .add_plugin(TemporalAntialiasPlugin)
-        .add_startup_system(setup)
-        .add_systems((modify_aa, update_ui));
+        .add_plugin(TemporalAntiAliasPlugin)
+        .add_systems(Startup, setup)
+        .add_systems(Update, (modify_aa, modify_sharpening, update_ui));
 
     #[cfg(feature = "dlss")]
     app.add_plugin(DlssPlugin);
@@ -50,7 +46,7 @@ fn modify_aa(
         (
             Entity,
             Option<&mut Fxaa>,
-            Option<&TemporalAntialiasSettings>,
+            Option<&TemporalAntiAliasSettings>,
             Option<&mut DlssSettings>,
         ),
         With<Camera>,
@@ -59,7 +55,7 @@ fn modify_aa(
         (
             Entity,
             Option<&mut Fxaa>,
-            Option<&TemporalAntialiasSettings>,
+            Option<&TemporalAntiAliasSettings>,
         ),
         With<Camera>,
     >,
@@ -77,7 +73,7 @@ fn modify_aa(
     if keys.just_pressed(KeyCode::Key1) {
         *msaa = Msaa::Off;
         camera.remove::<Fxaa>();
-        camera.remove::<TemporalAntialiasBundle>();
+        camera.remove::<TemporalAntiAliasBundle>();
         #[cfg(feature = "dlss")]
         camera.remove::<DlssBundle>();
     }
@@ -85,7 +81,7 @@ fn modify_aa(
     // MSAA
     if keys.just_pressed(KeyCode::Key2) && *msaa == Msaa::Off {
         camera.remove::<Fxaa>();
-        camera.remove::<TemporalAntialiasBundle>();
+        camera.remove::<TemporalAntiAliasBundle>();
         #[cfg(feature = "dlss")]
         camera.remove::<DlssBundle>();
 
@@ -108,7 +104,7 @@ fn modify_aa(
     // FXAA
     if keys.just_pressed(KeyCode::Key3) && fxaa.is_none() {
         *msaa = Msaa::Off;
-        camera.remove::<TemporalAntialiasBundle>();
+        camera.remove::<TemporalAntiAliasBundle>();
         #[cfg(feature = "dlss")]
         camera.remove::<DlssBundle>();
 
@@ -146,7 +142,7 @@ fn modify_aa(
         #[cfg(feature = "dlss")]
         camera.remove::<DlssBundle>();
 
-        camera.insert(TemporalAntialiasBundle::default());
+        camera.insert(TemporalAntiAliasBundle::default());
     }
 
     // DLSS
@@ -154,7 +150,7 @@ fn modify_aa(
     if keys.just_pressed(KeyCode::Key5) && dlss.is_none() && dlss_available.is_some() {
         *msaa = Msaa::Off;
         camera.remove::<Fxaa>();
-        camera.remove::<TemporalAntialiasBundle>();
+        camera.remove::<TemporalAntiAliasBundle>();
 
         camera.insert(DlssBundle::default());
     }
@@ -186,38 +182,60 @@ fn modify_aa(
     }
 }
 
+fn modify_sharpening(
+    keys: Res<Input<KeyCode>>,
+    mut query: Query<&mut ContrastAdaptiveSharpeningSettings>,
+) {
+    for mut cas in &mut query {
+        if keys.just_pressed(KeyCode::Key0) {
+            cas.enabled = !cas.enabled;
+        }
+        if cas.enabled {
+            if keys.just_pressed(KeyCode::Minus) {
+                cas.sharpening_strength -= 0.1;
+                cas.sharpening_strength = cas.sharpening_strength.clamp(0.0, 1.0);
+            }
+            if keys.just_pressed(KeyCode::Equals) {
+                cas.sharpening_strength += 0.1;
+                cas.sharpening_strength = cas.sharpening_strength.clamp(0.0, 1.0);
+            }
+            if keys.just_pressed(KeyCode::D) {
+                cas.denoise = !cas.denoise;
+            }
+        }
+    }
+}
+
 fn update_ui(
     #[cfg(feature = "dlss")] camera: Query<
         (
             Option<&Fxaa>,
-            Option<&TemporalAntialiasSettings>,
+            Option<&TemporalAntiAliasSettings>,
             Option<&DlssSettings>,
+            &ContrastAdaptiveSharpeningSettings,
         ),
         With<Camera>,
     >,
     #[cfg(not(feature = "dlss"))] camera: Query<
-        (Option<&Fxaa>, Option<&TemporalAntialiasSettings>),
+        (
+            Option<&Fxaa>,
+            Option<&TemporalAntiAliasSettings>,
+            &ContrastAdaptiveSharpeningSettings,
+        ),
         With<Camera>,
     >,
     msaa: Res<Msaa>,
     #[cfg(feature = "dlss")] dlss_available: Option<Res<DlssAvailable>>,
     mut ui: Query<&mut Text>,
 ) {
-    #[cfg(feature = "dlss")]
-    let (fxaa, taa, dlss) = camera.single();
-    #[cfg(not(feature = "dlss"))]
-    let (fxaa, taa) = camera.single();
+    let (fxaa, taa, cas_settings) = camera.single();
 
     let mut ui = ui.single_mut();
     let ui = &mut ui.sections[0].value;
 
     *ui = "Antialias Method\n".to_string();
 
-    #[cfg(feature = "dlss")]
-    let dlss_off = dlss.is_none();
-    #[cfg(not(feature = "dlss"))]
-    let dlss_off = true;
-    if *msaa == Msaa::Off && fxaa.is_none() && taa.is_none() && dlss_off {
+    if *msaa == Msaa::Off && fxaa.is_none() && taa.is_none() {
         ui.push_str("(1) *No AA*\n");
     } else {
         ui.push_str("(1) No AA\n");
@@ -239,17 +257,6 @@ fn update_ui(
         ui.push_str("(4) *TAA*");
     } else {
         ui.push_str("(4) TAA");
-    }
-
-    #[cfg(not(feature = "dlss"))]
-    ui.push_str("\n(X) DLSS (dlss feature disabled)");
-    #[cfg(feature = "dlss")]
-    if dlss_available.is_none() {
-        ui.push_str("\n(X) DLSS (not available)");
-    } else if dlss.is_some() {
-        ui.push_str("\n(5) *DLSS*");
-    } else {
-        ui.push_str("\n(5) DLSS");
     }
 
     if *msaa != Msaa::Off {
@@ -352,6 +359,21 @@ fn update_ui(
             ui.push_str("(U) UltraPerformance");
         }
     }
+
+    if cas_settings.enabled {
+        ui.push_str("\n\n----------\n\n(0) Sharpening (Enabled)\n");
+        ui.push_str(&format!(
+            "(-/+) Strength: {:.1}\n",
+            cas_settings.sharpening_strength
+        ));
+        if cas_settings.denoise {
+            ui.push_str("(D) Denoising (Enabled)\n");
+        } else {
+            ui.push_str("(D) Denoising (Disabled)\n");
+        }
+    } else {
+        ui.push_str("\n\n----------\n\n(0) Sharpening (Disabled)\n");
+    }
 }
 
 /// Set up a simple 3D scene
@@ -412,14 +434,21 @@ fn setup(
     });
 
     // Camera
-    commands.spawn(Camera3dBundle {
-        camera: Camera {
-            hdr: true,
+    commands.spawn((
+        Camera3dBundle {
+            camera: Camera {
+                hdr: true,
+                ..default()
+            },
+            transform: Transform::from_xyz(0.7, 0.7, 1.0)
+                .looking_at(Vec3::new(0.0, 0.3, 0.0), Vec3::Y),
             ..default()
         },
-        transform: Transform::from_xyz(0.7, 0.7, 1.0).looking_at(Vec3::new(0.0, 0.3, 0.0), Vec3::Y),
-        ..default()
-    });
+        ContrastAdaptiveSharpeningSettings {
+            enabled: false,
+            ..default()
+        },
+    ));
 
     // UI
     commands.spawn(
@@ -433,11 +462,8 @@ fn setup(
         )
         .with_style(Style {
             position_type: PositionType::Absolute,
-            position: UiRect {
-                top: Val::Px(12.0),
-                left: Val::Px(12.0),
-                ..default()
-            },
+            top: Val::Px(12.0),
+            left: Val::Px(12.0),
             ..default()
         }),
     );

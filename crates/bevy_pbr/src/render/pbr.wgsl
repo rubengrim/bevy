@@ -10,6 +10,8 @@
 #import bevy_pbr::fog
 #import bevy_pbr::pbr_functions
 
+#import bevy_pbr::prepass_utils
+
 struct FragmentInput {
     @builtin(front_facing) is_front: bool,
     @builtin(position) frag_coord: vec4<f32>,
@@ -24,7 +26,7 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
 #endif
 #ifdef VERTEX_UVS
     if ((material.flags & STANDARD_MATERIAL_FLAGS_BASE_COLOR_TEXTURE_BIT) != 0u) {
-        output_color = output_color * textureSample(base_color_texture, base_color_sampler, in.uv);
+        output_color = output_color * textureSampleBias(base_color_texture, base_color_sampler, in.uv, view.mip_bias);
     }
 #endif
 
@@ -43,7 +45,7 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
         var emissive: vec4<f32> = material.emissive;
 #ifdef VERTEX_UVS
         if ((material.flags & STANDARD_MATERIAL_FLAGS_EMISSIVE_TEXTURE_BIT) != 0u) {
-            emissive = vec4<f32>(emissive.rgb * textureSample(emissive_texture, emissive_sampler, in.uv).rgb, 1.0);
+            emissive = vec4<f32>(emissive.rgb * textureSampleBias(emissive_texture, emissive_sampler, in.uv, view.mip_bias).rgb, 1.0);
         }
 #endif
         pbr_input.material.emissive = emissive;
@@ -52,7 +54,7 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
         var perceptual_roughness: f32 = material.perceptual_roughness;
 #ifdef VERTEX_UVS
         if ((material.flags & STANDARD_MATERIAL_FLAGS_METALLIC_ROUGHNESS_TEXTURE_BIT) != 0u) {
-            let metallic_roughness = textureSample(metallic_roughness_texture, metallic_roughness_sampler, in.uv);
+            let metallic_roughness = textureSampleBias(metallic_roughness_texture, metallic_roughness_sampler, in.uv, view.mip_bias);
             // Sampling from GLTF standard channels for now
             metallic = metallic * metallic_roughness.b;
             perceptual_roughness = perceptual_roughness * metallic_roughness.g;
@@ -64,16 +66,21 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
         var occlusion: f32 = 1.0;
 #ifdef VERTEX_UVS
         if ((material.flags & STANDARD_MATERIAL_FLAGS_OCCLUSION_TEXTURE_BIT) != 0u) {
-            occlusion = textureSample(occlusion_texture, occlusion_sampler, in.uv).r;
+            occlusion = textureSampleBias(occlusion_texture, occlusion_sampler, in.uv, view.mip_bias).r;
         }
 #endif
         pbr_input.frag_coord = in.frag_coord;
         pbr_input.world_position = in.world_position;
+
+#ifdef LOAD_PREPASS_NORMALS
+        pbr_input.world_normal = prepass_normal(in.frag_coord, 0u);
+#else // LOAD_PREPASS_NORMALS
         pbr_input.world_normal = prepare_world_normal(
             in.world_normal,
             (material.flags & STANDARD_MATERIAL_FLAGS_DOUBLE_SIDED_BIT) != 0u,
             in.is_front,
         );
+#endif // LOAD_PREPASS_NORMALS
 
         pbr_input.is_orthographic = view.projection[3].w == 1.0;
 
@@ -105,8 +112,7 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
     }
 
 #ifdef TONEMAP_IN_SHADER
-        output_color = tone_mapping(output_color);
-#endif
+    output_color = tone_mapping(output_color);
 #ifdef DEBAND_DITHER
     var output_rgb = output_color.rgb;
     output_rgb = powsafe(output_rgb, 1.0 / 2.2);
@@ -116,8 +122,9 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
     output_rgb = powsafe(output_rgb, 2.2);
     output_color = vec4(output_rgb, output_color.a);
 #endif
+#endif
 #ifdef PREMULTIPLY_ALPHA
-        output_color = premultiply_alpha(material.flags, output_color);
+    output_color = premultiply_alpha(material.flags, output_color);
 #endif
     return output_color;
 }

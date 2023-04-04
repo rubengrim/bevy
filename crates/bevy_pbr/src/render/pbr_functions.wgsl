@@ -78,7 +78,7 @@ fn apply_normal_mapping(
 #ifdef VERTEX_UVS
 #ifdef STANDARDMATERIAL_NORMAL_MAP
     // Nt is the tangent-space normal.
-    var Nt = textureSample(normal_map_texture, normal_map_sampler, uv).rgb;
+    var Nt = textureSampleBias(normal_map_texture, normal_map_sampler, uv, view.mip_bias).rgb;
     if (standard_material_flags & STANDARD_MATERIAL_FLAGS_TWO_COMPONENT_NORMAL_MAP) != 0u {
         // Only use the xy components and derive z for 2-component normal maps.
         Nt = vec3<f32>(Nt.rg * 2.0 - 1.0, 0.0);
@@ -269,12 +269,6 @@ fn pbr(
     return output_color;
 }
 #endif // PREPASS_FRAGMENT
-
-#ifdef DEBAND_DITHER
-fn dither(color: vec4<f32>, pos: vec2<f32>) -> vec4<f32> {
-    return vec4<f32>(color.rgb + screen_space_dither(pos.xy), color.a);
-}
-#endif // DEBAND_DITHER
 
 #ifndef PREPASS_FRAGMENT
 fn apply_fog(input_color: vec4<f32>, fragment_world_position: vec3<f32>, view_world_position: vec3<f32>) -> vec4<f32> {
