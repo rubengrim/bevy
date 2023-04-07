@@ -407,6 +407,12 @@ fn prepare_view_targets(
                     TextureFormat::bevy_default()
                 };
 
+                let mut texture_usages =
+                    TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING;
+                if view.hdr {
+                    texture_usages |= TextureUsages::STORAGE_BINDING;
+                }
+
                 let main_textures = textures
                     .entry((camera.target.clone(), view.hdr))
                     .or_insert_with(|| {
@@ -417,9 +423,7 @@ fn prepare_view_targets(
                             sample_count: 1,
                             dimension: TextureDimension::D2,
                             format: main_texture_format,
-                            usage: TextureUsages::RENDER_ATTACHMENT
-                                | TextureUsages::TEXTURE_BINDING
-                                | TextureUsages::STORAGE_BINDING,
+                            usage: texture_usages,
                             // TODO: Consider changing this if main_texture_format is not sRGB
                             view_formats: &[],
                         };
