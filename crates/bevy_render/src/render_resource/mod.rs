@@ -45,6 +45,15 @@ pub use wgpu::{
     VertexFormat, VertexState as RawVertexState, VertexStepMode,
 };
 
+pub mod raytrace {
+    pub use wgpu::{
+        AccelerationStructureFlags, AccelerationStructureGeometryFlags,
+        AccelerationStructureUpdateMode, BlasBuildEntry, BlasGeometries,
+        BlasGeometrySizeDescriptors, BlasTriangleGeometry, BlasTriangleGeometrySizeDescriptor,
+        CreateBlasDescriptor,
+    };
+}
+
 pub mod encase {
     pub use bevy_encase_derive::ShaderType;
     pub use encase::*;

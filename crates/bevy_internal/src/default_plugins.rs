@@ -113,6 +113,11 @@ impl PluginGroup for DefaultPlugins {
             group = group.add(bevy_pbr::PbrPlugin::default());
         }
 
+        #[cfg(feature = "bevy_solari")]
+        {
+            group = group.add(bevy_solari::SolariPlugin::default());
+        }
+
         // NOTE: Load this after renderer initialization so that it knows about the supported
         // compressed texture formats
         #[cfg(feature = "bevy_gltf")]
