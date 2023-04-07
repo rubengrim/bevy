@@ -44,6 +44,7 @@ The default feature set enables most of the expected features of a game engine, 
 |basis-universal|Basis Universal compressed texture support|
 |bevy_ci_testing|Enable systems that allow for automated testing on CI|
 |bevy_dynamic_plugin|Plugin for dynamic loading (using [libloading](https://crates.io/crates/libloading))|
+|bevy_solari|Adds global-illumination rendering|
 |bmp|BMP image format support|
 |dds|DDS compressed texture support|
 |debug_asset_server|Enable the "debug asset server" for hot reloading internal assets|
