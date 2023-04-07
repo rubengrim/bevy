@@ -209,7 +209,7 @@ impl Node for DlssNode {
                     reset: dlss_settings.reset,
                     jitter_offset: temporal_jitter.offset,
                     partial_texture_size: Some(render_resolution),
-                    motion_vector_scale: Some(render_resolution.as_vec2()),
+                    motion_vector_scale: Some(-render_resolution.as_vec2()),
                 },
                 render_context.command_encoder(),
                 &adapter.0,
