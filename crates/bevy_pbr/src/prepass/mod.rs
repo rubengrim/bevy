@@ -1,4 +1,4 @@
-use bevy_app::{Plugin, PreUpdate, Update};
+use bevy_app::{Plugin, PreUpdate};
 use bevy_asset::{load_internal_asset, AssetServer, Handle, HandleUntyped};
 use bevy_core_pipeline::{
     prelude::Camera3d,
@@ -135,7 +135,7 @@ where
 
         if no_prepass_plugin_loaded {
             app.insert_resource(AnyPrepassPluginLoaded)
-                .add_systems(Update, update_previous_view_projections)
+                .add_systems(PreUpdate, update_previous_view_projections)
                 // At the start of each frame, last frame's GlobalTransforms become this frame's PreviousGlobalTransforms
                 .add_systems(PreUpdate, update_mesh_previous_global_transforms);
         }
