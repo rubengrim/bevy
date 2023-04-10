@@ -10,7 +10,7 @@ use bevy_render::{
     renderer::{RenderDevice, RenderQueue},
 };
 use bevy_utils::HashMap;
-use std::{mem, ops::Deref};
+use std::ops::Deref;
 
 #[derive(Resource, Default)]
 pub struct BlasStorage {
@@ -30,14 +30,20 @@ pub fn prepare_blas(
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
 ) {
-    let mut blas_build_queue = Vec::new();
-    let mut blas_sizes = Vec::new();
-    for mesh in &meshes {
-        if let (Some(gpu_mesh), None) = (render_meshes.get(mesh), blas_storage.get(mesh)) {
-            if gpu_mesh.primitive_topology != PrimitiveTopology::TriangleList {
-                continue;
-            }
+    // Get GpuMeshes and filter to TriangleList meshes without an existing BLAS
+    let meshes = meshes
+        .iter()
+        .filter_map(|mesh| render_meshes.get(mesh).map(|gpu_mesh| (mesh, gpu_mesh)))
+        .filter(|(mesh, gpu_mesh)| {
+            !blas_storage.storage.contains_key(mesh)
+                && gpu_mesh.primitive_topology == PrimitiveTopology::TriangleList
+        })
+        .collect::<Vec<_>>();
 
+    // Create BLAS, blas size for each mesh
+    let blas_resources = meshes
+        .iter()
+        .map(|(mesh, gpu_mesh)| {
             let (index_buffer, index_count, index_format, index_buffer_offset, vertex_count) =
                 map_buffer_info(&gpu_mesh.buffer_info);
 
@@ -59,35 +65,43 @@ pub fn prepare_blas(
                     desc: vec![blas_size.clone()],
                 },
             );
+            blas_storage.storage.insert(mesh.clone_weak(), blas);
 
-            blas_sizes.push(blas_size);
-
-            let blas_geometries = [BlasTriangleGeometry {
-                size: blas_sizes.last().unwrap(),
-                vertex_buffer: &gpu_mesh.vertex_buffer,
-                first_vertex: 0,
-                vertex_stride: gpu_mesh.layout.layout().array_stride,
-                index_buffer: index_buffer.map(Deref::deref),
+            (
+                mesh.clone_weak(),
+                gpu_mesh,
+                blas_size,
+                index_buffer,
                 index_buffer_offset,
-                transform_buffer: None,
-                transform_buffer_offset: None,
-            }];
+            )
+        })
+        .collect::<Vec<_>>();
 
-            let blas_entry = blas_storage.storage.entry(mesh.clone_weak()).insert(blas);
+    // Create list of BlasBuildEntries using blas_resources
+    let build_entries = blas_resources
+        .iter()
+        .map(
+            |(mesh, gpu_mesh, blas_size, index_buffer, index_buffer_offset)| BlasBuildEntry {
+                blas: blas_storage.get(&mesh).unwrap(),
+                geometry: BlasGeometries::TriangleGeometries(vec![BlasTriangleGeometry {
+                    size: &blas_size,
+                    vertex_buffer: &gpu_mesh.vertex_buffer,
+                    first_vertex: 0,
+                    vertex_stride: gpu_mesh.layout.layout().array_stride,
+                    index_buffer: index_buffer.map(Deref::deref),
+                    index_buffer_offset: *index_buffer_offset,
+                    transform_buffer: None,
+                    transform_buffer_offset: None,
+                }]),
+            },
+        )
+        .collect::<Vec<_>>();
 
-            let blas_build_entry = BlasBuildEntry {
-                blas: blas_entry.get(),
-                geometry: &BlasGeometries::TriangleGeometries(&blas_geometries),
-            };
-
-            blas_build_queue.push(unsafe { mem::transmute(blas_build_entry) });
-        }
-    }
-
+    // Build geometry into each BLAS
     let mut command_encoder = render_device.create_command_encoder(&CommandEncoderDescriptor {
         label: Some("prepare_blas_command_encoder"),
     });
-    command_encoder.build_acceleration_structures(&blas_build_queue, &[]);
+    command_encoder.build_acceleration_structures(&build_entries, &[]);
     render_queue.submit([command_encoder.finish()]);
 }
 
