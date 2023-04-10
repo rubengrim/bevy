@@ -822,6 +822,7 @@ pub enum GpuBufferInfo {
         buffer: Buffer,
         count: u32,
         index_format: IndexFormat,
+        vertex_count: u32,
     },
     NonIndexed {
         vertex_count: u32,
@@ -849,11 +850,10 @@ impl RenderAsset for Mesh {
             label: Some("Mesh Vertex Buffer"),
             contents: &vertex_buffer_data,
         });
+        let vertex_count = mesh.count_vertices() as u32;
 
         let buffer_info = mesh.get_index_buffer_bytes().map_or(
-            GpuBufferInfo::NonIndexed {
-                vertex_count: mesh.count_vertices() as u32,
-            },
+            GpuBufferInfo::NonIndexed { vertex_count },
             |data| GpuBufferInfo::Indexed {
                 buffer: render_device.create_buffer_with_data(&BufferInitDescriptor {
                     usage: BufferUsages::INDEX,
@@ -862,6 +862,7 @@ impl RenderAsset for Mesh {
                 }),
                 count: mesh.indices().unwrap().len() as u32,
                 index_format: mesh.indices().unwrap().into(),
+                vertex_count,
             },
         );
 

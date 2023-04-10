@@ -46,12 +46,7 @@ pub use wgpu::{
 };
 
 pub mod raytrace {
-    pub use wgpu::{
-        AccelerationStructureFlags, AccelerationStructureGeometryFlags,
-        AccelerationStructureUpdateMode, BlasBuildEntry, BlasGeometries,
-        BlasGeometrySizeDescriptors, BlasTriangleGeometry, BlasTriangleGeometrySizeDescriptor,
-        CreateBlasDescriptor,
-    };
+    pub use wgpu::ray_tracing::*;
 }
 
 pub mod encase {

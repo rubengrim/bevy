@@ -249,6 +249,7 @@ impl<P: PhaseItem> RenderCommand<P> for DrawMeshInstanced {
                 buffer,
                 index_format,
                 count,
+                ..
             } => {
                 pass.set_index_buffer(buffer.slice(..), 0, *index_format);
                 pass.draw_indexed(0..*count, 0, 0..instance_buffer.length as u32);
