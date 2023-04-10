@@ -4,7 +4,9 @@ use bevy_render::{
     mesh::GpuBufferInfo,
     prelude::Mesh,
     render_asset::RenderAssets,
-    render_resource::{raytrace::*, Buffer, CommandEncoderDescriptor, IndexFormat},
+    render_resource::{
+        raytrace::*, Buffer, CommandEncoderDescriptor, IndexFormat, PrimitiveTopology,
+    },
     renderer::{RenderDevice, RenderQueue},
 };
 use bevy_utils::HashMap;
@@ -32,6 +34,10 @@ pub fn prepare_blas(
     let mut blas_sizes = Vec::new();
     for mesh in &meshes {
         if let (Some(gpu_mesh), None) = (render_meshes.get(mesh), blas_storage.get(mesh)) {
+            if gpu_mesh.primitive_topology != PrimitiveTopology::TriangleList {
+                continue;
+            }
+
             let (index_buffer, index_count, index_format, index_buffer_offset, vertex_count) =
                 map_buffer_info(&gpu_mesh.buffer_info);
 
