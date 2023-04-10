@@ -17,7 +17,7 @@ use bevy_utils::{tracing::error, Hashed};
 use std::{collections::BTreeMap, hash::Hash, iter::FusedIterator};
 use thiserror::Error;
 use wgpu::{
-    util::BufferInitDescriptor, BufferUsages, IndexFormat, VertexAttribute, VertexFormat,
+    util::BufferInitDescriptor, BufferUsages, Features, IndexFormat, VertexAttribute, VertexFormat,
     VertexStepMode,
 };
 
@@ -844,9 +844,17 @@ impl RenderAsset for Mesh {
         mesh: Self::ExtractedAsset,
         render_device: &mut SystemParamItem<Self::Param>,
     ) -> Result<Self::PreparedAsset, PrepareAssetError<Self::ExtractedAsset>> {
+        let mut extra_usages = BufferUsages::empty();
+        if render_device
+            .features()
+            .contains(Features::RAY_TRACING_ACCELERATION_STRUCTURE)
+        {
+            extra_usages |= BufferUsages::BLAS_INPUT;
+        }
+
         let vertex_buffer_data = mesh.get_vertex_buffer_data();
         let vertex_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
-            usage: BufferUsages::VERTEX,
+            usage: BufferUsages::VERTEX | extra_usages,
             label: Some("Mesh Vertex Buffer"),
             contents: &vertex_buffer_data,
         });
@@ -856,7 +864,7 @@ impl RenderAsset for Mesh {
             GpuBufferInfo::NonIndexed { vertex_count },
             |data| GpuBufferInfo::Indexed {
                 buffer: render_device.create_buffer_with_data(&BufferInitDescriptor {
-                    usage: BufferUsages::INDEX,
+                    usage: BufferUsages::INDEX | extra_usages,
                     contents: data,
                     label: Some("Mesh Index Buffer"),
                 }),
