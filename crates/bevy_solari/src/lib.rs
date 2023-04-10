@@ -1,15 +1,13 @@
 mod blas;
-mod mesh;
 mod node;
 
 use crate::blas::{prepare_blas, BlasStorage};
-use crate::mesh::extract_meshes;
 use crate::node::SolariNode;
 use bevy_app::{App, Plugin};
 use bevy_ecs::schedule::IntoSystemConfigs;
 use bevy_render::{
-    render_graph::RenderGraphApp, renderer::RenderDevice, settings::WgpuFeatures, ExtractSchedule,
-    Render, RenderApp, RenderSet,
+    render_graph::RenderGraphApp, renderer::RenderDevice, settings::WgpuFeatures, Render,
+    RenderApp, RenderSet,
 };
 
 const SOLARI_GRAPH: &str = "solari";
@@ -35,7 +33,6 @@ impl Plugin for SolariPlugin {
 
         render_app
             .init_resource::<BlasStorage>()
-            .add_systems(ExtractSchedule, extract_meshes)
             .add_systems(Render, prepare_blas.in_set(RenderSet::Prepare));
     }
 }
