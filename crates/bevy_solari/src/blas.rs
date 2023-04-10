@@ -87,7 +87,7 @@ pub fn prepare_blas(
     let mut command_encoder = render_device.create_command_encoder(&CommandEncoderDescriptor {
         label: Some("prepare_blas_command_encoder"),
     });
-    unsafe { command_encoder.build_acceleration_structures_unsafe_tlas(&blas_build_queue, &[]) };
+    command_encoder.build_acceleration_structures(&blas_build_queue, &[]);
     render_queue.submit([command_encoder.finish()]);
 }
 
