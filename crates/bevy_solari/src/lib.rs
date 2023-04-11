@@ -5,7 +5,7 @@ mod pipeline;
 mod tlas;
 
 use crate::blas::{prepare_blas, BlasStorage};
-use crate::misc::{extract_transforms, queue_view_bind_group};
+use crate::misc::{extract_transforms, prepare_textures, queue_view_bind_group};
 use crate::node::SolariNode;
 use crate::pipeline::{prepare_pipelines, SolariPipeline, SOLARI_SHADER_HANDLE};
 use crate::tlas::{prepare_tlas, TlasResource};
@@ -55,7 +55,10 @@ impl Plugin for SolariPlugin {
                     .chain()
                     .in_set(RenderSet::Prepare),
             )
-            .add_systems(Render, prepare_pipelines.in_set(RenderSet::Prepare))
+            .add_systems(
+                Render,
+                (prepare_pipelines, prepare_textures).in_set(RenderSet::Prepare),
+            )
             .add_systems(Render, queue_view_bind_group.in_set(RenderSet::Queue));
     }
 }
