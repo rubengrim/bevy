@@ -1,10 +1,9 @@
-use crate::tlas::TlasResource;
+use crate::{pipeline::SolariPipeline, tlas::TlasResource};
 use bevy_asset::Handle;
 use bevy_ecs::{
     prelude::{Component, Entity},
     query::With,
-    system::{Commands, Query, Res, Resource},
-    world::{FromWorld, World},
+    system::{Commands, Query, Res},
 };
 use bevy_render::{
     prelude::Mesh,
@@ -27,42 +26,28 @@ pub fn extract_transforms(
     );
 }
 
-#[derive(Resource)]
-pub struct SolariPipeline {
-    view_bind_group_layout: BindGroupLayout,
-}
-
-impl FromWorld for SolariPipeline {
-    fn from_world(world: &mut World) -> Self {
-        let render_device = world.resource::<RenderDevice>();
-
-        let view_bind_group_layout =
-            render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-                label: Some("view_bind_group_layout"),
-                entries: &[
-                    BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: ShaderStages::COMPUTE,
-                        ty: BindingType::Buffer {
-                            ty: BufferBindingType::Uniform,
-                            has_dynamic_offset: true,
-                            min_binding_size: Some(ViewUniform::min_size()),
-                        },
-                        count: None,
-                    },
-                    BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: ShaderStages::COMPUTE,
-                        ty: BindingType::AccelerationStructure,
-                        count: None,
-                    },
-                ],
-            });
-
-        Self {
-            view_bind_group_layout,
-        }
-    }
+pub fn create_view_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayout {
+    render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        label: Some("view_bind_group_layout"),
+        entries: &[
+            BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStages::COMPUTE,
+                ty: BindingType::Buffer {
+                    ty: BufferBindingType::Uniform,
+                    has_dynamic_offset: true,
+                    min_binding_size: Some(ViewUniform::min_size()),
+                },
+                count: None,
+            },
+            BindGroupLayoutEntry {
+                binding: 1,
+                visibility: ShaderStages::COMPUTE,
+                ty: BindingType::AccelerationStructure,
+                count: None,
+            },
+        ],
+    })
 }
 
 #[derive(Component)]

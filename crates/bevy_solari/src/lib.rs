@@ -1,11 +1,13 @@
 mod blas;
 mod misc;
 mod node;
+mod pipeline;
 mod tlas;
 
 use crate::blas::{prepare_blas, BlasStorage};
-use crate::misc::{extract_transforms, queue_view_bind_group, SolariPipeline};
+use crate::misc::{extract_transforms, queue_view_bind_group};
 use crate::node::SolariNode;
+use crate::pipeline::SolariPipeline;
 use crate::tlas::{prepare_tlas, TlasResource};
 use bevy_app::{App, Plugin};
 use bevy_ecs::schedule::IntoSystemConfigs;
