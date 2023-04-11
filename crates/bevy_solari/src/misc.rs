@@ -90,7 +90,7 @@ pub fn queue_view_bind_group(
                         },
                         BindGroupEntry {
                             binding: 1,
-                            resource: BindingResource::AccelerationStructure(tlas),
+                            resource: tlas.as_binding(),
                         },
                     ],
                 })),
