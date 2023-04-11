@@ -1,10 +1,10 @@
 mod blas;
-mod mesh;
+mod misc;
 mod node;
 mod tlas;
 
 use crate::blas::{prepare_blas, BlasStorage};
-use crate::mesh::extract_transforms;
+use crate::misc::{extract_transforms, queue_view_bind_group, SolariPipeline};
 use crate::node::SolariNode;
 use crate::tlas::{prepare_tlas, TlasResource};
 use bevy_app::{App, Plugin};
@@ -38,6 +38,7 @@ impl Plugin for SolariPlugin {
             .add_render_graph_node::<SolariNode>(SOLARI_GRAPH, SOLARI_NODE);
 
         render_app
+            .init_resource::<SolariPipeline>()
             .init_resource::<BlasStorage>()
             .init_resource::<TlasResource>()
             .add_systems(ExtractSchedule, extract_transforms)
@@ -46,6 +47,7 @@ impl Plugin for SolariPlugin {
                 (prepare_blas, prepare_tlas)
                     .chain()
                     .in_set(RenderSet::Prepare),
-            );
+            )
+            .add_systems(Render, queue_view_bind_group.in_set(RenderSet::Queue));
     }
 }
