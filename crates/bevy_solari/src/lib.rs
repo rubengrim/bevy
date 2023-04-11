@@ -4,11 +4,13 @@ mod node;
 mod pipeline;
 mod tlas;
 
-use crate::blas::{prepare_blas, BlasStorage};
-use crate::misc::{extract_transforms, prepare_textures, queue_view_bind_group};
-use crate::node::SolariNode;
-use crate::pipeline::{prepare_pipelines, SolariPipeline, SOLARI_SHADER_HANDLE};
-use crate::tlas::{prepare_tlas, TlasResource};
+use crate::{
+    blas::{prepare_blas, BlasStorage},
+    misc::{extract_transforms, prepare_textures, queue_view_bind_group},
+    node::SolariNode,
+    pipeline::{prepare_pipelines, SolariPipeline, SOLARI_SHADER_HANDLE},
+    tlas::{prepare_tlas, TlasResource},
+};
 use bevy_app::{App, Plugin};
 use bevy_asset::load_internal_asset;
 use bevy_ecs::schedule::IntoSystemConfigs;
