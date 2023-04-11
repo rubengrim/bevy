@@ -8,4 +8,6 @@ var tlas: acceleration_structure;
 var output_texture: texture_storage_2d<f32, write>;
 
 @compute @workgroup_size(8, 8, 1)
-fn solari_main() {}
+fn solari_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    textureStore(output_texture, vec2<i32>(global_id.xy), vec4(1.0));
+}
