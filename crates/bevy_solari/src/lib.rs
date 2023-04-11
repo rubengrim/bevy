@@ -7,10 +7,12 @@ mod tlas;
 use crate::blas::{prepare_blas, BlasStorage};
 use crate::misc::{extract_transforms, queue_view_bind_group};
 use crate::node::SolariNode;
-use crate::pipeline::SolariPipeline;
+use crate::pipeline::{prepare_pipelines, SolariPipeline, SOLARI_SHADER_HANDLE};
 use crate::tlas::{prepare_tlas, TlasResource};
 use bevy_app::{App, Plugin};
+use bevy_asset::load_internal_asset;
 use bevy_ecs::schedule::IntoSystemConfigs;
+use bevy_render::render_resource::{Shader, SpecializedComputePipelines};
 use bevy_render::ExtractSchedule;
 use bevy_render::{
     render_graph::RenderGraphApp, renderer::RenderDevice, settings::WgpuFeatures, Render,
@@ -33,6 +35,8 @@ impl Plugin for SolariPlugin {
             return;
         }
 
+        load_internal_asset!(app, SOLARI_SHADER_HANDLE, "solari.wgsl", Shader::from_wgsl);
+
         let Ok(render_app) = app.get_sub_app_mut(RenderApp) else { return };
 
         render_app
@@ -41,6 +45,7 @@ impl Plugin for SolariPlugin {
 
         render_app
             .init_resource::<SolariPipeline>()
+            .init_resource::<SpecializedComputePipelines<SolariPipeline>>()
             .init_resource::<BlasStorage>()
             .init_resource::<TlasResource>()
             .add_systems(ExtractSchedule, extract_transforms)
@@ -50,6 +55,7 @@ impl Plugin for SolariPlugin {
                     .chain()
                     .in_set(RenderSet::Prepare),
             )
+            .add_systems(Render, prepare_pipelines.in_set(RenderSet::Prepare))
             .add_systems(Render, queue_view_bind_group.in_set(RenderSet::Queue));
     }
 }
