@@ -121,7 +121,7 @@ impl ProcessedShader {
             // TODO: process macros here
             ProcessedShader::Wgsl(source) => naga::front::wgsl::parse_str(source)?,
             ProcessedShader::Glsl(source, shader_stage) => {
-                let mut parser = naga::front::glsl::Parser::default();
+                let mut parser = naga::front::glsl::Frontend::default();
                 parser
                     .parse(&naga::front::glsl::Options::from(*shader_stage), source)
                     .map_err(ShaderReflectError::GlslParse)?
@@ -153,6 +153,7 @@ impl ProcessedShader {
                 Features::UNIFORM_BUFFER_AND_STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING,
                 Capabilities::UNIFORM_BUFFER_AND_STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING,
             ),
+            (Features::RAY_QUERY, Capabilities::RAY_QUERY),
         ];
         let mut capabilities = Capabilities::empty();
         for (feature, capability) in CAPABILITIES {
