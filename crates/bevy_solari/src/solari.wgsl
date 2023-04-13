@@ -41,5 +41,5 @@ fn solari_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         color = materials[ray_hit.instance_custom_index].base_color.rgb;
     };
 
-    textureStore(output_texture, vec2<i32>(global_id.xy), vec4(color, 1.0));
+    textureStore(output_texture, global_id.xy, vec4(color, 1.0));
 }
