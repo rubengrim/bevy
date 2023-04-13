@@ -1,4 +1,8 @@
-use crate::{pipeline::SolariPipeline, tlas::TlasResource};
+use crate::{
+    material::{MaterialBuffer, SolariMaterial},
+    pipeline::SolariPipeline,
+    tlas::TlasResource,
+};
 use bevy_asset::Handle;
 use bevy_ecs::{
     prelude::{Component, Entity},
@@ -16,14 +20,18 @@ use bevy_render::{
 };
 use bevy_transform::prelude::GlobalTransform;
 
-pub fn extract_transforms(
-    meshes: Extract<Query<(Entity, &GlobalTransform), With<Handle<Mesh>>>>,
+pub fn extract_meshes(
+    meshes: Extract<Query<(Entity, &SolariMaterial, &GlobalTransform), With<Handle<Mesh>>>>,
+    mut material_buffer: ResMut<MaterialBuffer>,
     mut commands: Commands,
 ) {
     commands.insert_or_spawn_batch(
         meshes
             .iter()
-            .map(|(entity, transform)| (entity, transform.clone()))
+            .map(|(entity, material, transform)| {
+                material_buffer.push(material.clone());
+                (entity, transform.clone())
+            })
             .collect::<Vec<_>>(),
     );
 }
@@ -84,6 +92,16 @@ pub fn create_view_bind_group_layout(render_device: &RenderDevice) -> BindGroupL
             BindGroupLayoutEntry {
                 binding: 2,
                 visibility: ShaderStages::COMPUTE,
+                ty: BindingType::Buffer {
+                    ty: BufferBindingType::Storage { read_only: true },
+                    has_dynamic_offset: false,
+                    min_binding_size: Some(SolariMaterial::min_size()),
+                },
+                count: None,
+            },
+            BindGroupLayoutEntry {
+                binding: 3,
+                visibility: ShaderStages::COMPUTE,
                 ty: BindingType::StorageTexture {
                     access: StorageTextureAccess::WriteOnly,
                     format: ViewTarget::TEXTURE_FORMAT_HDR,
@@ -103,6 +121,7 @@ pub fn queue_view_bind_group(
     view_uniforms: Res<ViewUniforms>,
     tlas: Res<TlasResource>,
     pipeline: Res<SolariPipeline>,
+    material_buffer: Res<MaterialBuffer>,
     render_device: Res<RenderDevice>,
     mut commands: Commands,
 ) {
@@ -122,6 +141,10 @@ pub fn queue_view_bind_group(
                     },
                     BindGroupEntry {
                         binding: 2,
+                        resource: material_buffer.binding(),
+                    },
+                    BindGroupEntry {
+                        binding: 3,
                         resource: BindingResource::TextureView(&texture.default_view),
                     },
                 ],

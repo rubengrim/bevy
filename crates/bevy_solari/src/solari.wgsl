@@ -1,10 +1,13 @@
 #import bevy_render::view
+#import bevy_solari::material
 
 @group(0) @binding(0)
 var<uniform> view: View;
 @group(0) @binding(1)
 var tlas: acceleration_structure;
 @group(0) @binding(2)
+var<storage> materials: array<SolariMaterial>;
+@group(0) @binding(3)
 var output_texture: texture_storage_2d<rgba16float, write>;
 
 fn trace_ray(pixel_index: vec2<u32>) -> RayIntersection {
