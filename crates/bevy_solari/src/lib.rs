@@ -5,8 +5,7 @@ mod node;
 mod pipeline;
 mod tlas;
 
-use bevy_reflect::TypeUuid;
-pub use material::SolariMaterial;
+pub use material::{SolariMaterial, SolariMaterialMeshBundle};
 
 use crate::{
     blas::{prepare_blas, BlasStorage},
@@ -19,6 +18,7 @@ use crate::{
 use bevy_app::{App, Plugin};
 use bevy_asset::{load_internal_asset, HandleUntyped};
 use bevy_ecs::schedule::IntoSystemConfigs;
+use bevy_reflect::TypeUuid;
 use bevy_render::render_resource::{Shader, SpecializedComputePipelines};
 use bevy_render::ExtractSchedule;
 use bevy_render::{
