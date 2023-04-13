@@ -29,8 +29,8 @@ pub fn extract_meshes(
         meshes
             .iter()
             .map(|(entity, material, transform)| {
-                material_buffer.push(material.clone());
-                (entity, transform.clone())
+                let material_index = material_buffer.push(material.clone());
+                (entity, (transform.clone(), material_index))
             })
             .collect::<Vec<_>>(),
     );

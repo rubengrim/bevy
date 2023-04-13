@@ -32,9 +32,14 @@ impl FromWorld for MaterialBuffer {
     }
 }
 
+#[derive(Component)]
+pub struct MaterialIndex(pub u32);
+
 impl MaterialBuffer {
-    pub fn push(&mut self, material: SolariMaterial) {
+    pub fn push(&mut self, material: SolariMaterial) -> MaterialIndex {
+        let i = MaterialIndex(self.cpu_buffer.len() as u32);
         self.cpu_buffer.push(material);
+        i
     }
 
     pub fn write_buffer(&mut self, render_device: &RenderDevice, render_queue: &RenderQueue) {
