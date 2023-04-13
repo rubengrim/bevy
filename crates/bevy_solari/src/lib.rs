@@ -29,17 +29,16 @@ pub struct SolariPlugin;
 
 impl Plugin for SolariPlugin {
     fn build(&self, app: &mut App) {
-        // TODO: On headless, RenderDevice won't exist
-        let wgpu_features = app.world.resource::<RenderDevice>().features();
-        if !wgpu_features
-            .contains(WgpuFeatures::RAY_TRACING_ACCELERATION_STRUCTURE | WgpuFeatures::RAY_QUERY)
-        {
-            return;
+        let needed_features =
+            WgpuFeatures::RAY_TRACING_ACCELERATION_STRUCTURE | WgpuFeatures::RAY_QUERY;
+        match app.world.get_resource::<RenderDevice>() {
+            Some(render_device) if render_device.features().contains(needed_features) => {}
+            _ => return,
         }
 
         load_internal_asset!(app, SOLARI_SHADER_HANDLE, "solari.wgsl", Shader::from_wgsl);
 
-        let Ok(render_app) = app.get_sub_app_mut(RenderApp) else { return };
+        let render_app = app.get_sub_app_mut(RenderApp).unwrap();
 
         render_app
             .add_render_sub_graph(SOLARI_GRAPH)
