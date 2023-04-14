@@ -8,6 +8,8 @@ var tlas: acceleration_structure;
 @group(0) @binding(2)
 var<storage> materials: array<SolariMaterial>;
 @group(0) @binding(3)
+var texture_maps: binding_array<texture_2d<f32>>;
+@group(0) @binding(4)
 var output_texture: texture_storage_2d<rgba16float, write>;
 
 fn trace_ray(pixel_index: vec2<u32>) -> RayIntersection {

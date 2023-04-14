@@ -32,6 +32,7 @@ fn setup(
         mesh: meshes.add(shape::Plane::from_size(5.0).into()),
         material: materials.add(SolariMaterial {
             base_color: Color::rgb(0.3, 0.5, 0.3),
+            ..default()
         }),
         ..default()
     });
@@ -40,6 +41,7 @@ fn setup(
         mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
         material: materials.add(SolariMaterial {
             base_color: Color::rgb(0.8, 0.7, 0.6),
+            ..default()
         }),
         transform: Transform::from_xyz(0.0, 0.5, 0.0),
         ..default()

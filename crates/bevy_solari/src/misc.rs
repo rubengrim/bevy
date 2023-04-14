@@ -11,12 +11,15 @@ use bevy_ecs::{
 };
 use bevy_render::{
     prelude::Mesh,
+    render_asset::RenderAssets,
     render_resource::*,
     renderer::RenderDevice,
+    texture::Image,
     view::{ViewTarget, ViewUniform, ViewUniforms},
     Extract,
 };
 use bevy_transform::prelude::GlobalTransform;
+use std::{num::NonZeroU32, ops::Deref};
 
 pub fn extract_meshes(
     meshes: Extract<
@@ -28,9 +31,12 @@ pub fn extract_meshes(
         )>,
     >,
     materials: Extract<Res<Assets<SolariMaterial>>>,
+    images: Res<RenderAssets<Image>>,
     mut material_buffer: ResMut<MaterialBuffer>,
     mut commands: Commands,
 ) {
+    material_buffer.clear_texture_maps();
+
     commands.insert_or_spawn_batch(
         meshes
             .iter()
@@ -41,7 +47,7 @@ pub fn extract_meshes(
                         (
                             mesh.clone_weak(),
                             transform.clone(),
-                            material_buffer.push(material),
+                            material_buffer.push(material, &images),
                         ),
                     )
                 })
@@ -83,6 +89,16 @@ pub fn create_view_bind_group_layout(render_device: &RenderDevice) -> BindGroupL
             BindGroupLayoutEntry {
                 binding: 3,
                 visibility: ShaderStages::COMPUTE,
+                ty: BindingType::Texture {
+                    sample_type: TextureSampleType::Float { filterable: true },
+                    view_dimension: TextureViewDimension::D2,
+                    multisampled: false,
+                },
+                count: Some(unsafe { NonZeroU32::new_unchecked(u32::MAX - 1) }),
+            },
+            BindGroupLayoutEntry {
+                binding: 4,
+                visibility: ShaderStages::COMPUTE,
                 ty: BindingType::StorageTexture {
                     access: StorageTextureAccess::WriteOnly,
                     format: ViewTarget::TEXTURE_FORMAT_HDR,
@@ -104,6 +120,15 @@ pub fn create_view_bind_group(
 ) -> Option<BindGroup> {
     match (view_uniforms.uniforms.binding(), &tlas.0) {
         (Some(view_uniforms), Some(tlas)) => {
+            // TODO: This only needs to be done once per frame (not per view),
+            // and we should reuse the memory between frames. Ideally by putting this
+            // into MaterialBuffer directly.
+            let texture_maps = material_buffer
+                .texture_maps()
+                .iter()
+                .map(Deref::deref)
+                .collect::<Vec<_>>();
+
             Some(render_device.create_bind_group(&BindGroupDescriptor {
                 label: Some("view_bind_group"),
                 layout: &pipeline.view_bind_group_layout,
@@ -122,6 +147,10 @@ pub fn create_view_bind_group(
                     },
                     BindGroupEntry {
                         binding: 3,
+                        resource: BindingResource::TextureViewArray(texture_maps.as_slice()),
+                    },
+                    BindGroupEntry {
+                        binding: 4,
                         resource: BindingResource::TextureView(view_target.main_texture()),
                     },
                 ],
