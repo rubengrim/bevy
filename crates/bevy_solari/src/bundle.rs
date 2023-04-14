@@ -40,7 +40,7 @@ impl Default for SolariCamera3dBundle {
 #[derive(Bundle, Clone, Default)]
 pub struct SolariMaterialMeshBundle {
     pub mesh: Handle<Mesh>,
-    pub material: SolariMaterial,
+    pub material: Handle<SolariMaterial>,
     pub transform: Transform,
     pub global_transform: GlobalTransform,
 }
