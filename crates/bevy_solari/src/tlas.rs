@@ -4,7 +4,7 @@ use bevy_ecs::system::{Query, Res, ResMut, Resource};
 use bevy_render::{
     prelude::Mesh,
     render_resource::{raytrace::*, CommandBuffer, CommandEncoderDescriptor},
-    renderer::{RenderDevice, RenderQueue},
+    renderer::RenderDevice,
 };
 use bevy_transform::prelude::GlobalTransform;
 use once_cell::sync::OnceCell;
@@ -20,7 +20,6 @@ pub fn prepare_tlas(
     blas_storage: Res<BlasStorage>,
     mut tlas_resource: ResMut<TlasResource>,
     render_device: Res<RenderDevice>,
-    render_queue: Res<RenderQueue>,
 ) {
     // Get BLAS and transform data for each mesh
     let meshes = meshes
