@@ -53,8 +53,9 @@ impl Plugin for SolariPlugin {
             Shader::from_wgsl
         );
 
-        let needed_features =
-            WgpuFeatures::RAY_TRACING_ACCELERATION_STRUCTURE | WgpuFeatures::RAY_QUERY;
+        let needed_features = WgpuFeatures::RAY_TRACING_ACCELERATION_STRUCTURE
+            | WgpuFeatures::RAY_QUERY
+            | WgpuFeatures::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING;
 
         match app.world.get_resource::<RenderDevice>() {
             Some(render_device) if render_device.features().contains(needed_features) => {}
