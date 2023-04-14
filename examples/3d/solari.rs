@@ -2,14 +2,14 @@
 
 use bevy::{
     prelude::*,
-    solari::{SolariCamera3dBundle, SolariMaterial, SolariMaterialMeshBundle, SolariPlugin},
+    solari::{SolariCamera3dBundle, SolariMaterial, SolariMaterialMeshBundle, SolariSupported},
 };
 
 fn main() {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins);
 
-    if app.is_plugin_added::<SolariPlugin>() {
+    if app.world.contains_resource::<SolariSupported>() {
         app.add_systems(Startup, setup);
     } else {
         app.add_systems(Startup, solari_not_supported);

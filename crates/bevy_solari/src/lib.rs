@@ -25,6 +25,7 @@ use bevy_core_pipeline::{
     upscaling::UpscalingNode,
 };
 use bevy_ecs::schedule::IntoSystemConfigs;
+use bevy_ecs::system::Resource;
 use bevy_reflect::TypeUuid;
 use bevy_render::{
     render_graph::RenderGraphApp,
@@ -62,6 +63,8 @@ impl Plugin for SolariPlugin {
             _ => return,
         }
 
+        app.insert_resource(SolariSupported);
+
         let render_app = app.get_sub_app_mut(RenderApp).unwrap();
 
         render_app
@@ -90,3 +93,6 @@ impl Plugin for SolariPlugin {
             );
     }
 }
+
+#[derive(Resource)]
+pub struct SolariSupported;
