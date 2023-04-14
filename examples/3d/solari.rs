@@ -2,14 +2,20 @@
 
 use bevy::{
     prelude::*,
-    solari::{SolariCamera3dBundle, SolariMaterial, SolariMaterialMeshBundle},
+    solari::{SolariCamera3dBundle, SolariMaterial, SolariMaterialMeshBundle, SolariPlugin},
 };
 
 fn main() {
-    App::new()
-        .add_plugins(DefaultPlugins)
-        .add_systems(Startup, setup)
-        .run();
+    let mut app = App::new();
+    app.add_plugins(DefaultPlugins);
+
+    if app.is_plugin_added::<SolariPlugin>() {
+        app.add_systems(Startup, setup);
+    } else {
+        app.add_systems(Startup, solari_not_supported);
+    }
+
+    app.run();
 }
 
 fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
@@ -34,4 +40,23 @@ fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
         transform: Transform::from_xyz(0.0, 0.5, 0.0),
         ..default()
     });
+}
+
+fn solari_not_supported(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn(
+        TextBundle::from_section(
+            "Current GPU does not support bevy_solari",
+            TextStyle {
+                font: asset_server.load("fonts/FiraMono-Medium.ttf"),
+                font_size: 48.0,
+                color: Color::WHITE,
+            },
+        )
+        .with_style(Style {
+            margin: UiRect::all(Val::Auto),
+            ..default()
+        }),
+    );
+
+    commands.spawn(Camera2dBundle::default());
 }
