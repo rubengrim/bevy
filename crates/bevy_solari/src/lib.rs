@@ -37,13 +37,6 @@ pub struct SolariPlugin;
 
 impl Plugin for SolariPlugin {
     fn build(&self, app: &mut App) {
-        let needed_features =
-            WgpuFeatures::RAY_TRACING_ACCELERATION_STRUCTURE | WgpuFeatures::RAY_QUERY;
-        match app.world.get_resource::<RenderDevice>() {
-            Some(render_device) if render_device.features().contains(needed_features) => {}
-            _ => return,
-        }
-
         load_internal_asset!(app, SOLARI_SHADER_HANDLE, "solari.wgsl", Shader::from_wgsl);
         load_internal_asset!(
             app,
@@ -51,6 +44,14 @@ impl Plugin for SolariPlugin {
             "material.wgsl",
             Shader::from_wgsl
         );
+
+        let needed_features =
+            WgpuFeatures::RAY_TRACING_ACCELERATION_STRUCTURE | WgpuFeatures::RAY_QUERY;
+
+        match app.world.get_resource::<RenderDevice>() {
+            Some(render_device) if render_device.features().contains(needed_features) => {}
+            _ => return,
+        }
 
         let render_app = app.get_sub_app_mut(RenderApp).unwrap();
 
