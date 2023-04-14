@@ -99,7 +99,7 @@ pub fn prepare_blas(
 
     // Build geometry into each BLAS
     let mut command_encoder = render_device.create_command_encoder(&CommandEncoderDescriptor {
-        label: Some("prepare_blas_command_encoder"),
+        label: Some("build_blas_command_encoder"),
     });
     command_encoder.build_acceleration_structures(&build_entries, &[]);
     render_queue.submit([command_encoder.finish()]);

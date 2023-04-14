@@ -11,20 +11,21 @@ var<storage> materials: array<SolariMaterial>;
 var output_texture: texture_storage_2d<rgba16float, write>;
 
 fn trace_ray(pixel_index: vec2<u32>) -> RayIntersection {
-    var ray: RayDesc;
-    ray.flags = RAY_FLAG_TERMINATE_ON_FIRST_HIT;
-    ray.cull_mask = 0xFFu;
-    ray.t_min = 0.001;
-    ray.t_max = 10000.0;
-
     let pixel_center = vec2<f32>(pixel_index) + 0.5;
     let pixel_uv = pixel_center / view.viewport.zw;
     let pixel_ndc = (pixel_uv * 2.0 - 1.0);
 
-    ray.origin = view.world_position;
-    let ray_target_homogenous = view.inverse_projection * vec4(pixel_ndc.x, -pixel_ndc.y, 0.0, 1.0);
-    let ray_target = ray_target_homogenous.xyz / ray_target_homogenous.w;
-    ray.dir = normalize(ray_target - ray.origin);
+    let ray_start_h = view.inverse_view_proj * vec4(pixel_ndc.x, -pixel_ndc.y, 0.0, 1.0);
+    let ray_end_h = view.inverse_view_proj * vec4(pixel_ndc.x, -pixel_ndc.y, 1.0, 1.0);
+    let ray_start = ray_start_h.xyz / ray_start_h.w;
+    let ray_end = ray_end_h.xyz / ray_end_h.w;
+    let ray_direction = normalize(ray_end - ray_start);
+    let ray_t_max = length(ray_end - ray_start);
+
+    let ray_flags = RAY_FLAG_TERMINATE_ON_FIRST_HIT;
+    let ray_cull_mask = 0xFFu;
+    let ray_t_min = 0.0;
+    let ray = RayDesc(ray_flags, ray_cull_mask, ray_t_min, ray_t_max, ray_start, ray_direction);
 
     var rq: ray_query;
     rayQueryInitialize(&rq, tlas, ray);

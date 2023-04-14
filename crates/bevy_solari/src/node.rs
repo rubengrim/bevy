@@ -1,4 +1,4 @@
-use crate::{misc::ViewBindGroup, pipeline::SolariPipelineId};
+use crate::{misc::ViewBindGroup, pipeline::SolariPipelineId, tlas::TLAS_BUILD_COMMAND_BUFFER};
 use bevy_ecs::{
     query::QueryState,
     world::{FromWorld, World},
@@ -37,6 +37,9 @@ impl Node for SolariNode {
         let Some(pipeline) = pipeline_cache.get_compute_pipeline(pipeline_id.0) else {
             return Ok(());
         };
+
+        let tlas_build_command_buffer = unsafe { TLAS_BUILD_COMMAND_BUFFER.take().unwrap() };
+        render_context.add_command_buffer(tlas_build_command_buffer);
 
         {
             let mut solari_pass =
