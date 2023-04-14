@@ -12,13 +12,18 @@ pub use crate::material::SolariMaterial;
 use crate::{
     blas::{prepare_blas, BlasStorage},
     material::{prepare_material_buffer, MaterialBuffer},
-    misc::{extract_meshes, prepare_textures, queue_view_bind_group},
+    misc::extract_meshes,
     node::SolariNode,
     pipeline::{prepare_pipelines, SolariPipeline, SOLARI_SHADER_HANDLE},
     tlas::{prepare_tlas, TlasResource},
 };
 use bevy_app::{App, Plugin};
 use bevy_asset::{load_internal_asset, HandleUntyped};
+use bevy_core_pipeline::{
+    core_3d::graph::node::{TONEMAPPING, UPSCALING},
+    tonemapping::TonemappingNode,
+    upscaling::UpscalingNode,
+};
 use bevy_ecs::schedule::IntoSystemConfigs;
 use bevy_reflect::TypeUuid;
 use bevy_render::{
@@ -60,7 +65,10 @@ impl Plugin for SolariPlugin {
 
         render_app
             .add_render_sub_graph(SOLARI_GRAPH)
-            .add_render_graph_node::<SolariNode>(SOLARI_GRAPH, SOLARI_NODE);
+            .add_render_graph_node::<SolariNode>(SOLARI_GRAPH, SOLARI_NODE)
+            .add_render_graph_node::<TonemappingNode>(SOLARI_GRAPH, TONEMAPPING)
+            .add_render_graph_node::<UpscalingNode>(SOLARI_GRAPH, UPSCALING)
+            .add_render_graph_edges(SOLARI_GRAPH, &[SOLARI_NODE, TONEMAPPING, UPSCALING]);
 
         render_app
             .init_resource::<SolariPipeline>()
@@ -77,9 +85,7 @@ impl Plugin for SolariPlugin {
             )
             .add_systems(
                 Render,
-                (prepare_pipelines, prepare_textures, prepare_material_buffer)
-                    .in_set(RenderSet::Prepare),
-            )
-            .add_systems(Render, queue_view_bind_group.in_set(RenderSet::Queue));
+                (prepare_pipelines, prepare_material_buffer).in_set(RenderSet::Prepare),
+            );
     }
 }

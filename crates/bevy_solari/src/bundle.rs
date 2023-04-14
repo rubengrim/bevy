@@ -32,12 +32,12 @@ impl Default for SolariCamera3dBundle {
             transform: Default::default(),
             global_transform: Default::default(),
             tonemapping: Tonemapping::TonyMcMapface,
-            color_grading: ColorGrading::default(),
+            color_grading: Default::default(),
         }
     }
 }
 
-#[derive(Bundle, Clone)]
+#[derive(Bundle, Clone, Default)]
 pub struct SolariMaterialMeshBundle {
     pub mesh: Handle<Mesh>,
     pub material: SolariMaterial,

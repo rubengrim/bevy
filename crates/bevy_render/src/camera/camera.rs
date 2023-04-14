@@ -583,7 +583,7 @@ pub fn extract_cameras(
             &Camera,
             &CameraRenderGraph,
             &GlobalTransform,
-            &VisibleEntities,
+            Option<&VisibleEntities>,
             Option<&ColorGrading>,
             Option<&TemporalJitter>,
         )>,
@@ -644,8 +644,11 @@ pub fn extract_cameras(
                     ),
                     color_grading,
                 },
-                visible_entities.clone(),
             ));
+
+            if let Some(visible_entities) = visible_entities {
+                commands.insert(visible_entities.clone());
+            }
 
             if let Some(temporal_jitter) = temporal_jitter {
                 commands.insert(temporal_jitter.clone());

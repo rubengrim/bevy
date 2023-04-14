@@ -418,6 +418,16 @@ category = "3D Rendering"
 wasm = true
 
 [[example]]
+name = "solari"
+path = "examples/3d/solari.rs"
+
+[package.metadata.example.solari]
+name = "Solari"
+description = "Demonstrates global-illumination rendering using bevy_solari"
+category = "3D Rendering"
+wasm = false
+
+[[example]]
 name = "3d_shapes"
 path = "examples/3d/3d_shapes.rs"
 

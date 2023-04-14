@@ -10,7 +10,7 @@ use bevy_render::{
 };
 use std::mem;
 
-#[derive(Component, ShaderType, Clone)]
+#[derive(Component, ShaderType, Clone, Default)]
 pub struct SolariMaterial {
     pub base_color: Color,
 }

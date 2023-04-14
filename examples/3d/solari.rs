@@ -1,0 +1,37 @@
+//! Demonstrates global-illumination rendering using bevy_solari.
+
+use bevy::{
+    prelude::*,
+    solari::{SolariCamera3dBundle, SolariMaterial, SolariMaterialMeshBundle},
+};
+
+fn main() {
+    App::new()
+        .add_plugins(DefaultPlugins)
+        .add_systems(Startup, setup)
+        .run();
+}
+
+fn setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
+    commands.spawn(SolariCamera3dBundle {
+        transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+        ..default()
+    });
+
+    commands.spawn(SolariMaterialMeshBundle {
+        mesh: meshes.add(shape::Plane::from_size(5.0).into()),
+        material: SolariMaterial {
+            base_color: Color::rgb(0.3, 0.5, 0.3),
+        },
+        ..default()
+    });
+
+    commands.spawn(SolariMaterialMeshBundle {
+        mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
+        material: SolariMaterial {
+            base_color: Color::rgb(0.8, 0.7, 0.6),
+        },
+        transform: Transform::from_xyz(0.0, 0.5, 0.0),
+        ..default()
+    });
+}

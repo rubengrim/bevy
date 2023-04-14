@@ -5,68 +5,35 @@ use crate::{
 };
 use bevy_asset::Handle;
 use bevy_ecs::{
-    prelude::{Component, Entity},
-    query::With,
-    system::{Commands, Query, Res, ResMut},
+    prelude::Entity,
+    system::{Commands, Query, ResMut},
 };
 use bevy_render::{
-    camera::ExtractedCamera,
     prelude::Mesh,
     render_resource::*,
     renderer::RenderDevice,
-    texture::{CachedTexture, TextureCache},
     view::{ViewTarget, ViewUniform, ViewUniforms},
     Extract,
 };
 use bevy_transform::prelude::GlobalTransform;
 
 pub fn extract_meshes(
-    meshes: Extract<Query<(Entity, &SolariMaterial, &GlobalTransform), With<Handle<Mesh>>>>,
+    meshes: Extract<Query<(Entity, &Handle<Mesh>, &SolariMaterial, &GlobalTransform)>>,
     mut material_buffer: ResMut<MaterialBuffer>,
     mut commands: Commands,
 ) {
     commands.insert_or_spawn_batch(
         meshes
             .iter()
-            .map(|(entity, material, transform)| {
+            .map(|(entity, mesh, material, transform)| {
                 let material_index = material_buffer.push(material.clone());
-                (entity, (transform.clone(), material_index))
+                (
+                    entity,
+                    (mesh.clone_weak(), transform.clone(), material_index),
+                )
             })
             .collect::<Vec<_>>(),
     );
-}
-
-#[derive(Component)]
-pub struct SolariTexture(pub CachedTexture);
-
-pub fn prepare_textures(
-    views: Query<(Entity, &ExtractedCamera)>,
-    mut texture_cache: ResMut<TextureCache>,
-    render_device: Res<RenderDevice>,
-    mut commands: Commands,
-) {
-    for (entity, camera) in &views {
-        if let Some(viewport) = camera.physical_viewport_size {
-            let descriptor = TextureDescriptor {
-                label: Some("solari_output_texture"),
-                size: Extent3d {
-                    width: viewport.x,
-                    height: viewport.y,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: TextureDimension::D2,
-                format: ViewTarget::TEXTURE_FORMAT_HDR,
-                usage: TextureUsages::STORAGE_BINDING,
-                view_formats: &[],
-            };
-
-            commands
-                .entity(entity)
-                .insert(SolariTexture(texture_cache.get(&render_device, descriptor)));
-        }
-    }
 }
 
 pub fn create_view_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayout {
@@ -113,21 +80,17 @@ pub fn create_view_bind_group_layout(render_device: &RenderDevice) -> BindGroupL
     })
 }
 
-#[derive(Component)]
-pub struct ViewBindGroup(pub BindGroup);
-
-pub fn queue_view_bind_group(
-    views: Query<(Entity, &SolariTexture)>,
-    view_uniforms: Res<ViewUniforms>,
-    tlas: Res<TlasResource>,
-    pipeline: Res<SolariPipeline>,
-    material_buffer: Res<MaterialBuffer>,
-    render_device: Res<RenderDevice>,
-    mut commands: Commands,
-) {
-    if let (Some(view_uniforms), Some(tlas)) = (view_uniforms.uniforms.binding(), &tlas.0) {
-        for (entity, SolariTexture(texture)) in &views {
-            let descriptor = BindGroupDescriptor {
+pub fn create_view_bind_group(
+    view_target: &ViewTarget,
+    view_uniforms: &ViewUniforms,
+    tlas: &TlasResource,
+    pipeline: &SolariPipeline,
+    material_buffer: &MaterialBuffer,
+    render_device: &RenderDevice,
+) -> Option<BindGroup> {
+    match (view_uniforms.uniforms.binding(), &tlas.0) {
+        (Some(view_uniforms), Some(tlas)) => {
+            Some(render_device.create_bind_group(&BindGroupDescriptor {
                 label: Some("view_bind_group"),
                 layout: &pipeline.view_bind_group_layout,
                 entries: &[
@@ -145,14 +108,11 @@ pub fn queue_view_bind_group(
                     },
                     BindGroupEntry {
                         binding: 3,
-                        resource: BindingResource::TextureView(&texture.default_view),
+                        resource: BindingResource::TextureView(view_target.main_texture()),
                     },
                 ],
-            };
-
-            commands
-                .entity(entity)
-                .insert(ViewBindGroup(render_device.create_bind_group(&descriptor)));
+            }))
         }
+        _ => None,
     }
 }
