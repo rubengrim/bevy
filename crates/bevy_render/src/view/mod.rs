@@ -12,7 +12,7 @@ use crate::{
     render_asset::RenderAssets,
     render_phase::ViewRangefinder3d,
     render_resource::{DynamicUniformBuffer, ShaderType, Texture, TextureView},
-    renderer::{RenderDevice, RenderQueue},
+    renderer::{RenderAdapter, RenderDevice, RenderQueue},
     texture::{BevyDefault, TextureCache},
     Render, RenderApp, RenderSet,
 };
@@ -371,6 +371,7 @@ fn prepare_view_targets(
     windows: Res<ExtractedWindows>,
     images: Res<RenderAssets<Image>>,
     msaa: Res<Msaa>,
+    render_adapter: Res<RenderAdapter>,
     render_device: Res<RenderDevice>,
     mut texture_cache: ResMut<TextureCache>,
     cameras: Query<(Entity, &ExtractedCamera, &ExtractedView)>,
@@ -394,6 +395,15 @@ fn prepare_view_targets(
                     TextureFormat::bevy_default()
                 };
 
+                let mut texture_usages = TextureUsages::RENDER_ATTACHMENT
+                    | TextureUsages::TEXTURE_BINDING
+                    | TextureUsages::STORAGE_BINDING;
+                texture_usages = texture_usages.intersection(
+                    render_adapter
+                        .get_texture_format_features(main_texture_format)
+                        .allowed_usages,
+                );
+
                 let main_textures = textures
                     .entry((camera.target.clone(), view.hdr))
                     .or_insert_with(|| {
@@ -404,9 +414,7 @@ fn prepare_view_targets(
                             sample_count: 1,
                             dimension: TextureDimension::D2,
                             format: main_texture_format,
-                            usage: TextureUsages::RENDER_ATTACHMENT
-                                | TextureUsages::TEXTURE_BINDING
-                                | TextureUsages::STORAGE_BINDING,
+                            usage: texture_usages,
                             // TODO: Consider changing this if main_texture_format is not sRGB
                             view_formats: &[],
                         };
