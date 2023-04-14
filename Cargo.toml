@@ -40,6 +40,7 @@ default = [
   "bevy_winit",
   "bevy_core_pipeline",
   "bevy_pbr",
+  "bevy_solari",
   "bevy_gltf",
   "bevy_render",
   "bevy_sprite",
@@ -91,7 +92,7 @@ bevy_render = ["bevy_internal/bevy_render"]
 bevy_scene = ["bevy_internal/bevy_scene", "bevy_asset"]
 
 # Adds global-illumination rendering
-bevy_solari = ["bevy_internal/bevy_solari", "bevy_asset", "bevy_render"]
+bevy_solari = ["bevy_internal/bevy_solari", "bevy_asset", "bevy_render", "bevy_core_pipeline"]
 
 # Provides sprite functionality
 bevy_sprite = ["bevy_internal/bevy_sprite", "bevy_render", "bevy_core_pipeline"]

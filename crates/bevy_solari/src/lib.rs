@@ -1,11 +1,13 @@
 mod blas;
+mod bundle;
 mod material;
 mod misc;
 mod node;
 mod pipeline;
 mod tlas;
 
-pub use material::{SolariMaterial, SolariMaterialMeshBundle};
+pub use crate::bundle::{SolariCamera3dBundle, SolariMaterialMeshBundle};
+pub use crate::material::SolariMaterial;
 
 use crate::{
     blas::{prepare_blas, BlasStorage},
@@ -19,11 +21,12 @@ use bevy_app::{App, Plugin};
 use bevy_asset::{load_internal_asset, HandleUntyped};
 use bevy_ecs::schedule::IntoSystemConfigs;
 use bevy_reflect::TypeUuid;
-use bevy_render::render_resource::{Shader, SpecializedComputePipelines};
-use bevy_render::ExtractSchedule;
 use bevy_render::{
-    render_graph::RenderGraphApp, renderer::RenderDevice, settings::WgpuFeatures, Render,
-    RenderApp, RenderSet,
+    render_graph::RenderGraphApp,
+    render_resource::{Shader, SpecializedComputePipelines},
+    renderer::RenderDevice,
+    settings::WgpuFeatures,
+    ExtractSchedule, Render, RenderApp, RenderSet,
 };
 
 const SOLARI_GRAPH: &str = "solari";

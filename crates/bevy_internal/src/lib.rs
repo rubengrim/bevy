@@ -139,6 +139,12 @@ pub mod pbr {
     pub use bevy_pbr::*;
 }
 
+#[cfg(feature = "bevy_solari")]
+pub mod solari {
+    //! Global-illumination rendering.
+    pub use bevy_solari::*;
+}
+
 #[cfg(feature = "bevy_render")]
 pub mod render {
     //! Cameras, meshes, textures, shaders, and pipelines.

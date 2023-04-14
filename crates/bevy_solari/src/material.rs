@@ -1,27 +1,18 @@
-use bevy_asset::Handle;
 use bevy_ecs::{
-    prelude::{Bundle, Component},
+    prelude::Component,
     system::{Res, ResMut, Resource},
     world::{FromWorld, World},
 };
 use bevy_render::{
-    prelude::{Color, Mesh},
+    prelude::Color,
     render_resource::{BindingResource, ShaderType, StorageBuffer},
     renderer::{RenderDevice, RenderQueue},
 };
-use bevy_transform::prelude::{GlobalTransform, Transform};
 use std::mem;
 
 #[derive(Component, ShaderType, Clone)]
 pub struct SolariMaterial {
     pub base_color: Color,
-}
-#[derive(Bundle, Clone)]
-pub struct SolariMaterialMeshBundle {
-    pub mesh: Handle<Mesh>,
-    pub material: SolariMaterial,
-    pub transform: Transform,
-    pub global_transform: GlobalTransform,
 }
 
 #[derive(Resource)]
