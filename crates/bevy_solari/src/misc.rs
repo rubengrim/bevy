@@ -94,7 +94,7 @@ pub fn create_view_bind_group_layout(render_device: &RenderDevice) -> BindGroupL
                     view_dimension: TextureViewDimension::D2,
                     multisampled: false,
                 },
-                count: Some(unsafe { NonZeroU32::new_unchecked(u32::MAX - 1) }),
+                count: Some(unsafe { NonZeroU32::new_unchecked(u32::MAX) }),
             },
             BindGroupLayoutEntry {
                 binding: 4,
