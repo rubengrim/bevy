@@ -1,9 +1,10 @@
-use crate::{misc::ViewBindGroup, pipeline::SolariPipelineId, tlas::TLAS_BUILD_COMMAND_BUFFER};
+use crate::{misc::ViewBindGroup, pipeline::SolariPipelineId};
 use bevy_ecs::{
     query::QueryState,
     world::{FromWorld, World},
 };
 use bevy_render::{
+    camera::ExtractedCamera,
     render_graph::{Node, NodeRunError, RenderGraphContext},
     render_resource::{ComputePassDescriptor, PipelineCache},
     renderer::RenderContext,
@@ -15,6 +16,7 @@ pub struct SolariNode {
         &'static SolariPipelineId,
         &'static ViewBindGroup,
         &'static ViewUniformOffset,
+        &'static ExtractedCamera,
     )>,
 }
 
@@ -26,7 +28,7 @@ impl Node for SolariNode {
         world: &World,
     ) -> Result<(), NodeRunError> {
         let (
-            Ok((pipeline_id, view_bind_group, view_uniform_offset)),
+            Ok((pipeline_id, view_bind_group, view_uniform_offset, camera)),
             Some(pipeline_cache),
         ) = (
             self.view_query.get_manual(world, graph.view_entity()),
@@ -34,12 +36,9 @@ impl Node for SolariNode {
         ) else {
             return Ok(());
         };
-        let Some(pipeline) = pipeline_cache.get_compute_pipeline(pipeline_id.0) else {
+        let (Some(pipeline), Some(viewport)) = (pipeline_cache.get_compute_pipeline(pipeline_id.0), camera.physical_viewport_size) else {
             return Ok(());
         };
-
-        let tlas_build_command_buffer = unsafe { TLAS_BUILD_COMMAND_BUFFER.take().unwrap() };
-        render_context.add_command_buffer(tlas_build_command_buffer);
 
         {
             let mut solari_pass =
@@ -51,7 +50,7 @@ impl Node for SolariNode {
 
             solari_pass.set_pipeline(pipeline);
             solari_pass.set_bind_group(0, &view_bind_group.0, &[view_uniform_offset.offset]);
-            solari_pass.dispatch_workgroups(8, 8, 1);
+            solari_pass.dispatch_workgroups((viewport.x + 7) / 8, (viewport.y + 7) / 8, 1);
         }
 
         Ok(())

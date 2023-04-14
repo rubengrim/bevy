@@ -3,23 +3,21 @@ use bevy_asset::Handle;
 use bevy_ecs::system::{Query, Res, ResMut, Resource};
 use bevy_render::{
     prelude::Mesh,
-    render_resource::{raytrace::*, CommandBuffer, CommandEncoderDescriptor},
-    renderer::RenderDevice,
+    render_resource::{raytrace::*, CommandEncoderDescriptor},
+    renderer::{RenderDevice, RenderQueue},
 };
 use bevy_transform::prelude::GlobalTransform;
-use once_cell::sync::OnceCell;
 use std::iter;
 
 #[derive(Resource, Default)]
 pub struct TlasResource(pub Option<TlasPackage>);
-
-pub static mut TLAS_BUILD_COMMAND_BUFFER: OnceCell<CommandBuffer> = OnceCell::new();
 
 pub fn prepare_tlas(
     meshes: Query<(&Handle<Mesh>, &GlobalTransform, &MaterialIndex)>,
     blas_storage: Res<BlasStorage>,
     mut tlas_resource: ResMut<TlasResource>,
     render_device: Res<RenderDevice>,
+    render_queue: Res<RenderQueue>,
 ) {
     // Get BLAS and transform data for each mesh
     let meshes = meshes
@@ -53,11 +51,7 @@ pub fn prepare_tlas(
         label: Some("build_tlas_command_encoder"),
     });
     command_encoder.build_acceleration_structures(&[], iter::once(&tlas));
-    unsafe {
-        TLAS_BUILD_COMMAND_BUFFER
-            .set(command_encoder.finish())
-            .unwrap();
-    }
+    render_queue.submit([command_encoder.finish()]);
 
     tlas_resource.0 = Some(tlas);
 }

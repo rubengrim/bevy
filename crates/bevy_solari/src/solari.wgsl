@@ -13,7 +13,7 @@ var output_texture: texture_storage_2d<rgba16float, write>;
 fn trace_ray(pixel_index: vec2<u32>) -> RayIntersection {
     let pixel_center = vec2<f32>(pixel_index) + 0.5;
     let pixel_uv = pixel_center / view.viewport.zw;
-    let pixel_ndc = (pixel_uv * 2.0 - 1.0);
+    let pixel_ndc = pixel_uv * 2.0 - 1.0;
 
     let ray_start_h = view.inverse_view_proj * vec4(pixel_ndc.x, -pixel_ndc.y, 0.0, 1.0);
     let ray_end_h = view.inverse_view_proj * vec4(pixel_ndc.x, -pixel_ndc.y, 1.0, 1.0);
