@@ -11,7 +11,7 @@ pub struct SolariMaterial {
 
 #[derive(ShaderType)]
 pub struct GpuSolariMaterial {
-    pub base_color: Vec4,
+    base_color: Vec4,
 }
 
 impl From<&SolariMaterial> for GpuSolariMaterial {
