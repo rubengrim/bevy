@@ -1,63 +1,23 @@
-use bevy_ecs::{
-    prelude::Component,
-    system::{Res, ResMut, Resource},
-    world::{FromWorld, World},
-};
-use bevy_render::{
-    prelude::Color,
-    render_resource::{BindingResource, ShaderType, StorageBuffer},
-    renderer::{RenderDevice, RenderQueue},
-};
-use std::mem;
+use bevy_ecs::prelude::Component;
+use bevy_math::Vec4;
+use bevy_reflect::TypeUuid;
+use bevy_render::{prelude::Color, render_resource::ShaderType};
 
-#[derive(Component, ShaderType, Clone, Default)]
+#[derive(Component, TypeUuid, Clone, Default)]
+#[uuid = "e624906b-3aa1-437f-ab7b-43a692adf4ff"]
 pub struct SolariMaterial {
     pub base_color: Color,
 }
 
-#[derive(Resource)]
-pub struct MaterialBuffer {
-    cpu_buffer: Vec<SolariMaterial>,
-    gpu_buffer: StorageBuffer<Vec<SolariMaterial>>,
+#[derive(ShaderType)]
+pub struct GpuSolariMaterial {
+    pub base_color: Vec4,
 }
 
-impl FromWorld for MaterialBuffer {
-    fn from_world(_: &mut World) -> Self {
-        let mut gpu_buffer = StorageBuffer::<Vec<SolariMaterial>>::default();
-        gpu_buffer.set_label(Some("material_buffer"));
+impl From<&SolariMaterial> for GpuSolariMaterial {
+    fn from(m: &SolariMaterial) -> Self {
         Self {
-            cpu_buffer: Vec::new(),
-            gpu_buffer,
+            base_color: m.base_color.as_linear_rgba_f32().into(),
         }
     }
-}
-
-#[derive(Component)]
-pub struct MaterialIndex(pub u32);
-
-impl MaterialBuffer {
-    pub fn push(&mut self, material: SolariMaterial) -> MaterialIndex {
-        let i = MaterialIndex(self.cpu_buffer.len() as u32);
-        self.cpu_buffer.push(material);
-        i
-    }
-
-    pub fn write_buffer(&mut self, render_device: &RenderDevice, render_queue: &RenderQueue) {
-        let mut new_cpu_buffer = Vec::with_capacity(self.cpu_buffer.len());
-        mem::swap(&mut self.cpu_buffer, &mut new_cpu_buffer);
-        self.gpu_buffer.set(new_cpu_buffer);
-        self.gpu_buffer.write_buffer(render_device, render_queue);
-    }
-
-    pub fn binding(&self) -> BindingResource<'_> {
-        self.gpu_buffer.binding().unwrap()
-    }
-}
-
-pub fn prepare_material_buffer(
-    mut material_buffer: ResMut<MaterialBuffer>,
-    render_device: Res<RenderDevice>,
-    render_queue: Res<RenderQueue>,
-) {
-    material_buffer.write_buffer(&render_device, &render_queue);
 }

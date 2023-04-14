@@ -1,5 +1,5 @@
 use crate::{
-    material::MaterialBuffer,
+    material_buffer::MaterialBuffer,
     misc::create_view_bind_group,
     pipeline::{SolariPipeline, SolariPipelineId},
     tlas::TlasResource,

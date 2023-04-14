@@ -1,4 +1,4 @@
-use crate::{blas::BlasStorage, material::MaterialIndex};
+use crate::{blas::BlasStorage, material_buffer::MaterialIndex};
 use bevy_asset::Handle;
 use bevy_ecs::system::{Query, Res, ResMut, Resource};
 use bevy_render::{

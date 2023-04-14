@@ -1,12 +1,13 @@
 use crate::{
-    material::{MaterialBuffer, SolariMaterial},
+    material::{GpuSolariMaterial, SolariMaterial},
+    material_buffer::MaterialBuffer,
     pipeline::SolariPipeline,
     tlas::TlasResource,
 };
-use bevy_asset::Handle;
+use bevy_asset::{Assets, Handle};
 use bevy_ecs::{
     prelude::Entity,
-    system::{Commands, Query, ResMut},
+    system::{Commands, Query, Res, ResMut},
 };
 use bevy_render::{
     prelude::Mesh,
@@ -18,19 +19,32 @@ use bevy_render::{
 use bevy_transform::prelude::GlobalTransform;
 
 pub fn extract_meshes(
-    meshes: Extract<Query<(Entity, &Handle<Mesh>, &SolariMaterial, &GlobalTransform)>>,
+    meshes: Extract<
+        Query<(
+            Entity,
+            &Handle<Mesh>,
+            &Handle<SolariMaterial>,
+            &GlobalTransform,
+        )>,
+    >,
+    materials: Extract<Res<Assets<SolariMaterial>>>,
     mut material_buffer: ResMut<MaterialBuffer>,
     mut commands: Commands,
 ) {
     commands.insert_or_spawn_batch(
         meshes
             .iter()
-            .map(|(entity, mesh, material, transform)| {
-                let material_index = material_buffer.push(material.clone());
-                (
-                    entity,
-                    (mesh.clone_weak(), transform.clone(), material_index),
-                )
+            .filter_map(|(entity, mesh, material, transform)| {
+                materials.get(material).map(|material| {
+                    (
+                        entity,
+                        (
+                            mesh.clone_weak(),
+                            transform.clone(),
+                            material_buffer.push(material),
+                        ),
+                    )
+                })
             })
             .collect::<Vec<_>>(),
     );
@@ -62,7 +76,7 @@ pub fn create_view_bind_group_layout(render_device: &RenderDevice) -> BindGroupL
                 ty: BindingType::Buffer {
                     ty: BufferBindingType::Storage { read_only: true },
                     has_dynamic_offset: false,
-                    min_binding_size: Some(SolariMaterial::min_size()),
+                    min_binding_size: Some(GpuSolariMaterial::min_size()),
                 },
                 count: None,
             },

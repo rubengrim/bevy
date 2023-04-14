@@ -1,6 +1,7 @@
 mod blas;
 mod bundle;
 mod material;
+mod material_buffer;
 mod misc;
 mod node;
 mod pipeline;
@@ -11,7 +12,7 @@ pub use crate::material::SolariMaterial;
 
 use crate::{
     blas::{prepare_blas, BlasStorage},
-    material::{prepare_material_buffer, MaterialBuffer},
+    material_buffer::{prepare_material_buffer, MaterialBuffer},
     misc::extract_meshes,
     node::SolariNode,
     pipeline::{prepare_pipelines, SolariPipeline, SOLARI_SHADER_HANDLE},
