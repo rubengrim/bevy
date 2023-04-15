@@ -19,7 +19,7 @@ use bevy_render::{
     Extract,
 };
 use bevy_transform::prelude::GlobalTransform;
-use std::ops::Deref;
+use std::ops::{Deref, Sub};
 
 pub fn extract_meshes(
     meshes: Extract<
@@ -99,7 +99,8 @@ pub fn create_view_bind_group_layout(render_device: &RenderDevice) -> BindGroupL
                     render_device
                         .limits()
                         .max_sampled_textures_per_shader_stage
-                        .min(60000000)
+                        .min(65000000)
+                        .sub(10000)
                         .try_into()
                         .unwrap(),
                 ),
