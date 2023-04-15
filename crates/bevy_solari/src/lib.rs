@@ -59,10 +59,9 @@ impl Plugin for SolariPlugin {
 
         let needed_features = WgpuFeatures::RAY_TRACING_ACCELERATION_STRUCTURE
             | WgpuFeatures::RAY_QUERY
-            // TODO: Needed?
-            // | WgpuFeatures::TEXTURE_BINDING_ARRAY
-            // | WgpuFeatures::BUFFER_BINDING_ARRAY
-            // | WgpuFeatures::STORAGE_RESOURCE_BINDING_ARRAY
+            | WgpuFeatures::TEXTURE_BINDING_ARRAY
+            | WgpuFeatures::BUFFER_BINDING_ARRAY
+            | WgpuFeatures::STORAGE_RESOURCE_BINDING_ARRAY
             | WgpuFeatures::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING
             | WgpuFeatures::PARTIALLY_BOUND_BINDING_ARRAY;
 
