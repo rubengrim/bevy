@@ -18,6 +18,10 @@ pub struct BlasStorage {
 }
 
 impl BlasStorage {
+    pub fn contains(&self, mesh: &Handle<Mesh>) -> bool {
+        self.storage.contains_key(mesh)
+    }
+
     pub fn get(&self, mesh: &Handle<Mesh>) -> Option<&Blas> {
         self.storage.get(mesh)
     }

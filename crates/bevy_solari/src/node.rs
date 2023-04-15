@@ -1,7 +1,7 @@
 use crate::{
-    material_buffer::MaterialBuffer,
     misc::create_view_bind_group,
     pipeline::{SolariPipeline, SolariPipelineId},
+    scene_buffer::SceneBuffers,
     tlas::TlasResource,
 };
 use bevy_ecs::{
@@ -45,7 +45,7 @@ impl Node for SolariNode {
             world.get_resource::<ViewUniforms>(),
             world.get_resource::<TlasResource>(),
             world.get_resource::<SolariPipeline>(),
-            world.get_resource::<MaterialBuffer>(),
+            world.get_resource::<SceneBuffers>(),
         ) else {
             return Ok(());
         };

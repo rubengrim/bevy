@@ -1,10 +1,12 @@
+mod array_buffer;
+mod binding_array;
 mod blas;
 mod bundle;
 mod material;
-mod material_buffer;
 mod misc;
 mod node;
 mod pipeline;
+mod scene_buffer;
 mod tlas;
 
 pub use crate::bundle::{SolariCamera3dBundle, SolariMaterialMeshBundle};
@@ -12,7 +14,6 @@ pub use crate::material::SolariMaterial;
 
 use crate::{
     blas::{prepare_blas, BlasStorage},
-    material_buffer::{prepare_material_buffer, MaterialBuffer},
     misc::extract_meshes,
     node::SolariNode,
     pipeline::{prepare_pipelines, SolariPipeline, SOLARI_SHADER_HANDLE},
@@ -85,7 +86,6 @@ impl Plugin for SolariPlugin {
         render_app
             .init_resource::<SolariPipeline>()
             .init_resource::<SpecializedComputePipelines<SolariPipeline>>()
-            .init_resource::<MaterialBuffer>()
             .init_resource::<BlasStorage>()
             .init_resource::<TlasResource>()
             .add_systems(ExtractSchedule, extract_meshes)
@@ -95,10 +95,7 @@ impl Plugin for SolariPlugin {
                     .chain()
                     .in_set(RenderSet::Prepare),
             )
-            .add_systems(
-                Render,
-                (prepare_pipelines, prepare_material_buffer).in_set(RenderSet::Prepare),
-            );
+            .add_systems(Render, (prepare_pipelines,).in_set(RenderSet::Prepare));
     }
 }
 

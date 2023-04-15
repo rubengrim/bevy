@@ -1,20 +1,18 @@
 use crate::{
     material::{GpuSolariMaterial, SolariMaterial},
-    material_buffer::MaterialBuffer,
     pipeline::SolariPipeline,
+    scene_buffer::SceneBuffers,
     tlas::TlasResource,
 };
-use bevy_asset::{Assets, Handle};
+use bevy_asset::Handle;
 use bevy_ecs::{
     prelude::Entity,
-    system::{Commands, Query, Res, ResMut},
+    system::{Commands, Query},
 };
 use bevy_render::{
     prelude::Mesh,
-    render_asset::RenderAssets,
     render_resource::*,
     renderer::RenderDevice,
-    texture::Image,
     view::{ViewTarget, ViewUniform, ViewUniforms},
     Extract,
 };
@@ -30,27 +28,16 @@ pub fn extract_meshes(
             &GlobalTransform,
         )>,
     >,
-    materials: Extract<Res<Assets<SolariMaterial>>>,
-    images: Res<RenderAssets<Image>>,
-    mut material_buffer: ResMut<MaterialBuffer>,
     mut commands: Commands,
 ) {
-    material_buffer.clear_texture_maps();
-
     commands.insert_or_spawn_batch(
         meshes
             .iter()
-            .filter_map(|(entity, mesh, material, transform)| {
-                materials.get(material).map(|material| {
-                    (
-                        entity,
-                        (
-                            mesh.clone_weak(),
-                            transform.clone(),
-                            material_buffer.push(material, &images),
-                        ),
-                    )
-                })
+            .map(|(entity, mesh, material, transform)| {
+                (
+                    entity,
+                    (mesh.clone_weak(), material.clone_weak(), transform.clone()),
+                )
             })
             .collect::<Vec<_>>(),
     );
@@ -124,7 +111,7 @@ pub fn create_view_bind_group(
     view_uniforms: &ViewUniforms,
     tlas: &TlasResource,
     pipeline: &SolariPipeline,
-    material_buffer: &MaterialBuffer,
+    material_buffer: &SceneBuffers,
     render_device: &RenderDevice,
 ) -> Option<BindGroup> {
     match (view_uniforms.uniforms.binding(), &tlas.0) {

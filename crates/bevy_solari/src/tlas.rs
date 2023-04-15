@@ -1,4 +1,4 @@
-use crate::{blas::BlasStorage, material_buffer::MaterialIndex};
+use crate::{blas::BlasStorage, scene_buffer::MeshMaterialIndex};
 use bevy_asset::Handle;
 use bevy_ecs::system::{Query, Res, ResMut, Resource};
 use bevy_render::{
@@ -13,7 +13,7 @@ use std::iter;
 pub struct TlasResource(pub Option<TlasPackage>);
 
 pub fn prepare_tlas(
-    meshes: Query<(&Handle<Mesh>, &GlobalTransform, &MaterialIndex)>,
+    meshes: Query<(&Handle<Mesh>, &GlobalTransform, &MeshMaterialIndex)>,
     blas_storage: Res<BlasStorage>,
     mut tlas_resource: ResMut<TlasResource>,
     render_device: Res<RenderDevice>,
@@ -22,10 +22,10 @@ pub fn prepare_tlas(
     // Get BLAS and transform data for each mesh
     let meshes = meshes
         .iter()
-        .filter_map(|(mesh, transform, material_index)| {
+        .filter_map(|(mesh, transform, mesh_material_index)| {
             blas_storage
                 .get(mesh)
-                .map(|blas| (blas, map_transform(transform), material_index))
+                .map(|blas| (blas, map_transform(transform), mesh_material_index))
         })
         .collect::<Vec<_>>();
 
@@ -41,9 +41,13 @@ pub fn prepare_tlas(
 
     // Fill the TLAS with each mesh instance (BLAS)
     let mut tlas = TlasPackage::new(tlas, meshes.len() as u32);
-    for (i, (blas, transform, material_index)) in meshes.into_iter().enumerate() {
-        *tlas.get_mut_single(i).unwrap() =
-            Some(TlasInstance::new(blas, transform, material_index.0, 0xFF));
+    for (i, (blas, transform, mesh_material_index)) in meshes.into_iter().enumerate() {
+        *tlas.get_mut_single(i).unwrap() = Some(TlasInstance::new(
+            blas,
+            transform,
+            mesh_material_index.0,
+            0xFF,
+        ));
     }
 
     // Build the TLAS
