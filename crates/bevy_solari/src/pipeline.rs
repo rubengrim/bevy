@@ -1,4 +1,4 @@
-use crate::misc::create_view_bind_group_layout;
+use crate::misc::{create_scene_bind_group_layout, create_view_bind_group_layout};
 use bevy_asset::HandleUntyped;
 use bevy_ecs::{
     prelude::{Component, Entity},
@@ -12,6 +12,7 @@ use bevy_render::{
         BindGroupLayout, CachedComputePipelineId, ComputePipelineDescriptor, PipelineCache, Shader,
         SpecializedComputePipeline, SpecializedComputePipelines,
     },
+    renderer::RenderDevice,
     view::ExtractedView,
 };
 
@@ -20,13 +21,16 @@ pub const SOLARI_SHADER_HANDLE: HandleUntyped =
 
 #[derive(Resource)]
 pub struct SolariPipeline {
+    pub scene_bind_group_layout: BindGroupLayout,
     pub view_bind_group_layout: BindGroupLayout,
 }
 
 impl FromWorld for SolariPipeline {
     fn from_world(world: &mut World) -> Self {
+        let render_device = world.resource::<RenderDevice>();
         Self {
-            view_bind_group_layout: create_view_bind_group_layout(world.resource()),
+            scene_bind_group_layout: create_scene_bind_group_layout(render_device),
+            view_bind_group_layout: create_view_bind_group_layout(render_device),
         }
     }
 }
@@ -40,7 +44,10 @@ impl SpecializedComputePipeline for SolariPipeline {
     fn specialize(&self, _key: Self::Key) -> ComputePipelineDescriptor {
         ComputePipelineDescriptor {
             label: Some("solari_pipeline".into()),
-            layout: vec![self.view_bind_group_layout.clone()],
+            layout: vec![
+                self.scene_bind_group_layout.clone(),
+                self.view_bind_group_layout.clone(),
+            ],
             push_constant_ranges: vec![],
             shader: SOLARI_SHADER_HANDLE.typed(),
             shader_defs: vec![],

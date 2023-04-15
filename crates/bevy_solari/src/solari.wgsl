@@ -1,15 +1,21 @@
+#import bevy_solari::types
 #import bevy_render::view
-#import bevy_solari::material
 
 @group(0) @binding(0)
-var<uniform> view: View;
-@group(0) @binding(1)
 var tlas: acceleration_structure;
+@group(0) @binding(1)
+var<storage> mesh_materials: array<SolariMeshMaterial>;
 @group(0) @binding(2)
-var<storage> materials: array<SolariMaterial>;
+var<storage> index_buffers: binding_array<array<u32>>;
 @group(0) @binding(3)
-var texture_maps: binding_array<texture_2d<f32>>;
+var<storage> vertex_buffers: binding_array<array<SolariVertex>>;
 @group(0) @binding(4)
+var<storage> materials: array<SolariMaterial>;
+@group(0) @binding(5)
+var texture_maps: binding_array<texture_2d<f32>>;
+@group(1) @binding(0)
+var<uniform> view: View;
+@group(1) @binding(1)
 var output_texture: texture_storage_2d<rgba16float, write>;
 
 fn trace_ray(pixel_index: vec2<u32>) -> RayIntersection {

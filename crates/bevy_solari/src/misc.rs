@@ -1,8 +1,7 @@
 use crate::{
     material::{GpuSolariMaterial, SolariMaterial},
     pipeline::SolariPipeline,
-    scene_buffer::SceneBuffers,
-    tlas::TlasResource,
+    scene::MeshMaterial,
 };
 use bevy_asset::Handle;
 use bevy_ecs::{
@@ -17,7 +16,7 @@ use bevy_render::{
     Extract,
 };
 use bevy_transform::prelude::GlobalTransform;
-use std::ops::{Deref, Sub};
+use std::ops::{Div, Sub};
 
 pub fn extract_meshes(
     meshes: Extract<
@@ -43,10 +42,105 @@ pub fn extract_meshes(
     );
 }
 
+pub fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayout {
+    // https://vulkan.gpuinfo.org/displaydevicelimit.php?name=maxPerStageDescriptorStorageBuffers
+    let max_buffer_bindings = Some(
+        render_device
+            .limits()
+            .max_storage_buffers_per_shader_stage
+            .div(2)
+            .min(65000000 / 2)
+            .sub(10000)
+            .try_into()
+            .unwrap(),
+    );
+    // https://vulkan.gpuinfo.org/displaydevicelimit.php?name=maxPerStageDescriptorSampledImages
+    let max_texture_map_bindings = Some(
+        render_device
+            .limits()
+            .max_sampled_textures_per_shader_stage
+            .min(65000000)
+            .sub(10000)
+            .try_into()
+            .unwrap(),
+    );
+
+    let entries = &[
+        // TLAS
+        BindGroupLayoutEntry {
+            binding: 0,
+            visibility: ShaderStages::COMPUTE,
+            ty: BindingType::AccelerationStructure,
+            count: None,
+        },
+        // MeshMaterial buffer
+        BindGroupLayoutEntry {
+            binding: 1,
+            visibility: ShaderStages::COMPUTE,
+            ty: BindingType::Buffer {
+                ty: BufferBindingType::Storage { read_only: true },
+                has_dynamic_offset: false,
+                min_binding_size: Some(MeshMaterial::min_size()),
+            },
+            count: None,
+        },
+        // Index buffers
+        BindGroupLayoutEntry {
+            binding: 2,
+            visibility: ShaderStages::COMPUTE,
+            ty: BindingType::Buffer {
+                ty: BufferBindingType::Storage { read_only: true },
+                has_dynamic_offset: false,
+                min_binding_size: None, // TODO
+            },
+            count: max_buffer_bindings,
+        },
+        // Vertex buffers
+        BindGroupLayoutEntry {
+            binding: 3,
+            visibility: ShaderStages::COMPUTE,
+            ty: BindingType::Buffer {
+                ty: BufferBindingType::Storage { read_only: true },
+                has_dynamic_offset: false,
+                min_binding_size: None, // TODO
+            },
+            count: max_buffer_bindings,
+        },
+        // Material buffer
+        BindGroupLayoutEntry {
+            binding: 4,
+            visibility: ShaderStages::COMPUTE,
+            ty: BindingType::Buffer {
+                ty: BufferBindingType::Storage { read_only: true },
+                has_dynamic_offset: false,
+                min_binding_size: Some(GpuSolariMaterial::min_size()),
+            },
+            count: None,
+        },
+        // Texture maps
+        BindGroupLayoutEntry {
+            binding: 5,
+            visibility: ShaderStages::COMPUTE,
+            ty: BindingType::Texture {
+                sample_type: TextureSampleType::Float { filterable: true },
+                view_dimension: TextureViewDimension::D2,
+                multisampled: false,
+            },
+            count: max_texture_map_bindings,
+        },
+    ];
+
+    render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        label: Some("solari_scene_bind_group_layout"),
+        entries,
+    })
+}
+
 pub fn create_view_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayout {
     render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
         label: Some("solari_view_bind_group_layout"),
         entries: &[
+            // View uniforms
             BindGroupLayoutEntry {
                 binding: 0,
                 visibility: ShaderStages::COMPUTE,
@@ -57,43 +151,9 @@ pub fn create_view_bind_group_layout(render_device: &RenderDevice) -> BindGroupL
                 },
                 count: None,
             },
+            // Output texture
             BindGroupLayoutEntry {
                 binding: 1,
-                visibility: ShaderStages::COMPUTE,
-                ty: BindingType::AccelerationStructure,
-                count: None,
-            },
-            BindGroupLayoutEntry {
-                binding: 2,
-                visibility: ShaderStages::COMPUTE,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: Some(GpuSolariMaterial::min_size()),
-                },
-                count: None,
-            },
-            BindGroupLayoutEntry {
-                binding: 3,
-                visibility: ShaderStages::COMPUTE,
-                ty: BindingType::Texture {
-                    sample_type: TextureSampleType::Float { filterable: true },
-                    view_dimension: TextureViewDimension::D2,
-                    multisampled: false,
-                },
-                count: Some(
-                    // https://vulkan.gpuinfo.org/displaydevicelimit.php?name=maxPerStageDescriptorSampledImages
-                    render_device
-                        .limits()
-                        .max_sampled_textures_per_shader_stage
-                        .min(65000000)
-                        .sub(10000)
-                        .try_into()
-                        .unwrap(),
-                ),
-            },
-            BindGroupLayoutEntry {
-                binding: 4,
                 visibility: ShaderStages::COMPUTE,
                 ty: BindingType::StorageTexture {
                     access: StorageTextureAccess::WriteOnly,
@@ -107,51 +167,25 @@ pub fn create_view_bind_group_layout(render_device: &RenderDevice) -> BindGroupL
 }
 
 pub fn create_view_bind_group(
-    view_target: &ViewTarget,
     view_uniforms: &ViewUniforms,
-    tlas: &TlasResource,
+    view_target: &ViewTarget,
     pipeline: &SolariPipeline,
-    material_buffer: &SceneBuffers,
     render_device: &RenderDevice,
 ) -> Option<BindGroup> {
-    match (view_uniforms.uniforms.binding(), &tlas.0) {
-        (Some(view_uniforms), Some(tlas)) => {
-            // TODO: This only needs to be done once per frame (not per view),
-            // and we should reuse the memory between frames. Ideally by putting this
-            // into MaterialBuffer directly.
-            let texture_maps = material_buffer
-                .texture_maps()
-                .iter()
-                .map(Deref::deref)
-                .collect::<Vec<_>>();
-
-            Some(render_device.create_bind_group(&BindGroupDescriptor {
-                label: Some("solari_view_bind_group"),
-                layout: &pipeline.view_bind_group_layout,
-                entries: &[
-                    BindGroupEntry {
-                        binding: 0,
-                        resource: view_uniforms.clone(),
-                    },
-                    BindGroupEntry {
-                        binding: 1,
-                        resource: tlas.as_binding(),
-                    },
-                    BindGroupEntry {
-                        binding: 2,
-                        resource: material_buffer.binding(),
-                    },
-                    BindGroupEntry {
-                        binding: 3,
-                        resource: BindingResource::TextureViewArray(texture_maps.as_slice()),
-                    },
-                    BindGroupEntry {
-                        binding: 4,
-                        resource: BindingResource::TextureView(view_target.main_texture()),
-                    },
-                ],
-            }))
-        }
-        _ => None,
-    }
+    view_uniforms.uniforms.binding().map(|view_uniforms| {
+        render_device.create_bind_group(&BindGroupDescriptor {
+            label: Some("solari_view_bind_group"),
+            layout: &pipeline.view_bind_group_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: view_uniforms.clone(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::TextureView(view_target.main_texture()),
+                },
+            ],
+        })
+    })
 }

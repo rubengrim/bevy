@@ -1,8 +1,7 @@
 use crate::{
     misc::create_view_bind_group,
     pipeline::{SolariPipeline, SolariPipelineId},
-    scene_buffer::SceneBuffers,
-    tlas::TlasResource,
+    scene::SceneBindGroup,
 };
 use bevy_ecs::{
     query::QueryState,
@@ -35,24 +34,22 @@ impl Node for SolariNode {
         let (
             Ok((pipeline_id, view_target, view_uniform_offset, camera)),
             Some(pipeline_cache),
+            Some(SceneBindGroup(Some(scene_bind_group))),
             Some(view_uniforms),
-            Some(tlas),
             Some(solari_pipeline),
-            Some(material_buffer),
         ) = (
             self.view_query.get_manual(world, graph.view_entity()),
             world.get_resource::<PipelineCache>(),
+            world.get_resource::<SceneBindGroup>(),
             world.get_resource::<ViewUniforms>(),
-            world.get_resource::<TlasResource>(),
             world.get_resource::<SolariPipeline>(),
-            world.get_resource::<SceneBuffers>(),
         ) else {
             return Ok(());
         };
         let (Some(pipeline), Some(viewport)) = (pipeline_cache.get_compute_pipeline(pipeline_id.0), camera.physical_viewport_size) else {
             return Ok(());
         };
-        let Some(view_bind_group) = create_view_bind_group(view_target, view_uniforms, tlas, solari_pipeline, material_buffer, render_context.render_device()) else {
+        let Some(view_bind_group) = create_view_bind_group(view_uniforms, view_target, solari_pipeline, render_context.render_device()) else {
             return Ok(());
         };
 
@@ -65,7 +62,8 @@ impl Node for SolariNode {
                     });
 
             solari_pass.set_pipeline(pipeline);
-            solari_pass.set_bind_group(0, &view_bind_group, &[view_uniform_offset.offset]);
+            solari_pass.set_bind_group(0, scene_bind_group, &[]);
+            solari_pass.set_bind_group(1, &view_bind_group, &[view_uniform_offset.offset]);
             solari_pass.dispatch_workgroups((viewport.x + 7) / 8, (viewport.y + 7) / 8, 1);
         }
 
