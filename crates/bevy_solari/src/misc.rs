@@ -58,7 +58,7 @@ pub fn extract_meshes(
 
 pub fn create_view_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayout {
     render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-        label: Some("view_bind_group_layout"),
+        label: Some("solari_view_bind_group_layout"),
         entries: &[
             BindGroupLayoutEntry {
                 binding: 0,
@@ -139,7 +139,7 @@ pub fn create_view_bind_group(
                 .collect::<Vec<_>>();
 
             Some(render_device.create_bind_group(&BindGroupDescriptor {
-                label: Some("view_bind_group"),
+                label: Some("solari_view_bind_group"),
                 layout: &pipeline.view_bind_group_layout,
                 entries: &[
                     BindGroupEntry {
