@@ -19,7 +19,7 @@ use crate::{
     tlas::{prepare_tlas, TlasResource},
 };
 use bevy_app::{App, Plugin};
-use bevy_asset::{load_internal_asset, HandleUntyped};
+use bevy_asset::{load_internal_asset, AddAsset, HandleUntyped};
 use bevy_core_pipeline::{
     core_3d::graph::node::{TONEMAPPING, UPSCALING},
     tonemapping::TonemappingNode,
@@ -57,14 +57,16 @@ impl Plugin for SolariPlugin {
 
         let needed_features = WgpuFeatures::RAY_TRACING_ACCELERATION_STRUCTURE
             | WgpuFeatures::RAY_QUERY
-            | WgpuFeatures::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING;
+            | WgpuFeatures::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING
+            | WgpuFeatures::PARTIALLY_BOUND_BINDING_ARRAY;
 
         match app.world.get_resource::<RenderDevice>() {
             Some(render_device) if render_device.features().contains(needed_features) => {}
             _ => return,
         }
 
-        app.insert_resource(SolariSupported);
+        app.insert_resource(SolariSupported)
+            .add_asset::<SolariMaterial>();
 
         let render_app = app.get_sub_app_mut(RenderApp).unwrap();
 

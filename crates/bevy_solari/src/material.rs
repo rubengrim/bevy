@@ -48,7 +48,6 @@ fn texture_map_index(
     {
         Some(gpu_texture_map) => {
             let i = texture_maps.len() as u32;
-            assert_ne!(i, u32::MAX, "max textures reached");
             texture_maps.push(gpu_texture_map.texture_view.clone());
             i
         }

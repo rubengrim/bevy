@@ -19,7 +19,7 @@ use bevy_render::{
     Extract,
 };
 use bevy_transform::prelude::GlobalTransform;
-use std::{num::NonZeroU32, ops::Deref};
+use std::ops::Deref;
 
 pub fn extract_meshes(
     meshes: Extract<
@@ -94,7 +94,15 @@ pub fn create_view_bind_group_layout(render_device: &RenderDevice) -> BindGroupL
                     view_dimension: TextureViewDimension::D2,
                     multisampled: false,
                 },
-                count: Some(unsafe { NonZeroU32::new_unchecked(u32::MAX) }),
+                count: Some(
+                    // https://vulkan.gpuinfo.org/displaydevicelimit.php?name=maxPerStageDescriptorSampledImages
+                    render_device
+                        .limits()
+                        .max_sampled_textures_per_shader_stage
+                        .min(60000000)
+                        .try_into()
+                        .unwrap(),
+                ),
             },
             BindGroupLayoutEntry {
                 binding: 4,

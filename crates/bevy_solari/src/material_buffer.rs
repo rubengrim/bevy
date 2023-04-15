@@ -8,7 +8,7 @@ use bevy_render::{
     render_asset::RenderAssets,
     render_resource::{BindingResource, StorageBuffer, TextureView},
     renderer::{RenderDevice, RenderQueue},
-    texture::Image,
+    texture::{FallbackImage, Image},
 };
 use std::mem;
 
@@ -17,16 +17,21 @@ pub struct MaterialBuffer {
     cpu_buffer: Vec<GpuSolariMaterial>,
     gpu_buffer: StorageBuffer<Vec<GpuSolariMaterial>>,
     texture_maps: Vec<TextureView>,
+    texture_maps_empty: [TextureView; 1],
 }
 
 impl FromWorld for MaterialBuffer {
-    fn from_world(_: &mut World) -> Self {
+    fn from_world(world: &mut World) -> Self {
         let mut gpu_buffer = StorageBuffer::<Vec<GpuSolariMaterial>>::default();
         gpu_buffer.set_label(Some("material_buffer"));
+
+        let texture_maps_empty = [world.resource::<FallbackImage>().texture_view.clone()];
+
         Self {
             cpu_buffer: Vec::new(),
             gpu_buffer,
             texture_maps: Vec::new(),
+            texture_maps_empty,
         }
     }
 }
@@ -62,7 +67,11 @@ impl MaterialBuffer {
     }
 
     pub fn texture_maps(&self) -> &[TextureView] {
-        &self.texture_maps
+        if self.texture_maps.is_empty() {
+            &self.texture_maps_empty
+        } else {
+            &self.texture_maps
+        }
     }
 }
 
