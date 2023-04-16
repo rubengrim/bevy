@@ -45,7 +45,9 @@ fn solari_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     let ray_hit = trace_ray(global_id.xy);
     if (ray_hit.kind != RAY_QUERY_INTERSECTION_NONE) {
-        color = materials[ray_hit.instance_custom_index].base_color.rgb;
+        let mesh_material = mesh_materials[ray_hit.instance_custom_index];
+        let material = materials[mesh_material.material_index];
+        color = material.base_color.rgb;
     };
 
     textureStore(output_texture, global_id.xy, vec4(color, 1.0));

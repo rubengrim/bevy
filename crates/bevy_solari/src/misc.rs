@@ -3,10 +3,10 @@ use crate::{
     pipeline::SolariPipeline,
     scene::MeshMaterial,
 };
-use bevy_asset::Handle;
+use bevy_asset::{Assets, Handle};
 use bevy_ecs::{
     prelude::Entity,
-    system::{Commands, Query},
+    system::{Commands, Query, Res},
 };
 use bevy_render::{
     prelude::Mesh,
@@ -27,16 +27,24 @@ pub fn extract_objects(
             &GlobalTransform,
         )>,
     >,
+    materials: Extract<Res<Assets<SolariMaterial>>>,
     mut commands: Commands,
 ) {
     commands.insert_or_spawn_batch(
         meshes
             .iter()
-            .map(|(entity, mesh, material, transform)| {
-                (
-                    entity,
-                    (mesh.clone_weak(), material.clone_weak(), transform.clone()),
-                )
+            .filter_map(|(entity, mesh_handle, material_handle, transform)| {
+                materials.get(material_handle).map(|material| {
+                    (
+                        entity,
+                        (
+                            mesh_handle.clone_weak(),
+                            material_handle.clone_weak(),
+                            material.clone(),
+                            transform.clone(),
+                        ),
+                    )
+                })
             })
             .collect::<Vec<_>>(),
     );

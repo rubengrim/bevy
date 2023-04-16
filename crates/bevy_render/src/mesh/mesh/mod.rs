@@ -860,7 +860,7 @@ impl RenderAsset for Mesh {
             .features()
             .contains(Features::RAY_TRACING_ACCELERATION_STRUCTURE)
         {
-            extra_usages |= BufferUsages::BLAS_INPUT;
+            extra_usages |= BufferUsages::BLAS_INPUT | BufferUsages::STORAGE;
         }
 
         let vertex_buffer_data = mesh.get_vertex_buffer_data();

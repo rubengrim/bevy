@@ -3,7 +3,7 @@ use crate::{
     material::{GpuSolariMaterial, SolariMaterial},
     pipeline::SolariPipeline,
 };
-use bevy_asset::{Assets, Handle};
+use bevy_asset::Handle;
 use bevy_ecs::system::{Query, Res, ResMut, Resource};
 use bevy_render::{
     mesh::GpuBufferInfo,
@@ -11,7 +11,7 @@ use bevy_render::{
     render_asset::RenderAssets,
     render_resource::{encase::private::WriteInto, raytrace::*, *},
     renderer::{RenderDevice, RenderQueue},
-    texture::Image,
+    texture::{FallbackImage, Image},
 };
 use bevy_transform::prelude::GlobalTransform;
 use bevy_utils::HashMap;
@@ -21,13 +21,18 @@ use std::{hash::Hash, iter};
 pub struct SceneBindGroup(pub Option<BindGroup>);
 
 pub fn queue_scene_bind_group(
-    objects: Query<(&Handle<Mesh>, &Handle<SolariMaterial>, &GlobalTransform)>,
+    objects: Query<(
+        &Handle<Mesh>,
+        &Handle<SolariMaterial>,
+        &SolariMaterial,
+        &GlobalTransform,
+    )>,
     mut scene_bind_group: ResMut<SceneBindGroup>,
     mesh_assets: Res<RenderAssets<Mesh>>,
-    material_assets: Res<Assets<SolariMaterial>>,
     image_assets: Res<RenderAssets<Image>>,
     blas_storage: Res<BlasStorage>,
     pipeline: Res<SolariPipeline>,
+    fallback_image: Res<FallbackImage>,
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
 ) {
@@ -62,13 +67,10 @@ pub fn queue_scene_bind_group(
         }
     };
 
-    let mut get_material_index = |material_handle| {
-        materials.get_index(material_handle, |material_handle| {
-            let material = material_assets.get(material_handle).unwrap(); // TODO: Handle unwrap
-            GpuSolariMaterial {
-                base_color: material.base_color.as_linear_rgba_f32().into(),
-                base_color_map_index: get_texture_map_index(&material.base_color_map),
-            }
+    let mut get_material_index = |material_handle, material: &SolariMaterial| {
+        materials.get_index(material_handle, |_| GpuSolariMaterial {
+            base_color: material.base_color.as_linear_rgba_f32().into(),
+            base_color_map_index: get_texture_map_index(&material.base_color_map),
         })
     };
 
@@ -86,13 +88,15 @@ pub fn queue_scene_bind_group(
     );
 
     // Fill TLAS and scene buffers
-    for (i, (mesh_handle, material_handle, transform)) in objects.iter().enumerate() {
+    // TODO: Parallelize loop
+    for (i, (mesh_handle, material_handle, material, transform)) in objects.into_iter().enumerate()
+    {
         if let Some(blas) = blas_storage.get(mesh_handle) {
             let object_i = mesh_materials.get_index(
                 (mesh_handle, material_handle),
                 |(mesh_handle, material_handle)| MeshMaterial {
                     mesh_index: get_mesh_index(mesh_handle),
-                    material_index: get_material_index(material_handle),
+                    material_index: get_material_index(material_handle, material),
                 },
             );
 
@@ -126,6 +130,14 @@ pub fn queue_scene_bind_group(
         &render_device,
         &render_queue,
     );
+
+    // Ensure binding arrays are non-empty
+    if vertex_buffers.is_empty() {
+        return;
+    }
+    if texture_maps.vec.is_empty() {
+        texture_maps.vec.push(&fallback_image.texture_view);
+    }
 
     // Create scene bind group
     scene_bind_group.0 = Some(render_device.create_bind_group(&BindGroupDescriptor {

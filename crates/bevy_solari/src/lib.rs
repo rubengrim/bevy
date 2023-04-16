@@ -47,14 +47,6 @@ pub struct SolariPlugin;
 
 impl Plugin for SolariPlugin {
     fn build(&self, app: &mut App) {
-        load_internal_asset!(app, SOLARI_SHADER_HANDLE, "solari.wgsl", Shader::from_wgsl);
-        load_internal_asset!(
-            app,
-            SOLARI_TYPES_SHADER_HANDLE,
-            "solari_types.wgsl",
-            Shader::from_wgsl
-        );
-
         let required_features = WgpuFeatures::RAY_TRACING_ACCELERATION_STRUCTURE
             | WgpuFeatures::RAY_QUERY
             | WgpuFeatures::TEXTURE_BINDING_ARRAY
@@ -67,6 +59,14 @@ impl Plugin for SolariPlugin {
             Some(render_device) if render_device.features().contains(required_features) => {}
             _ => return,
         }
+
+        load_internal_asset!(app, SOLARI_SHADER_HANDLE, "solari.wgsl", Shader::from_wgsl);
+        load_internal_asset!(
+            app,
+            SOLARI_TYPES_SHADER_HANDLE,
+            "solari_types.wgsl",
+            Shader::from_wgsl
+        );
 
         app.insert_resource(SolariSupported)
             .add_asset::<SolariMaterial>();
