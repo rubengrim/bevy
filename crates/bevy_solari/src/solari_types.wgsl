@@ -1,9 +1,8 @@
 #define_import_path bevy_solari::types
 
 struct SolariMeshMaterial {
-    vertex_buffer_index: u32,
-    index_buffer_index: u32,
-    material_buffer_index: u32,
+    mesh_index: u32,
+    material_index: u32,
 };
 
 struct SolariVertex {

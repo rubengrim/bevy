@@ -18,7 +18,7 @@ use bevy_render::{
 use bevy_transform::prelude::GlobalTransform;
 use std::ops::{Div, Sub};
 
-pub fn extract_meshes(
+pub fn extract_objects(
     meshes: Extract<
         Query<(
             Entity,

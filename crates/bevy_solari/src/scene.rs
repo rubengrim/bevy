@@ -43,8 +43,8 @@ pub fn queue_scene_bind_group(
     let mut texture_maps = IndexedVec::new();
     let objects = objects.iter().collect::<Vec<_>>();
 
-    let mut get_index_buffer_i = |mesh_handle| {
-        index_buffers.get_index_or_push(mesh_handle, |mesh_handle| {
+    let mut get_mesh_index = |mesh_handle| {
+        index_buffers.get_index(mesh_handle, |mesh_handle| {
             let gpu_mesh = mesh_assets.get(mesh_handle).unwrap(); // TODO: Handle unwrap
             vertex_buffers.push(&gpu_mesh.vertex_buffer);
             match &gpu_mesh.buffer_info {
@@ -54,23 +54,23 @@ pub fn queue_scene_bind_group(
         })
     };
 
-    let mut get_texture_map_i = |maybe_texture_map_handle: &Option<Handle<Image>>| {
-        if let Some(texture_map_handle) = maybe_texture_map_handle {
-            texture_maps.get_index_or_push(texture_map_handle, |_| {
+    let mut get_texture_map_index = |maybe_texture_map_handle: &Option<Handle<Image>>| {
+        if let Some(texture_map_handle) = maybe_texture_map_handle.clone() {
+            texture_maps.get_index(texture_map_handle, |texture_map_handle| {
                 // TODO: Handle unwrap
-                &image_assets.get(texture_map_handle).unwrap().texture_view
+                &image_assets.get(&texture_map_handle).unwrap().texture_view
             })
         } else {
             u32::MAX
         }
     };
 
-    let mut get_material_i = |material_handle| {
-        materials.get_index_or_push(material_handle, |material_handle| {
+    let mut get_material_index = |material_handle| {
+        materials.get_index(material_handle, |material_handle| {
             let material = material_assets.get(material_handle).unwrap(); // TODO: Handle unwrap
             GpuSolariMaterial {
                 base_color: material.base_color.as_linear_rgba_f32().into(),
-                base_color_map_index: get_texture_map_i(&material.base_color_map),
+                base_color_map_index: get_texture_map_index(&material.base_color_map),
             }
         })
     };
@@ -87,22 +87,22 @@ pub fn queue_scene_bind_group(
         });
 
     for (mesh_handle, material_handle) in objects {
-        let object_i = mesh_materials.get_index_or_push(
+        let object_i = mesh_materials.get_index(
             (mesh_handle, material_handle),
             |(mesh_handle, material_handle)| MeshMaterial {
-                index_buffer_i: get_index_buffer_i(mesh_handle),
-                material_i: get_material_i(material_handle),
+                mesh_index: get_mesh_index(mesh_handle),
+                material_index: get_material_index(material_handle),
             },
         );
     }
 }
 
-struct IndexedVec<T, I: Hash + Eq + Copy> {
+struct IndexedVec<T, I: Hash + Eq + Clone> {
     vec: Vec<T>,
     index: HashMap<I, u32>,
 }
 
-impl<T, I: Hash + Eq + Copy> IndexedVec<T, I> {
+impl<T, I: Hash + Eq + Clone> IndexedVec<T, I> {
     fn new() -> Self {
         Self {
             vec: Vec::new(),
@@ -110,8 +110,8 @@ impl<T, I: Hash + Eq + Copy> IndexedVec<T, I> {
         }
     }
 
-    fn get_index_or_push<F: FnOnce(I) -> T>(&mut self, index_key: I, create_value: F) -> u32 {
-        *self.index.entry(index_key).or_insert_with(|| {
+    fn get_index<F: FnOnce(I) -> T>(&mut self, index_key: I, create_value: F) -> u32 {
+        *self.index.entry(index_key.clone()).or_insert_with(|| {
             let i = self.vec.len() as u32;
             self.vec.push(create_value(index_key));
             i
@@ -121,6 +121,6 @@ impl<T, I: Hash + Eq + Copy> IndexedVec<T, I> {
 
 #[derive(ShaderType)]
 pub struct MeshMaterial {
-    index_buffer_i: u32,
-    material_i: u32,
+    mesh_index: u32,
+    material_index: u32,
 }

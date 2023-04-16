@@ -11,7 +11,7 @@ pub use crate::material::SolariMaterial;
 
 use crate::{
     blas::{prepare_blas, BlasStorage},
-    misc::extract_meshes,
+    misc::extract_objects,
     node::SolariNode,
     pipeline::{prepare_pipelines, SolariPipeline, SOLARI_SHADER_HANDLE},
     scene::{queue_scene_bind_group, SceneBindGroup},
@@ -85,7 +85,7 @@ impl Plugin for SolariPlugin {
             .init_resource::<SpecializedComputePipelines<SolariPipeline>>()
             .init_resource::<BlasStorage>()
             .init_resource::<SceneBindGroup>()
-            .add_systems(ExtractSchedule, extract_meshes)
+            .add_systems(ExtractSchedule, extract_objects)
             .add_systems(
                 Render,
                 (prepare_pipelines, prepare_blas).in_set(RenderSet::Prepare),
