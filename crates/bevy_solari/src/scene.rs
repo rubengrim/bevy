@@ -47,7 +47,7 @@ pub fn queue_scene_bind_group(
 
     let mut get_mesh_index = |mesh_handle| {
         index_buffers.get_index(mesh_handle, |mesh_handle| {
-            let gpu_mesh = mesh_assets.get(mesh_handle).unwrap(); // TODO: Handle unwrap
+            let gpu_mesh = mesh_assets.get(mesh_handle).unwrap();
             vertex_buffers.push(gpu_mesh.vertex_buffer.as_entire_buffer_binding());
             match &gpu_mesh.buffer_info {
                 GpuBufferInfo::Indexed { buffer, .. } => buffer.as_entire_buffer_binding(),
