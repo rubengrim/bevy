@@ -22,6 +22,7 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<SolariMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
     commands.spawn(SolariCamera3dBundle {
         transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
@@ -32,6 +33,7 @@ fn setup(
         mesh: meshes.add(shape::Plane::from_size(5.0).into()),
         material: materials.add(SolariMaterial {
             base_color: Color::rgb(0.3, 0.5, 0.3),
+            base_color_map: Some(asset_server.load("branding/bevy_logo_dark_big.png")),
             ..default()
         }),
         ..default()

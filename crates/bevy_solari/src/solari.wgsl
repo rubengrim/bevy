@@ -54,7 +54,7 @@ fn solari_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
         let indices_i = (ray_hit.primitive_index * 3u) + vec3(0u, 1u, 2u);
         let indices = vec3((*index_buffer)[indices_i.x], (*index_buffer)[indices_i.y], (*index_buffer)[indices_i.z]);
-        let vertices = array<SolariVertex, 3>((*vertex_buffer)[indices.x], (*vertex_buffer)[indices.y], (*vertex_buffer)[indices.z]);
+        let vertices = array<SolariVertex, 3>(unpack_vertex((*vertex_buffer)[indices.x]), unpack_vertex((*vertex_buffer)[indices.y]), unpack_vertex((*vertex_buffer)[indices.z]));
         let barycentrics = vec3(1.0 - ray_hit.barycentrics.x - ray_hit.barycentrics.y, ray_hit.barycentrics);
         let uv = mat3x2(vertices[0].uv, vertices[1].uv, vertices[2].uv) * barycentrics;
 
