@@ -61,7 +61,7 @@ pub fn prepare_blas(
 
             let blas = render_device.wgpu_device().create_blas(
                 &CreateBlasDescriptor {
-                    label: None,
+                    label: Some("blas"),
                     flags: AccelerationStructureFlags::PREFER_FAST_TRACE,
                     update_mode: AccelerationStructureUpdateMode::Build,
                 },
