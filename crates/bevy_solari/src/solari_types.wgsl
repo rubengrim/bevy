@@ -14,7 +14,10 @@ struct SolariVertexBuffer {
 }
 
 // The size of a vertex is 32 bytes of data
-// The size of the SolariVertex struct is padded to 64 bytes due to alignment rules
+//
+// The size of the SolariVertex struct when used in an
+// array is padded to 64 bytes due to WGSL alignment rules
+//
 // This struct is properly 32 bytes
 struct SolariPackedVertex {
     b0: vec4<f32>,
