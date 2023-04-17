@@ -168,6 +168,10 @@ pub fn queue_scene_bind_group(
                 binding: 5,
                 resource: BindingResource::TextureViewArray(texture_maps.vec.as_slice()),
             },
+            BindGroupEntry {
+                binding: 6,
+                resource: BindingResource::Sampler(&pipeline.texture_sampler),
+            },
         ],
     }));
 }

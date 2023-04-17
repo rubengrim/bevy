@@ -136,6 +136,13 @@ pub fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroup
             },
             count: max_texture_map_bindings,
         },
+        // Texture sampler
+        BindGroupLayoutEntry {
+            binding: 6,
+            visibility: ShaderStages::COMPUTE,
+            ty: BindingType::Sampler(SamplerBindingType::Filtering),
+            count: None,
+        },
     ];
 
     render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {

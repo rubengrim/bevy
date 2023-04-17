@@ -9,12 +9,14 @@ use bevy_ecs::{
 use bevy_reflect::TypeUuid;
 use bevy_render::{
     render_resource::{
-        BindGroupLayout, CachedComputePipelineId, ComputePipelineDescriptor, PipelineCache, Shader,
-        SpecializedComputePipeline, SpecializedComputePipelines,
+        BindGroupLayout, CachedComputePipelineId, ComputePipelineDescriptor, FilterMode,
+        PipelineCache, Sampler, SamplerDescriptor, Shader, SpecializedComputePipeline,
+        SpecializedComputePipelines,
     },
     renderer::RenderDevice,
     view::ExtractedView,
 };
+use bevy_utils::default;
 
 pub const SOLARI_SHADER_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 1717171717171755);
@@ -23,6 +25,7 @@ pub const SOLARI_SHADER_HANDLE: HandleUntyped =
 pub struct SolariPipeline {
     pub scene_bind_group_layout: BindGroupLayout,
     pub view_bind_group_layout: BindGroupLayout,
+    pub texture_sampler: Sampler,
 }
 
 impl FromWorld for SolariPipeline {
@@ -31,6 +34,12 @@ impl FromWorld for SolariPipeline {
         Self {
             scene_bind_group_layout: create_scene_bind_group_layout(render_device),
             view_bind_group_layout: create_view_bind_group_layout(render_device),
+            texture_sampler: render_device.create_sampler(&SamplerDescriptor {
+                mipmap_filter: FilterMode::Linear,
+                mag_filter: FilterMode::Linear,
+                min_filter: FilterMode::Linear,
+                ..default()
+            }),
         }
     }
 }
