@@ -34,6 +34,7 @@ pub fn prepare_blas(
     render_queue: Res<RenderQueue>,
 ) {
     // Get GpuMeshes and filter to TriangleList meshes without an existing BLAS
+    // TODO: Validate vertex attributes
     let meshes = meshes
         .iter()
         .filter_map(|mesh| render_meshes.get(mesh).map(|gpu_mesh| (mesh, gpu_mesh)))
