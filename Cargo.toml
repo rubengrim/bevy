@@ -117,6 +117,9 @@ trace_chrome = ["trace", "bevy_internal/trace_chrome"]
 # Tracing support, exposing a port for Tracy
 trace_tracy = ["trace", "bevy_internal/trace_tracy"]
 
+# Tracing support, with memory profiling, exposing a port for Tracy
+trace_tracy_memory = ["trace", "bevy_internal/trace_tracy", "bevy_internal/trace_tracy_memory"]
+
 # Tracing support
 trace = ["bevy_internal/trace"]
 
@@ -735,6 +738,16 @@ path = "examples/animation/animated_transform.rs"
 [package.metadata.example.animated_transform]
 name = "Animated Transform"
 description = "Create and play an animation defined by code that operates on the `Transform` component"
+category = "Animation"
+wasm = true
+
+[[example]]
+name = "cubic_curve"
+path = "examples/animation/cubic_curve.rs"
+
+[package.metadata.example.cubic_curve]
+name = "Cubic Curve"
+description = "Bezier curve example showing a cube following a cubic curve"
 category = "Animation"
 wasm = true
 
@@ -1765,6 +1778,16 @@ category = "UI (User Interface)"
 wasm = true
 
 [[example]]
+name = "overflow"
+path = "examples/ui/overflow.rs"
+
+[package.metadata.example.overflow]
+name = "Overflow"
+description = "Simple example demonstrating overflow behavior"
+category = "UI (User Interface)"
+wasm = true
+
+[[example]]
 name = "overflow_debug"
 path = "examples/ui/overflow_debug.rs"
 
@@ -1812,7 +1835,17 @@ path = "examples/ui/flex_layout.rs"
 name = "Flex Layout"
 description = "Demonstrates how the AlignItems and JustifyContent properties can be composed to layout nodes and position text"
 category = "UI (User Interface)"
-wasm = false
+wasm = true
+
+[[example]]
+name = "grid"
+path = "examples/ui/grid.rs"
+
+[package.metadata.example.grid]
+name = "CSS Grid"
+description = "An example for CSS Grid layout"
+category = "UI (User Interface)"
+wasm = true
 
 [[example]]
 name = "transparency_ui"
