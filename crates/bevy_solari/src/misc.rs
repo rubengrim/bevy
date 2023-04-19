@@ -5,13 +5,15 @@ use crate::{
 };
 use bevy_asset::{Assets, Handle};
 use bevy_ecs::{
-    prelude::Entity,
-    system::{Commands, Query, Res},
+    prelude::{Component, Entity},
+    system::{Commands, Query, Res, ResMut},
 };
 use bevy_render::{
+    camera::ExtractedCamera,
     prelude::Mesh,
     render_resource::*,
     renderer::RenderDevice,
+    texture::{CachedTexture, TextureCache},
     view::{ViewTarget, ViewUniform, ViewUniforms},
     Extract,
 };
@@ -48,6 +50,41 @@ pub fn extract_objects(
             })
             .collect::<Vec<_>>(),
     );
+}
+
+#[derive(Component)]
+pub struct SolariTextures {
+    pub screen_probes: CachedTexture,
+}
+
+pub fn prepare_textures(
+    views: Query<(Entity, &ExtractedCamera)>,
+    mut texture_cache: ResMut<TextureCache>,
+    render_device: Res<RenderDevice>,
+    mut commands: Commands,
+) {
+    for (entity, camera) in &views {
+        if let Some(viewport) = camera.physical_viewport_size {
+            let screen_probes_descriptor = TextureDescriptor {
+                label: Some("solari_screen_probes"),
+                size: Extent3d {
+                    width: round_up_to_multiple_of_8(viewport.x),
+                    height: round_up_to_multiple_of_8(viewport.y),
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: TextureDimension::D2,
+                format: ViewTarget::TEXTURE_FORMAT_HDR,
+                usage: TextureUsages::STORAGE_BINDING,
+                view_formats: &[],
+            };
+
+            commands.entity(entity).insert(SolariTextures {
+                screen_probes: texture_cache.get(&render_device, screen_probes_descriptor),
+            });
+        }
+    }
 }
 
 pub fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayout {
@@ -166,9 +203,20 @@ pub fn create_view_bind_group_layout(render_device: &RenderDevice) -> BindGroupL
                 },
                 count: None,
             },
-            // Output texture
+            // Screen probes
             BindGroupLayoutEntry {
                 binding: 1,
+                visibility: ShaderStages::COMPUTE,
+                ty: BindingType::StorageTexture {
+                    access: StorageTextureAccess::ReadWrite,
+                    format: ViewTarget::TEXTURE_FORMAT_HDR,
+                    view_dimension: TextureViewDimension::D2,
+                },
+                count: None,
+            },
+            // Output texture
+            BindGroupLayoutEntry {
+                binding: 2,
                 visibility: ShaderStages::COMPUTE,
                 ty: BindingType::StorageTexture {
                     access: StorageTextureAccess::WriteOnly,
@@ -184,6 +232,7 @@ pub fn create_view_bind_group_layout(render_device: &RenderDevice) -> BindGroupL
 pub fn create_view_bind_group(
     view_uniforms: &ViewUniforms,
     view_target: &ViewTarget,
+    solari_textures: &SolariTextures,
     pipeline: &SolariPipeline,
     render_device: &RenderDevice,
 ) -> Option<BindGroup> {
@@ -198,9 +247,19 @@ pub fn create_view_bind_group(
                 },
                 BindGroupEntry {
                     binding: 1,
+                    resource: BindingResource::TextureView(
+                        &solari_textures.screen_probes.default_view,
+                    ),
+                },
+                BindGroupEntry {
+                    binding: 2,
                     resource: BindingResource::TextureView(view_target.main_texture()),
                 },
             ],
         })
     })
+}
+
+fn round_up_to_multiple_of_8(x: u32) -> u32 {
+    (x + 7) & !7
 }

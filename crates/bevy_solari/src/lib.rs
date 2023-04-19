@@ -11,7 +11,7 @@ pub use crate::material::SolariMaterial;
 
 use crate::{
     blas::{prepare_blas, BlasStorage},
-    misc::extract_objects,
+    misc::{extract_objects, prepare_textures},
     node::SolariNode,
     pipeline::{prepare_pipelines, SolariPipeline, SOLARI_SHADER_HANDLE},
     scene::{queue_scene_bind_group, SceneBindGroup},
@@ -53,7 +53,8 @@ impl Plugin for SolariPlugin {
             | WgpuFeatures::BUFFER_BINDING_ARRAY
             | WgpuFeatures::STORAGE_RESOURCE_BINDING_ARRAY
             | WgpuFeatures::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING
-            | WgpuFeatures::PARTIALLY_BOUND_BINDING_ARRAY;
+            | WgpuFeatures::PARTIALLY_BOUND_BINDING_ARRAY
+            | WgpuFeatures::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES;
 
         match app.world.get_resource::<RenderDevice>() {
             Some(render_device) if render_device.features().contains(required_features) => {}
@@ -88,7 +89,7 @@ impl Plugin for SolariPlugin {
             .add_systems(ExtractSchedule, extract_objects)
             .add_systems(
                 Render,
-                (prepare_pipelines, prepare_blas).in_set(RenderSet::Prepare),
+                (prepare_textures, prepare_pipelines, prepare_blas).in_set(RenderSet::Prepare),
             )
             .add_systems(Render, queue_scene_bind_group.in_set(RenderSet::Queue));
     }

@@ -1,5 +1,5 @@
 use crate::{
-    misc::create_view_bind_group,
+    misc::{create_view_bind_group, SolariTextures},
     pipeline::{SolariPipeline, SolariPipelineId},
     scene::SceneBindGroup,
 };
@@ -18,6 +18,7 @@ use bevy_render::{
 pub struct SolariNode {
     view_query: QueryState<(
         &'static SolariPipelineId,
+        &'static SolariTextures,
         &'static ViewTarget,
         &'static ViewUniformOffset,
         &'static ExtractedCamera,
@@ -32,7 +33,7 @@ impl Node for SolariNode {
         world: &World,
     ) -> Result<(), NodeRunError> {
         let (
-            Ok((pipeline_id, view_target, view_uniform_offset, camera)),
+            Ok((pipeline_id, textures, view_target, view_uniform_offset, camera)),
             Some(pipeline_cache),
             Some(SceneBindGroup(Some(scene_bind_group))),
             Some(view_uniforms),
@@ -49,7 +50,7 @@ impl Node for SolariNode {
         let (Some(pipeline), Some(viewport)) = (pipeline_cache.get_compute_pipeline(pipeline_id.0), camera.physical_viewport_size) else {
             return Ok(());
         };
-        let Some(view_bind_group) = create_view_bind_group(view_uniforms, view_target, solari_pipeline, render_context.render_device()) else {
+        let Some(view_bind_group) = create_view_bind_group(view_uniforms, view_target, textures, solari_pipeline, render_context.render_device()) else {
             return Ok(());
         };
 

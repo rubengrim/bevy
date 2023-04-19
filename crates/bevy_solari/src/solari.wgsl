@@ -15,9 +15,12 @@ var<storage> materials: array<SolariMaterial>;
 var texture_maps: binding_array<texture_2d<f32>>;
 @group(0) @binding(6)
 var texture_sampler: sampler;
+
 @group(1) @binding(0)
 var<uniform> view: View;
 @group(1) @binding(1)
+var screen_probes: texture_storage_2d<rgba16float, read_write>;
+@group(1) @binding(2)
 var output_texture: texture_storage_2d<rgba16float, write>;
 
 fn trace_ray(pixel_index: vec2<u32>) -> RayIntersection {
