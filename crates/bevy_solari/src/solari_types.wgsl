@@ -5,10 +5,10 @@ struct SolariMeshMaterial {
     material_index: u32,
 }
 
-// TODO: These two types are temporary to work around a naga bug
 struct SolariIndexBuffer {
     buffer: array<u32>,
 }
+
 struct SolariVertexBuffer {
     buffer: array<SolariPackedVertex>,
 }
