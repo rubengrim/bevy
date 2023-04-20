@@ -10,13 +10,14 @@ use bevy_reflect::TypeUuid;
 use bevy_render::{
     render_resource::{
         BindGroupLayout, CachedComputePipelineId, ComputePipelineDescriptor, FilterMode,
-        PipelineCache, Sampler, SamplerDescriptor, Shader, SpecializedComputePipeline,
-        SpecializedComputePipelines,
+        PipelineCache, PushConstantRange, Sampler, SamplerDescriptor, Shader, ShaderStages,
+        SpecializedComputePipeline, SpecializedComputePipelines,
     },
     renderer::RenderDevice,
     view::ExtractedView,
 };
 use bevy_utils::default;
+use std::sync::atomic::AtomicU32;
 
 pub const SOLARI_SHADER_HANDLE: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 1717171717171755);
@@ -57,7 +58,10 @@ impl SpecializedComputePipeline for SolariPipeline {
                 self.scene_bind_group_layout.clone(),
                 self.view_bind_group_layout.clone(),
             ],
-            push_constant_ranges: vec![],
+            push_constant_ranges: vec![PushConstantRange {
+                stages: ShaderStages::COMPUTE,
+                range: 0..4,
+            }],
             shader: SOLARI_SHADER_HANDLE.typed(),
             shader_defs: vec![],
             entry_point: "solari_main".into(),
@@ -83,3 +87,6 @@ pub fn prepare_pipelines(
             .insert(SolariPipelineId(pipeline_id));
     }
 }
+
+#[derive(Resource, Default)]
+pub struct SampleCount(pub AtomicU32);

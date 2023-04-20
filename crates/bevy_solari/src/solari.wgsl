@@ -21,7 +21,9 @@ var<uniform> view: View;
 @group(1) @binding(1)
 var screen_probes: texture_storage_2d<rgba16float, read_write>;
 @group(1) @binding(2)
-var output_texture: texture_storage_2d<rgba16float, write>;
+var output_texture: texture_storage_2d<rgba16float, read_write>;
+
+var<push_constant> previous_sample_count: f32;
 
 @compute @workgroup_size(8, 8, 1)
 fn solari_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
@@ -31,15 +33,28 @@ fn solari_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let primary_ray_target = view.inverse_view_proj * vec4(pixel_ndc.x, -pixel_ndc.y, 1.0, 1.0);
 
     var color = vec3(0.0);
+    var throughput = vec3(1.0);
     var ray_origin = view.world_position;
     var ray_direction = normalize((primary_ray_target.xyz / primary_ray_target.w) - ray_origin);
+    var rng = rand_initial_seed(global_id.x + global_id.y * u32(view.viewport.z));
 
-    let ray_hit = trace_ray(ray_origin, ray_direction);
-    if (ray_hit.kind != RAY_QUERY_INTERSECTION_NONE) {
-        let ray_hit = map_ray_hit(ray_hit);
+    for (var i = 0u; i < 30u; i++) {
+        let ray_hit = trace_ray(ray_origin, ray_direction);
+        if (ray_hit.kind != RAY_QUERY_INTERSECTION_NONE) {
+            let ray_hit = map_ray_hit(ray_hit);
 
-        color += ray_hit.material.base_color;
+            color += throughput * ray_hit.material.emission * ray_hit.material.base_color;
+            throughput *= PI * ray_hit.material.base_color;
+
+            ray_origin = ray_hit.world_position;
+            ray_direction = sample_hemisphere(ray_hit.world_normal, &rng);
+        }
+        else {
+            break;
+        }
     }
 
-    textureStore(output_texture, global_id.xy, vec4(color, 1.0));
+    let old_color = textureLoad(output_texture, global_id.xy).rgb;
+    let new_color = (color + previous_sample_count * old_color) / (previous_sample_count + 1.0);
+    textureStore(output_texture, global_id.xy, vec4(new_color, 1.0));
 }

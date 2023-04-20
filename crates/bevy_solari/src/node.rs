@@ -1,6 +1,6 @@
 use crate::{
     misc::{create_view_bind_group, SolariTextures},
-    pipeline::{SolariPipeline, SolariPipelineId},
+    pipeline::{SampleCount, SolariPipeline, SolariPipelineId},
     scene::SceneBindGroup,
 };
 use bevy_ecs::{
@@ -14,6 +14,7 @@ use bevy_render::{
     renderer::RenderContext,
     view::{ViewTarget, ViewUniformOffset, ViewUniforms},
 };
+use std::sync::atomic::Ordering;
 
 pub struct SolariNode {
     view_query: QueryState<(
@@ -38,12 +39,14 @@ impl Node for SolariNode {
             Some(SceneBindGroup(Some(scene_bind_group))),
             Some(view_uniforms),
             Some(solari_pipeline),
+            Some(sample_count),
         ) = (
             self.view_query.get_manual(world, graph.view_entity()),
             world.get_resource::<PipelineCache>(),
             world.get_resource::<SceneBindGroup>(),
             world.get_resource::<ViewUniforms>(),
             world.get_resource::<SolariPipeline>(),
+            world.get_resource::<SampleCount>()
         ) else {
             return Ok(());
         };
@@ -53,6 +56,8 @@ impl Node for SolariNode {
         let Some(view_bind_group) = create_view_bind_group(view_uniforms, view_target, textures, solari_pipeline, render_context.render_device()) else {
             return Ok(());
         };
+
+        let previous_sample_count = sample_count.0.fetch_add(1, Ordering::SeqCst);
 
         {
             let mut solari_pass =
@@ -65,6 +70,7 @@ impl Node for SolariNode {
             solari_pass.set_pipeline(pipeline);
             solari_pass.set_bind_group(0, scene_bind_group, &[]);
             solari_pass.set_bind_group(1, &view_bind_group, &[view_uniform_offset.offset]);
+            solari_pass.set_push_constants(0, &previous_sample_count.to_le_bytes());
             solari_pass.dispatch_workgroups((viewport.x + 7) / 8, (viewport.y + 7) / 8, 1);
         }
 

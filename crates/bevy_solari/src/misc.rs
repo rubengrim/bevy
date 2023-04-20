@@ -219,7 +219,7 @@ pub fn create_view_bind_group_layout(render_device: &RenderDevice) -> BindGroupL
                 binding: 2,
                 visibility: ShaderStages::COMPUTE,
                 ty: BindingType::StorageTexture {
-                    access: StorageTextureAccess::WriteOnly,
+                    access: StorageTextureAccess::ReadWrite,
                     format: ViewTarget::TEXTURE_FORMAT_HDR,
                     view_dimension: TextureViewDimension::D2,
                 },

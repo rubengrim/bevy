@@ -13,7 +13,7 @@ use crate::{
     blas::{prepare_blas, BlasStorage},
     misc::{extract_objects, prepare_textures},
     node::SolariNode,
-    pipeline::{prepare_pipelines, SolariPipeline, SOLARI_SHADER_HANDLE},
+    pipeline::{prepare_pipelines, SampleCount, SolariPipeline, SOLARI_SHADER_HANDLE},
     scene::{queue_scene_bind_group, SceneBindGroup},
 };
 use bevy_app::{App, Plugin};
@@ -54,6 +54,7 @@ impl Plugin for SolariPlugin {
             | WgpuFeatures::STORAGE_RESOURCE_BINDING_ARRAY
             | WgpuFeatures::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING
             | WgpuFeatures::PARTIALLY_BOUND_BINDING_ARRAY
+            | WgpuFeatures::PUSH_CONSTANTS
             | WgpuFeatures::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES;
 
         match app.world.get_resource::<RenderDevice>() {
@@ -84,6 +85,7 @@ impl Plugin for SolariPlugin {
         render_app
             .init_resource::<SolariPipeline>()
             .init_resource::<SpecializedComputePipelines<SolariPipeline>>()
+            .init_resource::<SampleCount>()
             .init_resource::<BlasStorage>()
             .init_resource::<SceneBindGroup>()
             .add_systems(ExtractSchedule, extract_objects)
