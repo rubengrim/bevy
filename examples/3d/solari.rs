@@ -43,6 +43,7 @@ fn setup(
         mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
         material: materials.add(SolariMaterial {
             base_color: Color::rgb(0.8, 0.7, 0.6),
+            emission: Some(Color::rgb_linear(1.0, 1.0, 1.0)),
             ..default()
         }),
         transform: Transform::from_xyz(0.0, 0.5, 0.0),

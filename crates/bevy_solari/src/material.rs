@@ -1,6 +1,6 @@
 use bevy_asset::Handle;
 use bevy_ecs::prelude::Component;
-use bevy_math::Vec4;
+use bevy_math::{Vec3, Vec4};
 use bevy_reflect::TypeUuid;
 use bevy_render::{prelude::Color, render_resource::ShaderType, texture::Image};
 
@@ -9,10 +9,12 @@ use bevy_render::{prelude::Color, render_resource::ShaderType, texture::Image};
 pub struct SolariMaterial {
     pub base_color: Color,
     pub base_color_map: Option<Handle<Image>>,
+    pub emission: Option<Color>,
 }
 
 #[derive(ShaderType)]
 pub struct GpuSolariMaterial {
     pub base_color: Vec4,
     pub base_color_map_index: u32,
+    pub emission: Vec3,
 }

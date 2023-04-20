@@ -7,7 +7,7 @@ use bevy_asset::Handle;
 use bevy_ecs::system::{Query, Res, ResMut, Resource};
 use bevy_render::{
     mesh::GpuBufferInfo,
-    prelude::Mesh,
+    prelude::{Color, Mesh},
     render_asset::RenderAssets,
     render_resource::{encase::private::WriteInto, raytrace::*, *},
     renderer::{RenderDevice, RenderQueue},
@@ -68,9 +68,14 @@ pub fn queue_scene_bind_group(
     };
 
     let mut get_material_index = |material_handle, material: &SolariMaterial| {
+        let emission = material
+            .emission
+            .unwrap_or(Color::BLACK)
+            .as_linear_rgba_f32();
         materials.get_index(material_handle, |_| GpuSolariMaterial {
             base_color: material.base_color.as_linear_rgba_f32().into(),
             base_color_map_index: get_texture_map_index(&material.base_color_map),
+            emission: [emission[0], emission[1], emission[2]].into(),
         })
     };
 
