@@ -42,7 +42,7 @@ fn setup(
     commands.spawn(SolariMaterialMeshBundle {
         mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
         material: materials.add(SolariMaterial {
-            base_color: Color::rgb(0.8, 0.7, 0.6),
+            base_color: Color::rgb_linear(0.0, 0.0, 0.0),
             emission: Some(Color::rgb_linear(1.0, 1.0, 1.0)),
             ..default()
         }),

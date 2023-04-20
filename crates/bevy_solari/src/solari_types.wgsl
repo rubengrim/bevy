@@ -121,20 +121,6 @@ fn rand_f(state: ptr<function, u32>) -> f32 {
     return r;
 }
 
-fn sample_hemisphere(normal: vec3<f32>, state: ptr<function, u32>) -> vec3<f32> {
-    let theta = 2.0 * PI * rand_f(state);
-    let cos_phi = rand_f(state);
-    let phi = acos(cos_phi);
-
-    let z_axis = normal;
-    let x_axis = normalize(cross(normal, vec3(1.0, 0.0, 0.0)));
-    let y_axis = normalize(cross(normal, x_axis));
-
-    let x = cos(theta) * x_axis;
-    let y = sin(theta) * y_axis;
-    let horizontal = normalize(x + y);
-    let z = cos_phi * z_axis;
-    let p = horizontal * sin(phi) + z;
-
-    return normalize(p);
+fn sample_cosine_hemisphere(normal: vec3<f32>, state: ptr<function, u32>) -> vec3<f32> {
+    // TODO
 }
