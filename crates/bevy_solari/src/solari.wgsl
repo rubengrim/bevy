@@ -36,7 +36,7 @@ fn solari_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var throughput = vec3(1.0);
     var ray_origin = view.world_position;
     var ray_direction = normalize((primary_ray_target.xyz / primary_ray_target.w) - ray_origin);
-    var rng = rand_initial_seed(global_id.x + global_id.y * u32(view.viewport.z));
+    var rng = rand_initial_seed(global_id.x + global_id.y * u32(view.viewport.z) * (u32(previous_sample_count) + 1u));
 
     for (var i = 0u; i < 30u; i++) {
         let ray_hit = trace_ray(ray_origin, ray_direction);

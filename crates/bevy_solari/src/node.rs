@@ -57,7 +57,7 @@ impl Node for SolariNode {
             return Ok(());
         };
 
-        let previous_sample_count = sample_count.0.fetch_add(1, Ordering::SeqCst);
+        let previous_sample_count = sample_count.0.fetch_add(1, Ordering::SeqCst) as f32;
 
         {
             let mut solari_pass =
