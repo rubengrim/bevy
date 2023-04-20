@@ -1,5 +1,7 @@
 #define_import_path bevy_solari::types
 
+const PI: f32 = 3.141592653589793;
+
 struct SolariMeshMaterial {
     mesh_index: u32,
     material_index: u32,
@@ -63,7 +65,7 @@ fn sample_material(material: SolariMaterial, uv: vec2<f32>) -> SolariSampledMate
 }
 
 fn trace_ray(ray_origin: vec3<f32>, ray_direction: vec3<f32>) -> RayIntersection {
-    let ray_flags = RAY_FLAG_NONE;
+    let ray_flags = RAY_FLAG_TERMINATE_ON_FIRST_HIT;
     let ray_cull_mask = 0xFFu;
     let ray_t_min = 0.001;
     let ray_t_max = 10000.0;
@@ -102,4 +104,59 @@ fn map_ray_hit(ray_hit: RayIntersection) -> SolariRayHit {
     let sampled_material = sample_material(material, uv);
 
     return SolariRayHit(world_position, world_normal, uv, sampled_material);
+}
+
+fn pcg_hash(seed: u32) -> u32 {
+    let state = seed * 747796405u + 2891336453u;
+    let word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+    return (word >> 22u) ^ word;
+}
+
+struct RandOutput {
+    r: f32,
+    new_state: u32,
+}
+
+struct RandVec2Output {
+    r: vec2<f32>,
+    new_state: u32,
+}
+
+struct RandVec3Output {
+    r: vec3<f32>,
+    new_state: u32,
+}
+
+fn rand(state: u32) -> RandOutput {
+    let new_state = state * 747796405u + 2891336453u;
+    let word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+    let r_u32 = (word >> 22u) ^ word;
+    let r = f32(r_u32) * bitcast<f32>(0x2f800004u);
+    return RandOutput(r, new_state);
+}
+
+fn rand_vec2(state: u32) -> RandVec2Output {
+    let r1 = rand(state);
+    let r2 = rand(r1.new_state);
+    return RandVec2Output(vec2(r1.r, r2.r), r2.new_state);
+}
+
+fn sample_hemisphere(normal: vec3<f32>, state: u32) -> RandVec3Output {
+    let r = rand_vec2(state);
+
+    let theta = 2.0 * PI * r.r.x;
+    let cos_phi = r.r.y;
+    let phi  = acos(cos_phi);
+
+    let z_axis = normal;
+    let x_axis = normalize(cross(normal, vec3(1.0, 0.0, 0.0)));
+    let y_axis = normalize(cross(normal, x_axis));
+
+    let x = cos(theta) * x_axis;
+    let y = sin(theta) * y_axis;
+    let horizontal = normalize(x + y);
+    let z = cos_phi * z_axis;
+    let p = normalize(horizontal * sin(phi) + z);
+
+    return RandVec3Output(p, r.new_state);
 }
