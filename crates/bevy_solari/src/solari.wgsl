@@ -43,7 +43,7 @@ fn solari_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     for (var i = 0u; i < 5u; i++) {
         let ray_hit = trace_ray(ray_origin, ray_direction);
-        if (ray_hit.kind != RAY_QUERY_INTERSECTION_NONE) {
+        if ray_hit.kind != RAY_QUERY_INTERSECTION_NONE {
             let ray_hit = map_ray_hit(ray_hit);
 
             color += ray_hit.material.emission * throughput;
@@ -51,8 +51,7 @@ fn solari_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
             ray_origin = ray_hit.world_position;
             ray_direction = sample_cosine_hemisphere(ray_hit.world_normal, &rng);
-        }
-        else {
+        } else {
             break;
         }
     }
