@@ -25,7 +25,7 @@ impl BlasStorage {
 
 // TODO: BLAS compaction
 // TODO: Async compute queue for BLAS creation
-// TODO: Ensure this system runs in parallel with other rendering stuff
+// TODO: Ensure this system runs in parallel with other rendering stuff / in the background
 pub fn prepare_blas(
     meshes: Query<&Handle<Mesh>>,
     mut blas_storage: ResMut<BlasStorage>,

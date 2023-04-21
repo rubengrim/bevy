@@ -1,7 +1,8 @@
-use crate::{
+use super::{
+    bind_group_layout::SolariSceneResources,
     blas::BlasStorage,
-    material::{GpuSolariMaterial, SolariMaterial},
-    pipeline::SolariPipeline,
+    material::{GpuSolariMaterial, MeshMaterial, SolariMaterial},
+    misc::{new_storage_buffer, tlas_transform, IndexedVec},
 };
 use bevy_asset::Handle;
 use bevy_ecs::system::{Query, Res, ResMut, Resource};
@@ -9,16 +10,15 @@ use bevy_render::{
     mesh::GpuBufferInfo,
     prelude::{Color, Mesh},
     render_asset::RenderAssets,
-    render_resource::{encase::private::WriteInto, raytrace::*, *},
+    render_resource::{raytrace::*, *},
     renderer::{RenderDevice, RenderQueue},
     texture::{FallbackImage, Image},
 };
 use bevy_transform::prelude::GlobalTransform;
-use bevy_utils::HashMap;
-use std::{hash::Hash, iter};
+use std::iter;
 
 #[derive(Resource, Default)]
-pub struct SceneBindGroup(pub Option<BindGroup>);
+pub struct SolariSceneBindGroup(pub Option<BindGroup>);
 
 pub fn queue_scene_bind_group(
     objects: Query<(
@@ -27,11 +27,11 @@ pub fn queue_scene_bind_group(
         &SolariMaterial,
         &GlobalTransform,
     )>,
-    mut scene_bind_group: ResMut<SceneBindGroup>,
+    mut scene_bind_group: ResMut<SolariSceneBindGroup>,
+    scene_resources: Res<SolariSceneResources>,
     mesh_assets: Res<RenderAssets<Mesh>>,
     image_assets: Res<RenderAssets<Image>>,
     blas_storage: Res<BlasStorage>,
-    pipeline: Res<SolariPipeline>,
     fallback_image: Res<FallbackImage>,
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
@@ -147,7 +147,7 @@ pub fn queue_scene_bind_group(
     // Create scene bind group
     scene_bind_group.0 = Some(render_device.create_bind_group(&BindGroupDescriptor {
         label: Some("solari_scene_bind_group"),
-        layout: &pipeline.scene_bind_group_layout,
+        layout: &scene_resources.bind_group_layout,
         entries: &[
             BindGroupEntry {
                 binding: 0,
@@ -175,55 +175,8 @@ pub fn queue_scene_bind_group(
             },
             BindGroupEntry {
                 binding: 6,
-                resource: BindingResource::Sampler(&pipeline.texture_sampler),
+                resource: BindingResource::Sampler(&scene_resources.sampler),
             },
         ],
     }));
-}
-
-#[derive(ShaderType)]
-pub struct MeshMaterial {
-    mesh_index: u32,
-    material_index: u32,
-}
-
-struct IndexedVec<T, I: Hash + Eq + Clone> {
-    vec: Vec<T>,
-    index: HashMap<I, u32>,
-}
-
-impl<T, I: Hash + Eq + Clone> IndexedVec<T, I> {
-    fn new() -> Self {
-        Self {
-            vec: Vec::new(),
-            index: HashMap::new(),
-        }
-    }
-
-    fn get_index<F: FnOnce(I) -> T>(&mut self, index_key: I, create_value: F) -> u32 {
-        *self.index.entry(index_key.clone()).or_insert_with(|| {
-            let i = self.vec.len() as u32;
-            self.vec.push(create_value(index_key));
-            i
-        })
-    }
-}
-
-fn new_storage_buffer<T: ShaderSize + WriteInto>(
-    vec: Vec<T>,
-    label: &'static str,
-    render_device: &RenderDevice,
-    render_queue: &RenderQueue,
-) -> StorageBuffer<Vec<T>> {
-    let mut buffer = StorageBuffer::default();
-    buffer.set(vec);
-    buffer.set_label(Some(label));
-    buffer.write_buffer(render_device, render_queue);
-    buffer
-}
-
-fn tlas_transform(transform: &GlobalTransform) -> [f32; 12] {
-    transform.compute_matrix().transpose().to_cols_array()[..12]
-        .try_into()
-        .unwrap()
 }

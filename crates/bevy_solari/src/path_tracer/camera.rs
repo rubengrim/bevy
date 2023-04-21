@@ -1,16 +1,18 @@
-use crate::{material::SolariMaterial, SOLARI_GRAPH};
-use bevy_asset::Handle;
+use crate::SOLARI_GRAPH;
 use bevy_core_pipeline::tonemapping::Tonemapping;
-use bevy_ecs::prelude::Bundle;
+use bevy_ecs::prelude::{Bundle, Component};
 use bevy_render::{
     camera::CameraRenderGraph,
-    prelude::{Camera, Mesh, Projection},
+    extract_component::ExtractComponent,
+    prelude::{Camera, Projection},
     view::ColorGrading,
 };
 use bevy_transform::prelude::{GlobalTransform, Transform};
+use std::sync::{atomic::AtomicU32, Arc};
 
 #[derive(Bundle)]
-pub struct SolariCamera3dBundle {
+pub struct SolariPathTracerCamera3dBundle {
+    pub path_tracer: SolariPathTracer,
     pub camera: Camera,
     pub camera_render_graph: CameraRenderGraph,
     pub projection: Projection,
@@ -20,9 +22,10 @@ pub struct SolariCamera3dBundle {
     pub color_grading: ColorGrading,
 }
 
-impl Default for SolariCamera3dBundle {
+impl Default for SolariPathTracerCamera3dBundle {
     fn default() -> Self {
         Self {
+            path_tracer: Default::default(),
             camera_render_graph: CameraRenderGraph::new(SOLARI_GRAPH),
             camera: Camera {
                 hdr: true,
@@ -37,10 +40,7 @@ impl Default for SolariCamera3dBundle {
     }
 }
 
-#[derive(Bundle, Clone, Default)]
-pub struct SolariMaterialMeshBundle {
-    pub mesh: Handle<Mesh>,
-    pub material: Handle<SolariMaterial>,
-    pub transform: Transform,
-    pub global_transform: GlobalTransform,
+#[derive(Component, ExtractComponent, Clone, Default)]
+pub struct SolariPathTracer {
+    pub sample_count: Arc<AtomicU32>,
 }

@@ -1,49 +1,40 @@
-mod blas;
-mod bundle;
-mod material;
-mod misc;
-mod node;
-mod pipeline;
+mod path_tracer;
 mod scene;
 
-pub use crate::bundle::{SolariCamera3dBundle, SolariMaterialMeshBundle};
-pub use crate::material::SolariMaterial;
+pub use crate::{
+    path_tracer::camera::SolariPathTracerCamera3dBundle,
+    scene::material::{SolariMaterial, SolariMaterialMeshBundle},
+};
 
 use crate::{
-    blas::{prepare_blas, BlasStorage},
-    misc::{extract_objects, prepare_textures},
-    node::SolariNode,
-    pipeline::{prepare_pipelines, SampleCount, SolariPipeline, SOLARI_SHADER_HANDLE},
-    scene::{queue_scene_bind_group, SceneBindGroup},
+    path_tracer::{node::SolariPathTracerNode, SolariPathTracerPlugin},
+    scene::SolariScenePlugin,
 };
 use bevy_app::{App, Plugin};
-use bevy_asset::{load_internal_asset, AddAsset, HandleUntyped};
+use bevy_asset::{load_internal_asset, HandleUntyped};
 use bevy_core_pipeline::{
     core_3d::graph::node::{TONEMAPPING, UPSCALING},
     tonemapping::TonemappingNode,
     upscaling::UpscalingNode,
 };
-use bevy_ecs::schedule::IntoSystemConfigs;
 use bevy_ecs::system::Resource;
 use bevy_reflect::TypeUuid;
 use bevy_render::{
-    render_graph::RenderGraphApp,
-    render_resource::{Shader, SpecializedComputePipelines},
-    renderer::RenderDevice,
-    settings::WgpuFeatures,
-    ExtractSchedule, Render, RenderApp, RenderSet,
+    render_graph::RenderGraphApp, render_resource::Shader, renderer::RenderDevice,
+    settings::WgpuFeatures, RenderApp,
 };
 
-const SOLARI_GRAPH: &str = "solari";
-const SOLARI_NODE: &str = "solari";
-
-const SOLARI_TYPES_SHADER_HANDLE: HandleUntyped =
-    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 2717171717171755);
-
-// TODO: Document valid mesh attributes + layout + indices
+#[derive(Resource)]
+pub struct SolariSupported;
 
 #[derive(Default)]
 pub struct SolariPlugin;
+
+const SOLARI_GRAPH: &str = "solari";
+const SOLARI_PATH_TRACER_NODE: &str = "solari_path_tracer";
+
+const SOLARI_UTILS_SHADER: HandleUntyped =
+    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 4717171717171755);
 
 impl Plugin for SolariPlugin {
     fn build(&self, app: &mut App) {
@@ -62,40 +53,20 @@ impl Plugin for SolariPlugin {
             _ => return,
         }
 
-        load_internal_asset!(app, SOLARI_SHADER_HANDLE, "solari.wgsl", Shader::from_wgsl);
-        load_internal_asset!(
-            app,
-            SOLARI_TYPES_SHADER_HANDLE,
-            "solari_types.wgsl",
-            Shader::from_wgsl
-        );
+        load_internal_asset!(app, SOLARI_UTILS_SHADER, "utils.wgsl", Shader::from_wgsl);
 
         app.insert_resource(SolariSupported)
-            .add_asset::<SolariMaterial>();
+            .add_plugin(SolariScenePlugin)
+            .add_plugin(SolariPathTracerPlugin);
 
-        let render_app = app.get_sub_app_mut(RenderApp).unwrap();
-
-        render_app
+        app.sub_app_mut(RenderApp)
             .add_render_sub_graph(SOLARI_GRAPH)
-            .add_render_graph_node::<SolariNode>(SOLARI_GRAPH, SOLARI_NODE)
+            .add_render_graph_node::<SolariPathTracerNode>(SOLARI_GRAPH, SOLARI_PATH_TRACER_NODE)
             .add_render_graph_node::<TonemappingNode>(SOLARI_GRAPH, TONEMAPPING)
             .add_render_graph_node::<UpscalingNode>(SOLARI_GRAPH, UPSCALING)
-            .add_render_graph_edges(SOLARI_GRAPH, &[SOLARI_NODE, TONEMAPPING, UPSCALING]);
-
-        render_app
-            .init_resource::<SolariPipeline>()
-            .init_resource::<SpecializedComputePipelines<SolariPipeline>>()
-            .init_resource::<SampleCount>()
-            .init_resource::<BlasStorage>()
-            .init_resource::<SceneBindGroup>()
-            .add_systems(ExtractSchedule, extract_objects)
-            .add_systems(
-                Render,
-                (prepare_textures, prepare_pipelines, prepare_blas).in_set(RenderSet::Prepare),
-            )
-            .add_systems(Render, queue_scene_bind_group.in_set(RenderSet::Queue));
+            .add_render_graph_edges(
+                SOLARI_GRAPH,
+                &[SOLARI_PATH_TRACER_NODE, TONEMAPPING, UPSCALING],
+            );
     }
 }
-
-#[derive(Resource)]
-pub struct SolariSupported;

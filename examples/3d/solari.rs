@@ -2,7 +2,9 @@
 
 use bevy::{
     prelude::*,
-    solari::{SolariCamera3dBundle, SolariMaterial, SolariMaterialMeshBundle, SolariSupported},
+    solari::{
+        SolariMaterial, SolariMaterialMeshBundle, SolariPathTracerCamera3dBundle, SolariSupported,
+    },
 };
 
 fn main() {
@@ -24,7 +26,7 @@ fn setup(
     mut materials: ResMut<Assets<SolariMaterial>>,
     asset_server: Res<AssetServer>,
 ) {
-    commands.spawn(SolariCamera3dBundle {
+    commands.spawn(SolariPathTracerCamera3dBundle {
         transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..default()
     });
