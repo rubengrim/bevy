@@ -121,40 +121,12 @@ fn rand_f(state: ptr<function, u32>) -> f32 {
     return r;
 }
 
-fn square_to_disk(x: f32, y: f32) -> vec2<f32> {
-    var phi = 0.0;
-    var r = 0.0;
-
-    let a = 2.0 * x - 1.0;
-    let b = 2.0 * y - 1.0;
-
-    if a > -b {
-        if a > b {
-            r = a;
-            phi = (PI / 4.0) * (b / a);
-        } else {
-            r = b;
-            phi = (PI / 4.0) * (2.0 - (a / b));
-        }
-    } else {
-        if a < b {
-            r = -a;
-            phi = (PI / 4.0) * (4.0 + (b / a));
-        } else {
-            r = -b;
-            if b != 0.0 {
-                phi = (PI / 4.0) * (6.0 - (a / b));
-            } else {
-                phi = 0.0;
-            }
-        }
-    }
-
-    return vec2(r * cos(phi), r * sin(phi));
-}
-
 fn sample_cosine_hemisphere(normal: vec3<f32>, state: ptr<function, u32>) -> vec3<f32> {
-    let uv = square_to_disk(rand_f(state), rand_f(state));
-    let r = uv.x * uv.x + uv.y * uv.y;
-    return vec3(uv, sqrt(max(0.0, 1.0 - r)));
+    let cos_theta = 2.0 * rand_f(state) - 1.0;
+    let phi = 2.0 * PI * rand_f(state);
+    let sin_theta = sqrt(1.0 - cos_theta * cos_theta);
+    let sin_phi = sin(phi);
+    let cos_phi = cos(phi);
+    let unit_sphere_direction = normalize(vec3(sin_theta * cos_phi, cos_theta, sin_theta * sin_phi));
+    return normal + unit_sphere_direction;
 }
