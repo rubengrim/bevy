@@ -61,6 +61,8 @@ fn sample_material(material: SolariMaterial, uv: vec2<f32>) -> SolariSampledMate
         m.base_color *= textureSampleLevel(texture_maps[material.base_color_map_index], texture_sampler, uv, 0.0).rgb;
     }
 
+    m.emission = material.emission;
+
     return m;
 }
 
@@ -99,7 +101,7 @@ fn map_ray_hit(ray_hit: RayIntersection) -> SolariRayHit {
     let world_position = (ray_hit.object_to_world * vec4(local_position, 1.0)).xyz;
     let uv = mat3x2(vertices[0].uv, vertices[1].uv, vertices[2].uv) * barycentrics;
     let local_normal = mat3x3(vertices[0].local_normal, vertices[1].local_normal, vertices[2].local_normal) * barycentrics;
-    let world_normal = normalize(ray_hit.object_to_world * vec4(local_normal, 1.0)).xyz;
+    let world_normal = normalize((local_normal * ray_hit.object_to_world).xyz);
 
     let sampled_material = sample_material(material, uv);
 
