@@ -108,25 +108,16 @@ fn map_ray_hit(ray_hit: RayIntersection) -> SolariRayHit {
     return SolariRayHit(world_position, world_normal, uv, sampled_material);
 }
 
-fn rand_initial_seed(seed: u32) -> u32 {
-    let state = seed * 747796405u + 2891336453u;
-    let word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
-    return (word >> 22u) ^ word;
-}
-
 fn rand_f(state: ptr<function, u32>) -> f32 {
-    let new_state = *state * 747796405u + 2891336453u;
+    *state = *state * 747796405u + 2891336453u;
     let word = ((*state >> ((*state >> 28u) + 4u)) ^ *state) * 277803737u;
-    let r_u32 = (word >> 22u) ^ word;
-    let r = f32(r_u32) * bitcast<f32>(0x2f800004u);
-    *state = new_state;
-    return r;
+    return f32((word >> 22u) ^ word) * bitcast<f32>(0x2f800004u);
 }
 
 fn sample_cosine_hemisphere(normal: vec3<f32>, state: ptr<function, u32>) -> vec3<f32> {
     let cos_theta = 2.0 * rand_f(state) - 1.0;
     let phi = 2.0 * PI * rand_f(state);
-    let sin_theta = sqrt(1.0 - cos_theta * cos_theta);
+    let sin_theta = sqrt(max(1.0 - cos_theta * cos_theta, 0.0));
     let sin_phi = sin(phi);
     let cos_phi = cos(phi);
     let unit_sphere_direction = normalize(vec3(sin_theta * cos_phi, cos_theta, sin_theta * sin_phi));

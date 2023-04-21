@@ -35,13 +35,13 @@ fn solari_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var ray_direction = normalize((primary_ray_target.xyz / primary_ray_target.w) - ray_origin);
 
     let pixel_index = global_id.x + global_id.y * u32(view.viewport.z);
-    let time_index = u32(previous_sample_count) * 5782582u;
-    var rng = rand_initial_seed(pixel_index + time_index);
+    let frame_index = u32(previous_sample_count) * 5782582u;
+    var rng = pixel_index + frame_index;
 
     var color = vec3(0.0);
     var throughput = vec3(1.0);
 
-    for (var i = 0u; i < 5u; i++) {
+    for (var i = 0u; i < 8u; i++) {
         let ray_hit = trace_ray(ray_origin, ray_direction);
         if ray_hit.kind != RAY_QUERY_INTERSECTION_NONE {
             let ray_hit = map_ray_hit(ray_hit);
