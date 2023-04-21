@@ -4,10 +4,10 @@ pub mod node;
 mod pipeline;
 
 use self::{
-    camera::SolariPathTracer,
+    camera::{reset_accumulation_on_camera_movement, SolariPathTracer},
     pipeline::{prepare_pipelines, SolariPathtracerPipeline},
 };
-use bevy_app::{App, Plugin};
+use bevy_app::{App, Plugin, PostUpdate};
 use bevy_asset::{load_internal_asset, HandleUntyped};
 use bevy_ecs::schedule::IntoSystemConfigs;
 use bevy_reflect::TypeUuid;
@@ -16,6 +16,7 @@ use bevy_render::{
     render_resource::{Shader, SpecializedComputePipelines},
     Render, RenderApp, RenderSet,
 };
+use bevy_transform::TransformSystem;
 
 pub struct SolariPathTracerPlugin;
 
@@ -31,7 +32,11 @@ impl Plugin for SolariPathTracerPlugin {
             Shader::from_wgsl
         );
 
-        app.add_plugin(ExtractComponentPlugin::<SolariPathTracer>::default());
+        app.add_plugin(ExtractComponentPlugin::<SolariPathTracer>::default())
+            .add_systems(
+                PostUpdate,
+                reset_accumulation_on_camera_movement.after(TransformSystem::TransformPropagate),
+            );
 
         app.sub_app_mut(RenderApp)
             .init_resource::<SolariPathtracerPipeline>()

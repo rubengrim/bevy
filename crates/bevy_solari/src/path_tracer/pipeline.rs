@@ -1,4 +1,6 @@
-use super::{bind_group::create_view_bind_group_layout, SOLARI_PATH_TRACER_SHADER};
+use super::{
+    bind_group::create_view_bind_group_layout, camera::SolariPathTracer, SOLARI_PATH_TRACER_SHADER,
+};
 use crate::scene::bind_group_layout::SolariSceneResources;
 use bevy_ecs::{
     prelude::{Component, Entity},
@@ -12,7 +14,6 @@ use bevy_render::{
         PushConstantRange, ShaderStages, SpecializedComputePipeline, SpecializedComputePipelines,
     },
     renderer::RenderDevice,
-    view::ExtractedView,
 };
 
 #[derive(Resource)]
@@ -59,7 +60,7 @@ impl SpecializedComputePipeline for SolariPathtracerPipeline {
 pub struct SolariPathTracerPipelineId(pub CachedComputePipelineId);
 
 pub fn prepare_pipelines(
-    views: Query<Entity, With<ExtractedView>>,
+    views: Query<Entity, With<SolariPathTracer>>,
     mut commands: Commands,
     pipeline_cache: Res<PipelineCache>,
     mut pipelines: ResMut<SpecializedComputePipelines<SolariPathtracerPipeline>>,
