@@ -25,6 +25,7 @@ fn path_trace(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var color = vec3(0.0);
     var throughput = vec3(1.0);
 
+    // TODO: Use rgba32float for the accumulation texture
     // TODO: Russian roulette
     // TODO: Next event estimation
     // TODO: Specular BRDF
