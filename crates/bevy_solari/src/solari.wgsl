@@ -41,6 +41,11 @@ fn solari_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var color = vec3(0.0);
     var throughput = vec3(1.0);
 
+    // TODO: Russian roulette
+    // TODO: Next event estimation
+    // TODO: Specular BRDF
+    // TODO: Jitter primary ray for anti-aliasing
+
     for (var i = 0u; i < 8u; i++) {
         let ray_hit = trace_ray(ray_origin, ray_direction);
         if ray_hit.kind != RAY_QUERY_INTERSECTION_NONE {

@@ -67,7 +67,7 @@ fn sample_material(material: SolariMaterial, uv: vec2<f32>) -> SolariSampledMate
 }
 
 fn trace_ray(ray_origin: vec3<f32>, ray_direction: vec3<f32>) -> RayIntersection {
-    let ray_flags = RAY_FLAG_TERMINATE_ON_FIRST_HIT;
+    let ray_flags = RAY_FLAG_NONE;
     let ray_cull_mask = 0xFFu;
     let ray_t_min = 0.001;
     let ray_t_max = 10000.0;
