@@ -21,6 +21,10 @@ fn rand_f(state: ptr<function, u32>) -> f32 {
     return f32((word >> 22u) ^ word) * bitcast<f32>(0x2f800004u);
 }
 
+fn rand_vec2(state: ptr<function, u32>) -> vec2<f32> {
+    return vec2(rand_f(state), rand_f(state));
+}
+
 fn sample_cosine_hemisphere(normal: vec3<f32>, state: ptr<function, u32>) -> vec3<f32> {
     let cos_theta = 2.0 * rand_f(state) - 1.0;
     let phi = 2.0 * PI * rand_f(state);
