@@ -6,6 +6,8 @@
 @group(1) @binding(0)
 var<uniform> view: View;
 @group(1) @binding(1)
+var accumulation_texture: texture_storage_2d<rgba32float, read_write>;
+@group(1) @binding(2)
 var output_texture: texture_storage_2d<rgba16float, read_write>;
 var<push_constant> previous_sample_count: f32;
 
@@ -25,7 +27,6 @@ fn path_trace(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var color = vec3(0.0);
     var throughput = vec3(1.0);
 
-    // TODO: Use rgba32float for the accumulation texture
     // TODO: Russian roulette
     // TODO: Next event estimation
     // TODO: Specular BRDF
@@ -46,7 +47,9 @@ fn path_trace(@builtin(global_invocation_id) global_id: vec3<u32>) {
         }
     }
 
-    let old_color = textureLoad(output_texture, global_id.xy).rgb;
-    let new_color = (color + previous_sample_count * old_color) / (previous_sample_count + 1.0);
-    textureStore(output_texture, global_id.xy, vec4(new_color, 1.0));
+    let old_color = textureLoad(accumulation_texture, global_id.xy).rgb;
+    let new_color = vec4((color + previous_sample_count * old_color) / (previous_sample_count + 1.0), 1.0);
+
+    textureStore(accumulation_texture, global_id.xy, new_color);
+    textureStore(output_texture, global_id.xy, new_color);
 }

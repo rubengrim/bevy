@@ -1,5 +1,5 @@
 use super::{
-    bind_group::create_view_bind_group_layout, camera::SolariPathTracer, SOLARI_PATH_TRACER_SHADER,
+    view::create_view_bind_group_layout, camera::SolariPathTracer, SOLARI_PATH_TRACER_SHADER,
 };
 use crate::scene::bind_group_layout::SolariSceneResources;
 use bevy_ecs::{

@@ -1,7 +1,7 @@
 use super::{
-    bind_group::create_view_bind_group,
     camera::SolariPathTracer,
     pipeline::{SolariPathTracerPipelineId, SolariPathtracerPipeline},
+    view::{create_view_bind_group, SolariPathTracerAccumulationTexture},
 };
 use crate::scene::bind_group::SolariSceneBindGroup;
 use bevy_ecs::{
@@ -21,6 +21,7 @@ pub struct SolariPathTracerNode(
     QueryState<(
         &'static SolariPathTracer,
         &'static SolariPathTracerPipelineId,
+        &'static SolariPathTracerAccumulationTexture,
         &'static ViewTarget,
         &'static ViewUniformOffset,
         &'static ExtractedCamera,
@@ -35,7 +36,7 @@ impl Node for SolariPathTracerNode {
         world: &World,
     ) -> Result<(), NodeRunError> {
         let (
-            Ok((path_tracer, pipeline_id, view_target, view_uniform_offset, camera)),
+            Ok((path_tracer, pipeline_id, accumulation_texture, view_target, view_uniform_offset, camera)),
             Some(pipeline_cache),
             Some(SolariSceneBindGroup(Some(scene_bind_group))),
             Some(view_uniforms),
@@ -52,7 +53,7 @@ impl Node for SolariPathTracerNode {
         let (Some(pipeline), Some(viewport)) = (pipeline_cache.get_compute_pipeline(pipeline_id.0), camera.physical_viewport_size) else {
             return Ok(());
         };
-        let Some(view_bind_group) = create_view_bind_group(view_uniforms, view_target, solari_pipeline, render_context.render_device()) else {
+        let Some(view_bind_group) = create_view_bind_group(view_uniforms, accumulation_texture, view_target, solari_pipeline, render_context.render_device()) else {
             return Ok(());
         };
 

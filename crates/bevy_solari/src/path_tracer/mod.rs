@@ -1,11 +1,12 @@
-mod bind_group;
 pub mod camera;
 pub mod node;
 mod pipeline;
+mod view;
 
 use self::{
     camera::{reset_accumulation_on_camera_movement, SolariPathTracer},
     pipeline::{prepare_pipelines, SolariPathtracerPipeline},
+    view::prepare_accumulation_textures,
 };
 use bevy_app::{App, Plugin, PostUpdate};
 use bevy_asset::{load_internal_asset, HandleUntyped};
@@ -41,6 +42,9 @@ impl Plugin for SolariPathTracerPlugin {
         app.sub_app_mut(RenderApp)
             .init_resource::<SolariPathtracerPipeline>()
             .init_resource::<SpecializedComputePipelines<SolariPathtracerPipeline>>()
-            .add_systems(Render, prepare_pipelines.in_set(RenderSet::Prepare));
+            .add_systems(
+                Render,
+                (prepare_accumulation_textures, prepare_pipelines).in_set(RenderSet::Prepare),
+            );
     }
 }
