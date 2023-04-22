@@ -2,9 +2,7 @@
 
 use bevy::{
     prelude::*,
-    solari::{
-        SolariMaterial, SolariMaterialMeshBundle, SolariPathTracerCamera3dBundle, SolariSupported,
-    },
+    solari::{SolariMaterial, SolariPathTracerCamera3dBundle, SolariSupported},
 };
 
 fn main() {
@@ -12,7 +10,8 @@ fn main() {
     app.add_plugins(DefaultPlugins);
 
     if app.world.contains_resource::<SolariSupported>() {
-        app.add_systems(Startup, setup);
+        app.add_systems(Startup, setup)
+            .add_systems(Update, add_solari_materials);
     } else {
         app.add_systems(Startup, solari_not_supported);
     }
@@ -20,35 +19,19 @@ fn main() {
     app.run();
 }
 
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<SolariMaterial>>,
-    asset_server: Res<AssetServer>,
-) {
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn(SceneBundle {
+        scene: asset_server.load("models/cornell_box.glb#Scene0"),
+        ..default()
+    });
+
     commands.spawn(SolariPathTracerCamera3dBundle {
-        transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    });
-
-    commands.spawn(SolariMaterialMeshBundle {
-        mesh: meshes.add(shape::Plane::from_size(5.0).into()),
-        material: materials.add(SolariMaterial {
-            base_color: Color::rgb(0.3, 0.5, 0.3),
-            base_color_map: Some(asset_server.load("branding/bevy_logo_dark_big.png")),
-            ..default()
+        transform: Transform::from_matrix(Mat4 {
+            x_axis: Vec4::new(0.99480534, 0.0, -0.10179563, 0.0),
+            y_axis: Vec4::new(-0.019938117, 0.98063105, -0.19484669, 0.0),
+            z_axis: Vec4::new(0.09982395, 0.19586414, 0.975537, 0.0),
+            w_axis: Vec4::new(0.68394995, 2.2785425, 6.68395, 1.0),
         }),
-        ..default()
-    });
-
-    commands.spawn(SolariMaterialMeshBundle {
-        mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-        material: materials.add(SolariMaterial {
-            base_color: Color::rgb_linear(0.0, 0.0, 0.0),
-            emission: Some(Color::rgb_linear(4.0, 4.0, 4.0)),
-            ..default()
-        }),
-        transform: Transform::from_xyz(0.0, 0.5, 0.0),
         ..default()
     });
 }
@@ -70,4 +53,37 @@ fn solari_not_supported(mut commands: Commands, asset_server: Res<AssetServer>) 
     );
 
     commands.spawn(Camera2dBundle::default());
+}
+
+fn add_solari_materials(
+    mut commands: Commands,
+    mut material_events: EventReader<AssetEvent<StandardMaterial>>,
+    entites: Query<(Entity, &Handle<StandardMaterial>)>,
+    standard_materials: Res<Assets<StandardMaterial>>,
+    mut solari_materials: ResMut<Assets<SolariMaterial>>,
+) {
+    for event in material_events.iter() {
+        let handle = match event {
+            AssetEvent::Created { handle } => handle,
+            _ => continue,
+        };
+
+        if let Some(material) = standard_materials.get(handle) {
+            let solari_material = solari_materials.add(SolariMaterial {
+                base_color: material.base_color,
+                base_color_map: material.base_color_texture.clone(),
+                emission: if material.emissive == Color::BLACK {
+                    None
+                } else {
+                    Some(material.emissive * 25.0)
+                },
+            });
+
+            for (entity, entity_mat_h) in entites.iter() {
+                if entity_mat_h == handle {
+                    commands.entity(entity).insert(solari_material.clone());
+                }
+            }
+        }
+    }
 }
