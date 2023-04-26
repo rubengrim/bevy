@@ -2,6 +2,12 @@
 
 const PI: f32 = 3.141592653589793;
 
+fn pixel_to_ray_direction(pixel_uv: vec2<f32>) -> vec3<f32> {
+    let pixel_ndc = (pixel_uv * 2.0) - 1.0;
+    let primary_ray_target = view.inverse_view_proj * vec4(pixel_ndc.x, -pixel_ndc.y, 1.0, 1.0);
+    return normalize((primary_ray_target.xyz / primary_ray_target.w) - view.world_position);
+}
+
 fn trace_ray(ray_origin: vec3<f32>, ray_direction: vec3<f32>) -> RayIntersection {
     let ray_flags = RAY_FLAG_NONE;
     let ray_cull_mask = 0xFFu;
