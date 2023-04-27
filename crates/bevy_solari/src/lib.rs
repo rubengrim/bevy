@@ -1,14 +1,17 @@
 mod path_tracer;
 mod scene;
+mod solari;
 
 pub use crate::{
     path_tracer::camera::SolariPathTracerCamera3dBundle,
     scene::material::{SolariMaterial, SolariMaterialMeshBundle},
+    solari::camera::{SolariCamera3dBundle, SolariSettings},
 };
 
 use crate::{
     path_tracer::{node::SolariPathTracerNode, SolariPathTracerPlugin},
     scene::SolariScenePlugin,
+    solari::{node::SolariNode, SolariRealtimePlugin},
 };
 use bevy_app::{App, Plugin};
 use bevy_asset::{load_internal_asset, HandleUntyped};
@@ -30,8 +33,9 @@ pub struct SolariSupported;
 #[derive(Default)]
 pub struct SolariPlugin;
 
-const SOLARI_GRAPH: &str = "solari";
-const SOLARI_PATH_TRACER_NODE: &str = "solari_path_tracer";
+const SOLARI_GRAPH: &str = "solari_graph";
+const SOLARI_NODE: &str = "solari_node";
+const SOLARI_PATH_TRACER_NODE: &str = "solari_path_tracer_node";
 
 const SOLARI_UTILS_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 4717171717171755);
@@ -57,16 +61,18 @@ impl Plugin for SolariPlugin {
 
         app.insert_resource(SolariSupported)
             .add_plugin(SolariScenePlugin)
+            .add_plugin(SolariRealtimePlugin)
             .add_plugin(SolariPathTracerPlugin);
 
         app.sub_app_mut(RenderApp)
             .add_render_sub_graph(SOLARI_GRAPH)
+            .add_render_graph_node::<SolariNode>(SOLARI_GRAPH, SOLARI_NODE)
             .add_render_graph_node::<SolariPathTracerNode>(SOLARI_GRAPH, SOLARI_PATH_TRACER_NODE)
             .add_render_graph_node::<TonemappingNode>(SOLARI_GRAPH, TONEMAPPING)
             .add_render_graph_node::<UpscalingNode>(SOLARI_GRAPH, UPSCALING)
             .add_render_graph_edges(
                 SOLARI_GRAPH,
-                &[SOLARI_PATH_TRACER_NODE, TONEMAPPING, UPSCALING],
+                &[SOLARI_NODE, SOLARI_PATH_TRACER_NODE, TONEMAPPING, UPSCALING],
             );
     }
 }
