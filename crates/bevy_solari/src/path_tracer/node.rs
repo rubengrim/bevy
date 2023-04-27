@@ -69,7 +69,11 @@ impl Node for SolariPathTracerNode {
             solari_pass.set_bind_group(0, &scene_bind_group, &[]);
             solari_pass.set_bind_group(1, &view_bind_group, &[view_uniform_offset.offset]);
             solari_pass.set_push_constants(0, &previous_sample_count.to_le_bytes());
-            solari_pass.dispatch_workgroups((viewport.x + 7) / 8, (viewport.y + 7) / 8, 1);
+            solari_pass.dispatch_workgroups(
+                round_up_to_multiple_of_8(viewport.x),
+                round_up_to_multiple_of_8(viewport.y),
+                1,
+            );
         }
 
         Ok(())
@@ -84,4 +88,8 @@ impl FromWorld for SolariPathTracerNode {
     fn from_world(world: &mut World) -> Self {
         Self(QueryState::new(world))
     }
+}
+
+fn round_up_to_multiple_of_8(x: u32) -> u32 {
+    (x + 7) & !7
 }

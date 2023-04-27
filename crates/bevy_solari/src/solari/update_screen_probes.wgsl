@@ -27,7 +27,7 @@ var<workgroup> probe_location: vec3<f32>;
 var<workgroup> spherical_harmonics_coefficents: array<array<vec3<f32>, 9>, 64>;
 
 @compute @workgroup_size(8, 8, 1)
-fn path_trace(
+fn update_screen_probes(
     @builtin(global_invocation_id) global_id: vec3<u32>,
     @builtin(local_invocation_id) local_id: vec3<u32>,
     @builtin(local_invocation_index) local_index: u32,
