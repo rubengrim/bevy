@@ -1,12 +1,12 @@
 pub mod camera;
 pub mod node;
 mod pipeline;
-mod view;
+mod resources;
 
 use self::{
     camera::{reset_accumulation_on_camera_movement, SolariPathTracer},
     pipeline::{prepare_pipelines, SolariPathtracerPipeline},
-    view::prepare_accumulation_textures,
+    resources::prepare_accumulation_textures,
 };
 use bevy_app::{App, Plugin, PostUpdate};
 use bevy_asset::{load_internal_asset, HandleUntyped};

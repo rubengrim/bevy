@@ -1,7 +1,7 @@
 use super::{
     camera::SolariPathTracer,
     pipeline::{SolariPathTracerPipelineId, SolariPathtracerPipeline},
-    view::{create_view_bind_group, SolariPathTracerAccumulationTexture},
+    resources::{create_view_bind_group, SolariPathTracerAccumulationTexture},
 };
 use crate::scene::bind_group::SolariSceneBindGroup;
 use bevy_ecs::{
