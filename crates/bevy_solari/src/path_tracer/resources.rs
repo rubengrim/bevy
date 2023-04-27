@@ -34,7 +34,7 @@ pub fn prepare_accumulation_textures(
                 sample_count: 1,
                 dimension: TextureDimension::D2,
                 format: TextureFormat::Rgba32Float,
-                usage: TextureUsages::STORAGE_BINDING | TextureUsages::COPY_SRC,
+                usage: TextureUsages::STORAGE_BINDING,
                 view_formats: &[],
             };
 
