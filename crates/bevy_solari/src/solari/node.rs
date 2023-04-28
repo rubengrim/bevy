@@ -1,5 +1,6 @@
 use super::{
-    resources::SolariBindGroups, update_screen_probes::SolariUpdateScreenProbesPipelineId,
+    filter_screen_probes::SolariFilterScreenProbesPipelineId, resources::SolariBindGroups,
+    update_screen_probes::SolariUpdateScreenProbesPipelineId,
 };
 use crate::scene::bind_group::SolariSceneBindGroup;
 use bevy_ecs::{
@@ -18,6 +19,7 @@ pub struct SolariNode(
     QueryState<(
         &'static SolariBindGroups,
         &'static SolariUpdateScreenProbesPipelineId,
+        &'static SolariFilterScreenProbesPipelineId,
         &'static ViewUniformOffset,
         &'static ExtractedCamera,
     )>,
@@ -31,7 +33,7 @@ impl Node for SolariNode {
         world: &World,
     ) -> Result<(), NodeRunError> {
         let (
-            Ok((bind_groups, update_screen_probes_pipeline_id, view_uniform_offset, camera)),
+            Ok((bind_groups, update_screen_probes_pipeline_id, filter_screen_probes_pipeline_id, view_uniform_offset, camera)),
             Some(pipeline_cache),
             Some(SolariSceneBindGroup(Some(scene_bind_group))),
         ) = (
@@ -41,9 +43,22 @@ impl Node for SolariNode {
         ) else {
             return Ok(());
         };
-        let (Some(update_screen_probes_pipeline), Some(viewport)) = (pipeline_cache.get_compute_pipeline(update_screen_probes_pipeline_id.0), camera.physical_viewport_size) else {
+        let (
+            Some(update_screen_probes_pipeline),
+            Some(filter_screen_probes_pipeline),
+            Some(viewport),
+        ) = (
+            pipeline_cache.get_compute_pipeline(update_screen_probes_pipeline_id.0),
+            pipeline_cache.get_compute_pipeline(filter_screen_probes_pipeline_id.0),
+            camera.physical_viewport_size,
+        ) else {
             return Ok(());
         };
+
+        let width = round_up_to_multiple_of_8(viewport.x);
+        let height = round_up_to_multiple_of_8(viewport.y);
+        let x_probes = width / 8;
+        let y_probes = height / 8;
 
         {
             let command_encoder = render_context.command_encoder();
@@ -58,11 +73,11 @@ impl Node for SolariNode {
                 &bind_groups.update_screen_probes,
                 &[view_uniform_offset.offset],
             );
-            solari_pass.dispatch_workgroups(
-                round_up_to_multiple_of_8(viewport.x),
-                round_up_to_multiple_of_8(viewport.y),
-                1,
-            );
+            solari_pass.dispatch_workgroups(width, height, 1);
+
+            solari_pass.set_pipeline(filter_screen_probes_pipeline);
+            solari_pass.set_bind_group(1, &bind_groups.filter_screen_probes, &[]);
+            solari_pass.dispatch_workgroups(x_probes, y_probes, 1);
         }
 
         Ok(())

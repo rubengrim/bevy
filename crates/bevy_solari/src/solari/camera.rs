@@ -9,6 +9,9 @@ use bevy_render::{
 };
 use bevy_transform::prelude::{GlobalTransform, Transform};
 
+#[derive(Component, ExtractComponent, Clone, Default)]
+pub struct SolariSettings {}
+
 #[derive(Bundle)]
 pub struct SolariCamera3dBundle {
     pub solari_settings: SolariSettings,
@@ -38,6 +41,3 @@ impl Default for SolariCamera3dBundle {
         }
     }
 }
-
-#[derive(Component, ExtractComponent, Clone, Default)]
-pub struct SolariSettings {}
