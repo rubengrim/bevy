@@ -24,7 +24,10 @@ fn update_screen_probes(
     @builtin(global_invocation_id) global_id: vec3<u32>,
     @builtin(local_invocation_id) local_id: vec3<u32>,
     @builtin(local_invocation_index) local_index: u32,
+    @builtin(workgroup_id) workgroup_id: vec3<u32>,
+    @builtin(num_workgroups) workgroup_count: vec3<u32>,
 ) {
+    let probe_index = workgroup_id.x + workgroup_id.y * workgroup_count.x;
     let pixel_index = global_id.x + global_id.y * u32(view.viewport.z);
     let frame_index = globals.frame_count * 5782582u;
     var rng = pixel_index + frame_index;
@@ -138,7 +141,7 @@ fn update_screen_probes(
         L2_2 /= 64.0;
         L20 /= 64.0;
         L22 /= 64.0;
-        screen_probe_spherical_harmonics[pixel_index / 64u] = SphericalHarmonicsPacked(
+        screen_probe_spherical_harmonics[probe_index] = SphericalHarmonicsPacked(
             vec4(L00, L11.x),
             vec4(L11.yz, L10.xy),
             vec4(L10.z, L1_1),
