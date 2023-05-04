@@ -1,30 +1,78 @@
 use super::SOLARI_FILTER_SCREEN_PROBES_SHADER;
-use crate::SolariSettings;
+use crate::{scene::bind_group_layout::SolariSceneResources, SolariSettings};
 use bevy_ecs::{
     prelude::{Component, Entity},
     query::With,
     system::{Commands, Query, Res, ResMut, Resource},
     world::{FromWorld, World},
 };
-use bevy_render::{render_resource::*, renderer::RenderDevice};
+use bevy_render::{
+    globals::GlobalsUniform, render_resource::*, renderer::RenderDevice, view::ViewUniform,
+};
 use std::num::NonZeroU64;
 
 #[derive(Resource)]
 pub struct SolariFilterScreenProbesPipeline {
     pub bind_group_layout: BindGroupLayout,
+    scene_bind_group_layout: BindGroupLayout,
 }
 
 impl FromWorld for SolariFilterScreenProbesPipeline {
     fn from_world(world: &mut World) -> Self {
+        let scene_resources = world.resource::<SolariSceneResources>();
         let render_device = world.resource::<RenderDevice>();
 
         Self {
             bind_group_layout: render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
                 label: Some("solari_filter_screen_probes_bind_group_layout"),
                 entries: &[
-                    // Screen probes
+                    // View
                     BindGroupLayoutEntry {
                         binding: 0,
+                        visibility: ShaderStages::COMPUTE,
+                        ty: BindingType::Buffer {
+                            ty: BufferBindingType::Uniform,
+                            has_dynamic_offset: true,
+                            min_binding_size: Some(ViewUniform::min_size()),
+                        },
+                        count: None,
+                    },
+                    // Globals
+                    BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: ShaderStages::COMPUTE,
+                        ty: BindingType::Buffer {
+                            ty: BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: Some(GlobalsUniform::min_size()),
+                        },
+                        count: None,
+                    },
+                    // G-buffer
+                    BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: ShaderStages::COMPUTE,
+                        ty: BindingType::StorageTexture {
+                            access: StorageTextureAccess::ReadOnly,
+                            format: TextureFormat::Rgba16Uint,
+                            view_dimension: TextureViewDimension::D2,
+                        },
+                        count: None,
+                    },
+                    // M-buffer
+                    BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: ShaderStages::COMPUTE,
+                        ty: BindingType::StorageTexture {
+                            access: StorageTextureAccess::ReadOnly,
+                            format: TextureFormat::Rgba16Uint,
+                            view_dimension: TextureViewDimension::D2,
+                        },
+                        count: None,
+                    },
+                    // Screen probes
+                    BindGroupLayoutEntry {
+                        binding: 4,
                         visibility: ShaderStages::COMPUTE,
                         ty: BindingType::StorageTexture {
                             access: StorageTextureAccess::ReadOnly,
@@ -35,17 +83,29 @@ impl FromWorld for SolariFilterScreenProbesPipeline {
                     },
                     // Screen probe spherical harmonics
                     BindGroupLayoutEntry {
-                        binding: 1,
+                        binding: 5,
                         visibility: ShaderStages::COMPUTE,
                         ty: BindingType::Buffer {
-                            ty: BufferBindingType::Storage { read_only: false },
+                            ty: BufferBindingType::Storage { read_only: true },
                             has_dynamic_offset: false,
                             min_binding_size: Some(unsafe { NonZeroU64::new_unchecked(112) }),
                         },
                         count: None,
                     },
+                    // View target
+                    BindGroupLayoutEntry {
+                        binding: 6,
+                        visibility: ShaderStages::COMPUTE,
+                        ty: BindingType::StorageTexture {
+                            access: StorageTextureAccess::WriteOnly,
+                            format: TextureFormat::Rgba16Float,
+                            view_dimension: TextureViewDimension::D2,
+                        },
+                        count: None,
+                    },
                 ],
             }),
+            scene_bind_group_layout: scene_resources.bind_group_layout.clone(),
         }
     }
 }
@@ -59,7 +119,10 @@ impl SpecializedComputePipeline for SolariFilterScreenProbesPipeline {
     fn specialize(&self, _key: Self::Key) -> ComputePipelineDescriptor {
         ComputePipelineDescriptor {
             label: Some("solari_filter_screen_probes_pipeline".into()),
-            layout: vec![self.bind_group_layout.clone()],
+            layout: vec![
+                self.scene_bind_group_layout.clone(),
+                self.bind_group_layout.clone(),
+            ],
             push_constant_ranges: vec![],
             shader: SOLARI_FILTER_SCREEN_PROBES_SHADER.typed(),
             shader_defs: vec![],

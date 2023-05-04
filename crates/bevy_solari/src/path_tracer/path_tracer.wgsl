@@ -24,6 +24,7 @@ fn path_trace(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let primary_ray_target = view.inverse_view_proj * vec4(pixel_ndc.x, -pixel_ndc.y, 1.0, 1.0);
     var ray_origin = view.world_position;
     var ray_direction = normalize((primary_ray_target.xyz / primary_ray_target.w) - ray_origin);
+    var ray_t_min = 0.0;
 
     // TODO: Next event estimation
     // TODO: Specular BRDF
@@ -32,7 +33,7 @@ fn path_trace(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var color = vec3(0.0);
     var throughput = vec3(1.0);
     loop {
-        let ray_hit = trace_ray(ray_origin, ray_direction);
+        let ray_hit = trace_ray(ray_origin, ray_direction, ray_t_min);
         if ray_hit.kind != RAY_QUERY_INTERSECTION_NONE {
             let ray_hit = map_ray_hit(ray_hit);
 
@@ -45,6 +46,7 @@ fn path_trace(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
             ray_origin = ray_hit.world_position;
             ray_direction = sample_cosine_hemisphere(ray_hit.world_normal, &rng);
+            ray_t_min = 0.001;
         } else { break; }
     }
 

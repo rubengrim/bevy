@@ -1,4 +1,4 @@
-use super::SOLARI_UPDATE_SCREEN_PROBES_SHADER;
+use super::SOLARI_GM_BUFFER_SHADER;
 use crate::{scene::bind_group_layout::SolariSceneResources, SolariSettings};
 use bevy_ecs::{
     prelude::{Component, Entity},
@@ -9,22 +9,21 @@ use bevy_ecs::{
 use bevy_render::{
     globals::GlobalsUniform, render_resource::*, renderer::RenderDevice, view::ViewUniform,
 };
-use std::num::NonZeroU64;
 
 #[derive(Resource)]
-pub struct SolariUpdateScreenProbesPipeline {
+pub struct SolariGmBufferPipeline {
     pub bind_group_layout: BindGroupLayout,
     scene_bind_group_layout: BindGroupLayout,
 }
 
-impl FromWorld for SolariUpdateScreenProbesPipeline {
+impl FromWorld for SolariGmBufferPipeline {
     fn from_world(world: &mut World) -> Self {
         let scene_resources = world.resource::<SolariSceneResources>();
         let render_device = world.resource::<RenderDevice>();
 
         Self {
             bind_group_layout: render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-                label: Some("solari_update_screen_probes_bind_group_layout"),
+                label: Some("solari_gm_buffer_bind_group_layout"),
                 entries: &[
                     // View
                     BindGroupLayoutEntry {
@@ -53,31 +52,20 @@ impl FromWorld for SolariUpdateScreenProbesPipeline {
                         binding: 2,
                         visibility: ShaderStages::COMPUTE,
                         ty: BindingType::StorageTexture {
-                            access: StorageTextureAccess::ReadOnly,
+                            access: StorageTextureAccess::WriteOnly,
                             format: TextureFormat::Rgba16Uint,
                             view_dimension: TextureViewDimension::D2,
                         },
                         count: None,
                     },
-                    // Screen probes
+                    // M-buffer
                     BindGroupLayoutEntry {
                         binding: 3,
                         visibility: ShaderStages::COMPUTE,
                         ty: BindingType::StorageTexture {
-                            access: StorageTextureAccess::ReadWrite,
-                            format: TextureFormat::Rgba16Float,
+                            access: StorageTextureAccess::WriteOnly,
+                            format: TextureFormat::Rgba16Uint,
                             view_dimension: TextureViewDimension::D2,
-                        },
-                        count: None,
-                    },
-                    // Screen probe spherical harmonics
-                    BindGroupLayoutEntry {
-                        binding: 4,
-                        visibility: ShaderStages::COMPUTE,
-                        ty: BindingType::Buffer {
-                            ty: BufferBindingType::Storage { read_only: false },
-                            has_dynamic_offset: false,
-                            min_binding_size: Some(unsafe { NonZeroU64::new_unchecked(112) }),
                         },
                         count: None,
                     },
@@ -89,45 +77,42 @@ impl FromWorld for SolariUpdateScreenProbesPipeline {
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
-pub struct SolariUpdateScreenProbesPipelineKey {}
+pub struct SolariGmBufferPipelineKey {}
 
-impl SpecializedComputePipeline for SolariUpdateScreenProbesPipeline {
-    type Key = SolariUpdateScreenProbesPipelineKey;
+impl SpecializedComputePipeline for SolariGmBufferPipeline {
+    type Key = SolariGmBufferPipelineKey;
 
     fn specialize(&self, _key: Self::Key) -> ComputePipelineDescriptor {
         ComputePipelineDescriptor {
-            label: Some("solari_update_screen_probes_pipeline".into()),
+            label: Some("solari_gm_buffer_pipeline".into()),
             layout: vec![
                 self.scene_bind_group_layout.clone(),
                 self.bind_group_layout.clone(),
             ],
             push_constant_ranges: vec![],
-            shader: SOLARI_UPDATE_SCREEN_PROBES_SHADER.typed(),
+            shader: SOLARI_GM_BUFFER_SHADER.typed(),
             shader_defs: vec![],
-            entry_point: "update_screen_probes".into(),
+            entry_point: "gm_buffer".into(),
         }
     }
 }
 
 #[derive(Component)]
-pub struct SolariUpdateScreenProbesPipelineId(pub CachedComputePipelineId);
+pub struct SolariGmBufferPipelineId(pub CachedComputePipelineId);
 
-pub fn prepare_update_screen_probe_pipelines(
+pub fn prepare_gm_buffer_pipelines(
     views: Query<Entity, With<SolariSettings>>,
     mut commands: Commands,
     pipeline_cache: Res<PipelineCache>,
-    mut pipelines: ResMut<SpecializedComputePipelines<SolariUpdateScreenProbesPipeline>>,
-    pipeline: Res<SolariUpdateScreenProbesPipeline>,
+    mut pipelines: ResMut<SpecializedComputePipelines<SolariGmBufferPipeline>>,
+    pipeline: Res<SolariGmBufferPipeline>,
 ) {
     for entity in &views {
-        let pipeline_id = pipelines.specialize(
-            &pipeline_cache,
-            &pipeline,
-            SolariUpdateScreenProbesPipelineKey {},
-        );
+        let pipeline_id =
+            pipelines.specialize(&pipeline_cache, &pipeline, SolariGmBufferPipelineKey {});
 
         commands
             .entity(entity)
-            .insert(SolariUpdateScreenProbesPipelineId(pipeline_id));
+            .insert(SolariGmBufferPipelineId(pipeline_id));
     }
 }
