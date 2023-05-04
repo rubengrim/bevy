@@ -43,14 +43,13 @@ fn update_screen_probes(
 
     let octahedral_pixel_center = vec2<f32>(local_id.xy) + rand_vec2(&rng);
     let octahedral_pixel_uv = octahedral_pixel_center / 8.0;
-    let octahedral_pixel_ndc = (octahedral_pixel_uv * 2.0) - 1.0;
-    let octahedral_normal = octahedral_decode(octahedral_pixel_ndc);
+    let octahedral_normal = octahedral_decode(octahedral_pixel_uv);
 
     var color = vec3(0.0);
     var throughput = vec3(1.0);
     var ray_origin = probe_g.world_position;
     var ray_direction = octahedral_normal;
-    loop {
+    for (var i = 0u; i < 2u; i++) {
         let ray_hit = trace_ray(ray_origin, ray_direction, 0.001);
         if ray_hit.kind != RAY_QUERY_INTERSECTION_NONE {
             let ray_hit = map_ray_hit(ray_hit);

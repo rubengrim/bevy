@@ -13,10 +13,8 @@ var g_buffer: texture_storage_2d<rgba16uint, read>;
 @group(1) @binding(3)
 var m_buffer: texture_storage_2d<rgba16uint, read>;
 @group(1) @binding(4)
-var screen_probes: texture_storage_2d<rgba16float, read>;
-@group(1) @binding(5)
 var<storage, read> screen_probe_spherical_harmonics: array<SphericalHarmonicsPacked>;
-@group(1) @binding(6)
+@group(1) @binding(5)
 var view_target: texture_storage_2d<rgba16float, write>;
 
 @compute @workgroup_size(8, 8, 1)
@@ -59,5 +57,5 @@ fn filter_screen_probes(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let irradiance = (c1 * L22 * xx_yy) + (c3 * L20 * zz) + (c4 * L00) - (c5 * L20) + (2.0 * c1 * ((L2_2 * xy) + (L21 * xz) + (L2_1 * yz))) + (2.0 * c2 * ((L11 * x) + (L1_1 * y) + (L10 * z)));
 
     let final_color = (material.base_color * irradiance) + material.emission;
-    textureStore(view_target, global_id.xy, vec4(final_color, 1.0));
+    textureStore(view_target, global_id.xy, vec4(textureLoad(screen_probes, global_id.xy).rgb, 1.0));
 }

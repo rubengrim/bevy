@@ -49,7 +49,7 @@ fn octahedral_encode(v: vec3<f32>) -> vec2<f32> {
 
 fn octahedral_decode(v: vec2<f32>) -> vec3<f32> {
     let f = v * 2.0 - 1.0;
-    var n = vec3(f.x, f.y, 1.0 - abs(f.x) - abs(f.y));
+    var n = vec3(f.xy, 1.0 - abs(f.x) - abs(f.y));
     let t = saturate(-n.z);
     let w = select(vec2(t), vec2(-t), n.xy >= vec2(0.0));
     n = vec3(n.xy + w, n.z);

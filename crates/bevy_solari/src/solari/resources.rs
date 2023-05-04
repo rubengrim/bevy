@@ -209,12 +209,6 @@ pub fn queue_bind_groups(
                     },
                     BindGroupEntry {
                         binding: 4,
-                        resource: BindingResource::TextureView(
-                            &solari_resources.screen_probes.default_view,
-                        ),
-                    },
-                    BindGroupEntry {
-                        binding: 5,
                         resource: BindingResource::Buffer(
                             solari_resources
                                 .screen_probe_spherical_harmonics
@@ -222,7 +216,7 @@ pub fn queue_bind_groups(
                         ),
                     },
                     BindGroupEntry {
-                        binding: 6,
+                        binding: 5,
                         resource: BindingResource::TextureView(view_target.main_texture()),
                     },
                 ],

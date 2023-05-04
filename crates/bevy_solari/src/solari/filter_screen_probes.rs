@@ -70,20 +70,9 @@ impl FromWorld for SolariFilterScreenProbesPipeline {
                         },
                         count: None,
                     },
-                    // Screen probes
-                    BindGroupLayoutEntry {
-                        binding: 4,
-                        visibility: ShaderStages::COMPUTE,
-                        ty: BindingType::StorageTexture {
-                            access: StorageTextureAccess::ReadOnly,
-                            format: TextureFormat::Rgba16Float,
-                            view_dimension: TextureViewDimension::D2,
-                        },
-                        count: None,
-                    },
                     // Screen probe spherical harmonics
                     BindGroupLayoutEntry {
-                        binding: 5,
+                        binding: 4,
                         visibility: ShaderStages::COMPUTE,
                         ty: BindingType::Buffer {
                             ty: BufferBindingType::Storage { read_only: true },
@@ -94,7 +83,7 @@ impl FromWorld for SolariFilterScreenProbesPipeline {
                     },
                     // View target
                     BindGroupLayoutEntry {
-                        binding: 6,
+                        binding: 5,
                         visibility: ShaderStages::COMPUTE,
                         ty: BindingType::StorageTexture {
                             access: StorageTextureAccess::WriteOnly,
