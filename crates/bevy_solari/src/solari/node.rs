@@ -58,8 +58,8 @@ impl Node for SolariNode {
             return Ok(());
         };
 
-        let width = round_up_to_multiple_of_8(viewport.x);
-        let height = round_up_to_multiple_of_8(viewport.y);
+        let width = (viewport.x + 7) / 8;
+        let height = (viewport.y + 7) / 8;
 
         {
             let command_encoder = render_context.command_encoder();
@@ -101,8 +101,4 @@ impl FromWorld for SolariNode {
     fn from_world(world: &mut World) -> Self {
         Self(QueryState::new(world))
     }
-}
-
-fn round_up_to_multiple_of_8(x: u32) -> u32 {
-    (x + 7) & !7
 }
