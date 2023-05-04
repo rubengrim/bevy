@@ -63,18 +63,24 @@ struct GBufferData {
 }
 
 fn encode_g_buffer(ray_distance: f32, world_normal: vec3<f32>) -> vec4<u32> {
-    let g = bitcast<u32>(ray_distance);
-    let r = g >> 16u;
-    let a = pack2x16float(octahedral_encode(world_normal));
-    let b = a >> 16u;
+    let rg = bitcast<u32>(ray_distance);
+    let ab = pack2x16float(octahedral_encode(world_normal));
+
+    let r = rg >> 16u;
+    let b = ab >> 16u;
+    let g = rg & 0xFFFFu;
+    let a = ab & 0xFFFFu;
     return vec4(r, g, b, a);
 }
 
 fn encode_m_buffer(material_index: u32, texture_coordinates: vec2<f32>) -> vec4<u32> {
-    let g = material_index;
-    let r = g >> 16u;
-    let a = pack2x16float(texture_coordinates);
-    let b = a >> 16u;
+    let rg = material_index;
+    let ab = pack2x16float(texture_coordinates);
+
+    let r = rg >> 16u;
+    let b = ab >> 16u;
+    let g = rg & 0xFFFFu;
+    let a = ab & 0xFFFFu;
     return vec4(r, g, b, a);
 }
 
