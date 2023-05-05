@@ -12,6 +12,11 @@ readme = "README.md"
 repository = "https://github.com/bevyengine/bevy"
 rust-version = "1.67.0"
 
+[patch.crates-io]
+naga = { git = "https://github.com/JMS55/naga" }
+[patch."https://github.com/gfx-rs/naga"]
+naga = { git = "https://github.com/JMS55/naga" }
+
 [workspace]
 exclude = [
   "benches",
