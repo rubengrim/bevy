@@ -2,7 +2,9 @@
 
 use bevy::{
     prelude::*,
-    solari::{SolariMaterial, SolariPathTracerCamera3dBundle, SolariSupported},
+    solari::{
+        SolariCamera3dBundle, SolariMaterial, SolariPathTracer, SolariSettings, SolariSupported,
+    },
 };
 
 fn main() {
@@ -11,6 +13,7 @@ fn main() {
 
     if app.world.contains_resource::<SolariSupported>() {
         app.add_systems(Startup, setup)
+            .add_systems(Update, swap_modes)
             .add_systems(Update, add_solari_materials);
     } else {
         app.add_systems(Startup, solari_not_supported);
@@ -25,7 +28,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         ..default()
     });
 
-    commands.spawn(SolariPathTracerCamera3dBundle {
+    commands.spawn(SolariCamera3dBundle {
         transform: Transform::from_matrix(Mat4 {
             x_axis: Vec4::new(0.99480534, 0.0, -0.10179563, 0.0),
             y_axis: Vec4::new(-0.019938117, 0.98063105, -0.19484669, 0.0),
@@ -53,6 +56,27 @@ fn solari_not_supported(mut commands: Commands, asset_server: Res<AssetServer>) 
     );
 
     commands.spawn(Camera2dBundle::default());
+}
+
+fn swap_modes(
+    mut commands: Commands,
+    keys: Res<Input<KeyCode>>,
+    camera: Query<(Entity, Option<&SolariSettings>), With<Camera>>,
+) {
+    if keys.just_pressed(KeyCode::Space) {
+        let (camera, real_time) = camera.get_single().unwrap();
+        if real_time.is_some() {
+            commands
+                .entity(camera)
+                .remove::<SolariSettings>()
+                .insert(SolariPathTracer::default());
+        } else {
+            commands
+                .entity(camera)
+                .remove::<SolariPathTracer>()
+                .insert(SolariSettings::default());
+        }
+    }
 }
 
 fn add_solari_materials(
