@@ -50,7 +50,7 @@ fn shade_view_target(
     var L22 = sh.b6;
     irradiance += (c1 * L22 * xx_yy) + (c3 * L20 * zz) + (c4 * L00) - (c5 * L20) + (2.0 * c1 * ((L2_2 * xy) + (L21 * xz) + (L2_1 * yz))) + (2.0 * c2 * ((L11 * x) + (L1_1 * y) + (L10 * z)));
 
-    sh = screen_probe_spherical_harmonics[probe_index - 1];
+    sh = screen_probe_spherical_harmonics[probe_index - 1u];
     L00 = sh.b0.xyz;
     L11 = vec3(sh.b0.w, sh.b1.xy);
     L10 = vec3(sh.b1.zw, sh.b2.x);
@@ -62,7 +62,7 @@ fn shade_view_target(
     L22 = sh.b6;
     irradiance += (c1 * L22 * xx_yy) + (c3 * L20 * zz) + (c4 * L00) - (c5 * L20) + (2.0 * c1 * ((L2_2 * xy) + (L21 * xz) + (L2_1 * yz))) + (2.0 * c2 * ((L11 * x) + (L1_1 * y) + (L10 * z)));
 
-    sh = screen_probe_spherical_harmonics[probe_index + 1];
+    sh = screen_probe_spherical_harmonics[probe_index + 1u];
     L00 = sh.b0.xyz;
     L11 = vec3(sh.b0.w, sh.b1.xy);
     L10 = vec3(sh.b1.zw, sh.b2.x);

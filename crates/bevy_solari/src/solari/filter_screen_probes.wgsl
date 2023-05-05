@@ -17,17 +17,17 @@ fn filter_screen_probes(
     let frame_index = globals.frame_count * 5782582u;
     var rng = pixel_index + frame_index;
 
-    let tl = textureLoad(screen_probes_unfiltered, global_id.xy + vec2(-8, 8));
-    let tm = textureLoad(screen_probes_unfiltered, global_id.xy + vec2(0, 8));
-    let tr = textureLoad(screen_probes_unfiltered, global_id.xy + vec2(8, 8));
-    let ml = textureLoad(screen_probes_unfiltered, global_id.xy + vec2(-8, 0));
-    let mm = textureLoad(screen_probes_unfiltered, global_id.xy + vec2(0, 0));
-    let mr = textureLoad(screen_probes_unfiltered, global_id.xy + vec2(8, 0));
-    let bl = textureLoad(screen_probes_unfiltered, global_id.xy + vec2(-8, -8));
-    let bm = textureLoad(screen_probes_unfiltered, global_id.xy + vec2(0, -8));
-    let br = textureLoad(screen_probes_unfiltered, global_id.xy + vec2(8, -8));
+    let tl = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(-8i, 8i)).rgb;
+    let tm = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(0i, 8i)).rgb;
+    let tr = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(8i, 8i)).rgb;
+    let ml = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(-8i, 0i)).rgb;
+    let mm = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(0i, 0i)).rgb;
+    let mr = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(8i, 0i)).rgb;
+    let bl = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(-8i, -8i)).rgb;
+    let bm = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(0i, -8i)).rgb;
+    let br = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(8i, -8i)).rgb;
     let filtered = (tl + tm + tr + ml + mm + mr + bl + bm + br) / 9.0;
-    textureStore(screen_probes_filtered, global_id.xy, filtered);
+    textureStore(screen_probes_filtered, global_id.xy, vec4(filtered, 1.0));
 
     let octahedral_pixel_center = vec2<f32>(local_id.xy) + rand_vec2(&rng);
     let octahedral_normal = octahedral_decode(octahedral_pixel_center / 8.0);
@@ -49,15 +49,15 @@ fn filter_screen_probes(
     let Y2_2 = 1.092548 * xy;
     let Y20 = 0.946176 * zz - 0.315392;
     let Y22 = 0.546274 * xx_yy;
-    spherical_harmonics_coefficents[local_index][0] = new_color * Y00;
-    spherical_harmonics_coefficents[local_index][1] = new_color * Y11;
-    spherical_harmonics_coefficents[local_index][2] = new_color * Y10;
-    spherical_harmonics_coefficents[local_index][3] = new_color * Y1_1;
-    spherical_harmonics_coefficents[local_index][4] = new_color * Y21;
-    spherical_harmonics_coefficents[local_index][5] = new_color * Y2_1;
-    spherical_harmonics_coefficents[local_index][6] = new_color * Y2_2;
-    spherical_harmonics_coefficents[local_index][7] = new_color * Y20;
-    spherical_harmonics_coefficents[local_index][8] = new_color * Y22;
+    spherical_harmonics_coefficents[local_index][0] = filtered * Y00;
+    spherical_harmonics_coefficents[local_index][1] = filtered * Y11;
+    spherical_harmonics_coefficents[local_index][2] = filtered * Y10;
+    spherical_harmonics_coefficents[local_index][3] = filtered * Y1_1;
+    spherical_harmonics_coefficents[local_index][4] = filtered * Y21;
+    spherical_harmonics_coefficents[local_index][5] = filtered * Y2_1;
+    spherical_harmonics_coefficents[local_index][6] = filtered * Y2_2;
+    spherical_harmonics_coefficents[local_index][7] = filtered * Y20;
+    spherical_harmonics_coefficents[local_index][8] = filtered * Y22;
 
     workgroupBarrier();
 

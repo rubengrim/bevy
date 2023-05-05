@@ -1,7 +1,4 @@
-use std::num::NonZeroU64;
-
 use super::camera::SolariSettings;
-use bevy_core::FrameCount;
 use bevy_ecs::{
     prelude::{Component, Entity},
     query::With,
@@ -16,6 +13,7 @@ use bevy_render::{
     texture::{CachedTexture, TextureCache},
     view::{ViewTarget, ViewUniform, ViewUniforms},
 };
+use std::num::NonZeroU64;
 
 #[derive(Component)]
 pub struct SolariResources {
@@ -31,7 +29,6 @@ pub fn prepare_resources(
     mut commands: Commands,
     mut texture_cache: ResMut<TextureCache>,
     render_device: Res<RenderDevice>,
-    frame_count: Res<FrameCount>,
 ) {
     for (entity, camera) in &views {
         if let Some(viewport) = camera.physical_viewport_size {
@@ -69,8 +66,8 @@ pub fn prepare_resources(
             let height8 = round_up_to_multiple_of_8(viewport.y);
             let probe_count = (width8 as u64 * height8 as u64) / 64;
 
-            let screen_probes_a = TextureDescriptor {
-                label: Some("solari_screen_probes_a"),
+            let screen_probes_unfiltered = TextureDescriptor {
+                label: Some("solari_screen_probes_unfiltered"),
                 size: Extent3d {
                     depth_or_array_layers: 1,
                     width: width8,
@@ -83,8 +80,8 @@ pub fn prepare_resources(
                 usage: TextureUsages::STORAGE_BINDING,
                 view_formats: &[],
             };
-            let screen_probes_b = TextureDescriptor {
-                label: Some("solari_screen_probes_b"),
+            let screen_probes_filtered = TextureDescriptor {
+                label: Some("solari_screen_probes_filtered"),
                 size: Extent3d {
                     depth_or_array_layers: 1,
                     width: width8,
@@ -96,10 +93,6 @@ pub fn prepare_resources(
                 format: TextureFormat::Rgba32Float,
                 usage: TextureUsages::STORAGE_BINDING,
                 view_formats: &[],
-            };
-            let (screen_probes_unfiltered, screen_probes_filtered) = match frame_count.0 % 2 == 0 {
-                true => (screen_probes_a, screen_probes_b),
-                false => (screen_probes_b, screen_probes_a),
             };
 
             // TODO: Cache buffer
