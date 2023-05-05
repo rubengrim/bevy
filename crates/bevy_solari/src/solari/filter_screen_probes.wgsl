@@ -18,16 +18,17 @@ fn filter_screen_probes(
     var rng = pixel_index + frame_index;
 
     // TODO: Validate screen_probes_unfiltered indices
+    // TODO: Depth weighted average
     let tl = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(-8i, 8i)).rgb;
-    let tm = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(0i, 8i)).rgb;
+    let tm = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(0i, 8i)).rgb * 2.0;
     let tr = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(8i, 8i)).rgb;
-    let ml = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(-8i, 0i)).rgb;
-    let mm = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(0i, 0i)).rgb;
-    let mr = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(8i, 0i)).rgb;
+    let ml = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(-8i, 0i)).rgb * 2.0;
+    let mm = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(0i, 0i)).rgb * 4.0;
+    let mr = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(8i, 0i)).rgb * 2.0;
     let bl = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(-8i, -8i)).rgb;
-    let bm = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(0i, -8i)).rgb;
+    let bm = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(0i, -8i)).rgb * 2.0;
     let br = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(8i, -8i)).rgb;
-    let filtered = (tl + tm + tr + ml + mm + mr + bl + bm + br) / 9.0;
+    let filtered = (tl + tm + tr + ml + mm + mr + bl + bm + br) / 16.0;
     textureStore(screen_probes_filtered, global_id.xy, vec4(filtered, 1.0));
 
     let octahedral_pixel_center = vec2<f32>(local_id.xy) + rand_vec2(&rng);
