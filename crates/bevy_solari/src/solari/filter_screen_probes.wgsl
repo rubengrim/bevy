@@ -29,11 +29,12 @@ fn filter_screen_probes(
     var rng = pixel_index + frame_index;
 
     let pixel_uv = (vec2<f32>(global_id.xy) + rand_vec2(&rng)) / view.viewport.zw;
-    let g_buffer_pixel = decode_g_buffer(textureLoad(g_buffer, global_id.xy), pixel_uv);
-    if !g_buffer_pixel.ray_hit {
+    let g_buffer_pixel = textureLoad(g_buffer, global_id.xy);
+    if decode_g_buffer_depth(g_buffer_pixel) < 0.0 {
         textureStore(view_target, global_id.xy, vec4(0.0, 0.0, 0.0, 1.0));
         return;
     }
+    let pixel_world_normal = decode_g_buffer_world_normal(g_buffer_pixel);
     let material = decode_m_buffer(textureLoad(m_buffer, global_id.xy), pixel_uv);
 
     let c1 = 0.429043;
@@ -41,9 +42,9 @@ fn filter_screen_probes(
     let c3 = 0.743125;
     let c4 = 0.886227;
     let c5 = 0.247708;
-    let x = g_buffer_pixel.world_normal.x;
-    let y = g_buffer_pixel.world_normal.y;
-    let z = g_buffer_pixel.world_normal.z;
+    let x = pixel_world_normal.x;
+    let y = pixel_world_normal.y;
+    let z = pixel_world_normal.z;
     let xz = x * z;
     let yz = y * z;
     let xy = x * y;

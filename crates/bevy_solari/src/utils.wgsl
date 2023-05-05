@@ -56,12 +56,6 @@ fn octahedral_decode(v: vec2<f32>) -> vec3<f32> {
     return normalize(n);
 }
 
-struct GBufferData {
-    world_position: vec3<f32>,
-    world_normal: vec3<f32>,
-    ray_hit: bool,
-}
-
 fn encode_g_buffer(ray_distance: f32, world_normal: vec3<f32>) -> vec4<u32> {
     let rg = bitcast<u32>(ray_distance);
     let ab = pack2x16float(octahedral_encode(world_normal));
@@ -84,14 +78,16 @@ fn encode_m_buffer(material_index: u32, texture_coordinates: vec2<f32>) -> vec4<
     return vec4(r, g, b, a);
 }
 
-fn decode_g_buffer(g_buffer_pixel: vec4<u32>, pixel_uv: vec2<f32>) -> GBufferData {
-    let ray_distance = bitcast<f32>((g_buffer_pixel.r << 16u) | g_buffer_pixel.g);
-    let world_normal = octahedral_decode(unpack2x16float((g_buffer_pixel.b << 16u) | g_buffer_pixel.a));
+fn decode_g_buffer_depth(g_buffer_pixel: vec4<u32>) -> f32 {
+    return bitcast<f32>((g_buffer_pixel.r << 16u) | g_buffer_pixel.g);
+}
 
-    let primary_ray_direction = pixel_to_ray_direction(pixel_uv);
-    let world_position = view.world_position + (ray_distance * primary_ray_direction);
+fn depth_to_world_position(ray_distance: f32, pixel_uv: vec2<f32>) -> vec3<f32> {
+    return view.world_position + (ray_distance * pixel_to_ray_direction(pixel_uv));
+}
 
-    return GBufferData(world_position, world_normal, ray_distance >= 0.0);
+fn decode_g_buffer_world_normal(g_buffer_pixel: vec4<u32>) -> vec3<f32> {
+    return octahedral_decode(unpack2x16float((g_buffer_pixel.b << 16u) | g_buffer_pixel.a));
 }
 
 fn decode_m_buffer(m_buffer_pixel: vec4<u32>, pixel_uv: vec2<f32>) -> SolariSampledMaterial {

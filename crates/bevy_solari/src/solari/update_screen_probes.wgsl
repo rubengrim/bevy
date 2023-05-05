@@ -39,8 +39,8 @@ fn update_screen_probes(
         probe_pixel_uv = (vec2<f32>(global_id.xy) + rand_vec2(&rng)) / view.viewport.zw;
     }
     workgroupBarrier();
-    let probe_g = decode_g_buffer(probe_g_pixel, probe_pixel_uv);
-    if !probe_g.ray_hit {
+    let probe_depth = decode_g_buffer_depth(probe_g_pixel);
+    if probe_depth < 0.0 {
         return;
     }
 
@@ -50,9 +50,9 @@ fn update_screen_probes(
 
     var color = vec3(0.0);
     var throughput = vec3(1.0);
-    var ray_origin = probe_g.world_position;
+    var ray_origin = depth_to_world_position(probe_depth, probe_pixel_uv);
     var ray_direction = octahedral_normal;
-    for (var i = 0u; i < 2u; i++) {
+    loop {
         let ray_hit = trace_ray(ray_origin, ray_direction, 0.001);
         if ray_hit.kind != RAY_QUERY_INTERSECTION_NONE {
             let ray_hit = map_ray_hit(ray_hit);
