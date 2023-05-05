@@ -2,9 +2,13 @@
 #import bevy_solari::view_bindings
 #import bevy_solari::utils
 
+var<workgroup> spherical_harmonics_coefficents: array<array<vec3<f32>, 9>, 64>;
+
 @compute @workgroup_size(8, 8, 1)
 fn filter_screen_probes(
     @builtin(global_invocation_id) global_id: vec3<u32>,
+    @builtin(local_invocation_id) local_id: vec3<u32>,
+    @builtin(local_invocation_index) local_index: u32,
     @builtin(workgroup_id) workgroup_id: vec3<u32>,
     @builtin(num_workgroups) workgroup_count: vec3<u32>,
 ) {
@@ -13,40 +17,88 @@ fn filter_screen_probes(
     let frame_index = globals.frame_count * 5782582u;
     var rng = pixel_index + frame_index;
 
-    let pixel_uv = (vec2<f32>(global_id.xy) + rand_vec2(&rng)) / view.viewport.zw;
-    let g_buffer_pixel = textureLoad(g_buffer, global_id.xy);
-    if decode_g_buffer_depth(g_buffer_pixel) < 0.0 {
-        textureStore(view_target, global_id.xy, vec4(0.0, 0.0, 0.0, 1.0));
-        return;
-    }
-    let pixel_world_normal = decode_g_buffer_world_normal(g_buffer_pixel);
-    let material = decode_m_buffer(textureLoad(m_buffer, global_id.xy), pixel_uv);
+    let tl = textureLoad(screen_probes_unfiltered, global_id.xy + vec2(-8, 8));
+    let tm = textureLoad(screen_probes_unfiltered, global_id.xy + vec2(0, 8));
+    let tr = textureLoad(screen_probes_unfiltered, global_id.xy + vec2(8, 8));
+    let ml = textureLoad(screen_probes_unfiltered, global_id.xy + vec2(-8, 0));
+    let mm = textureLoad(screen_probes_unfiltered, global_id.xy + vec2(0, 0));
+    let mr = textureLoad(screen_probes_unfiltered, global_id.xy + vec2(8, 0));
+    let bl = textureLoad(screen_probes_unfiltered, global_id.xy + vec2(-8, -8));
+    let bm = textureLoad(screen_probes_unfiltered, global_id.xy + vec2(0, -8));
+    let br = textureLoad(screen_probes_unfiltered, global_id.xy + vec2(8, -8));
+    let filtered = (tl + tm + tr + ml + mm + mr + bl + bm + br) / 9.0;
+    textureStore(screen_probes_filtered, global_id.xy, filtered);
 
-    let c1 = 0.429043;
-    let c2 = 0.511664;
-    let c3 = 0.743125;
-    let c4 = 0.886227;
-    let c5 = 0.247708;
-    let x = pixel_world_normal.x;
-    let y = pixel_world_normal.y;
-    let z = pixel_world_normal.z;
+    let octahedral_pixel_center = vec2<f32>(local_id.xy) + rand_vec2(&rng);
+    let octahedral_normal = octahedral_decode(octahedral_pixel_center / 8.0);
+    let x = octahedral_normal.x;
+    let y = octahedral_normal.y;
+    let z = octahedral_normal.z;
     let xz = x * z;
     let yz = y * z;
     let xy = x * y;
     let zz = z * z;
     let xx_yy = x * x - y * y;
-    let sh = screen_probe_spherical_harmonics[probe_index];
-    let L00 = sh.b0.xyz;
-    let L11 = vec3(sh.b0.w, sh.b1.xy);
-    let L10 = vec3(sh.b1.zw, sh.b2.x);
-    let L1_1 = sh.b2.yzw;
-    let L21 = sh.b3.xyz;
-    let L2_1 = vec3(sh.b3.w, sh.b4.xy);
-    let L2_2 = vec3(sh.b4.zw, sh.b5.x);
-    let L20 = sh.b5.yzw;
-    let L22 = sh.b6;
-    let irradiance = (c1 * L22 * xx_yy) + (c3 * L20 * zz) + (c4 * L00) - (c5 * L20) + (2.0 * c1 * ((L2_2 * xy) + (L21 * xz) + (L2_1 * yz))) + (2.0 * c2 * ((L11 * x) + (L1_1 * y) + (L10 * z)));
 
-    let final_color = (material.base_color * irradiance) + material.emission;
-    textureStore(view_target, global_id.xy, vec4(final_color, 1.0));
+    let Y00 = 0.282095;
+    let Y11 = 0.488603 * x;
+    let Y10 = 0.488603 * z;
+    let Y1_1 = 0.488603 * y;
+    let Y21 = 1.092548 * xz;
+    let Y2_1 = 1.092548 * yz;
+    let Y2_2 = 1.092548 * xy;
+    let Y20 = 0.946176 * zz - 0.315392;
+    let Y22 = 0.546274 * xx_yy;
+    spherical_harmonics_coefficents[local_index][0] = new_color * Y00;
+    spherical_harmonics_coefficents[local_index][1] = new_color * Y11;
+    spherical_harmonics_coefficents[local_index][2] = new_color * Y10;
+    spherical_harmonics_coefficents[local_index][3] = new_color * Y1_1;
+    spherical_harmonics_coefficents[local_index][4] = new_color * Y21;
+    spherical_harmonics_coefficents[local_index][5] = new_color * Y2_1;
+    spherical_harmonics_coefficents[local_index][6] = new_color * Y2_2;
+    spherical_harmonics_coefficents[local_index][7] = new_color * Y20;
+    spherical_harmonics_coefficents[local_index][8] = new_color * Y22;
+
+    workgroupBarrier();
+
+    if local_index == 0u {
+        var L00 = vec3(0.0);
+        var L11 = vec3(0.0);
+        var L10 = vec3(0.0);
+        var L1_1 = vec3(0.0);
+        var L21 = vec3(0.0);
+        var L2_1 = vec3(0.0);
+        var L2_2 = vec3(0.0);
+        var L20 = vec3(0.0);
+        var L22 = vec3(0.0);
+        for (var t = 0u; t < 64u; t++) {
+            L00 += spherical_harmonics_coefficents[t][0];
+            L11 += spherical_harmonics_coefficents[t][1];
+            L10 += spherical_harmonics_coefficents[t][2];
+            L1_1 += spherical_harmonics_coefficents[t][3];
+            L21 += spherical_harmonics_coefficents[t][4];
+            L2_1 += spherical_harmonics_coefficents[t][5];
+            L2_2 += spherical_harmonics_coefficents[t][6];
+            L20 += spherical_harmonics_coefficents[t][7];
+            L22 += spherical_harmonics_coefficents[t][8];
+        }
+        L00 /= 64.0;
+        L11 /= 64.0;
+        L10 /= 64.0;
+        L1_1 /= 64.0;
+        L21 /= 64.0;
+        L2_1 /= 64.0;
+        L2_2 /= 64.0;
+        L20 /= 64.0;
+        L22 /= 64.0;
+        screen_probe_spherical_harmonics[probe_index] = SphericalHarmonicsPacked(
+            vec4(L00, L11.x),
+            vec4(L11.yz, L10.xy),
+            vec4(L10.z, L1_1),
+            vec4(L21, L2_1.x),
+            vec4(L2_1.yz, L2_2.xy),
+            vec4(L2_2.z, L20),
+            L22,
+        );
+    }
 }

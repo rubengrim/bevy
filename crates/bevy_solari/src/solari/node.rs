@@ -1,6 +1,7 @@
 use super::{
     filter_screen_probes::SolariFilterScreenProbesPipelineId, gm_buffer::SolariGmBufferPipelineId,
-    resources::SolariBindGroup, update_screen_probes::SolariUpdateScreenProbesPipelineId,
+    resources::SolariBindGroup, shade_view_target::SolariShadeViewTargetPipelineId,
+    update_screen_probes::SolariUpdateScreenProbesPipelineId,
 };
 use crate::scene::bind_group::SolariSceneBindGroup;
 use bevy_ecs::{
@@ -21,6 +22,7 @@ pub struct SolariNode(
         &'static SolariGmBufferPipelineId,
         &'static SolariUpdateScreenProbesPipelineId,
         &'static SolariFilterScreenProbesPipelineId,
+        &'static SolariShadeViewTargetPipelineId,
         &'static ViewUniformOffset,
         &'static ExtractedCamera,
     )>,
@@ -34,7 +36,14 @@ impl Node for SolariNode {
         world: &World,
     ) -> Result<(), NodeRunError> {
         let (
-            Ok((bind_group, gm_buffer_pipeline_id, update_screen_probes_pipeline_id, filter_screen_probes_pipeline_id, view_uniform_offset, camera)),
+            Ok((bind_group,
+                gm_buffer_pipeline_id,
+                update_screen_probes_pipeline_id,
+                filter_screen_probes_pipeline_id,
+                shade_view_target_pipeline_id,
+                view_uniform_offset,
+                camera,
+            )),
             Some(pipeline_cache),
             Some(SolariSceneBindGroup(Some(scene_bind_group))),
         ) = (
@@ -48,11 +57,13 @@ impl Node for SolariNode {
             Some(gm_buffer_pipeline),
             Some(update_screen_probes_pipeline),
             Some(filter_screen_probes_pipeline),
+            Some(shade_view_target_pipeline),
             Some(viewport),
         ) = (
             pipeline_cache.get_compute_pipeline(gm_buffer_pipeline_id.0),
             pipeline_cache.get_compute_pipeline(update_screen_probes_pipeline_id.0),
             pipeline_cache.get_compute_pipeline(filter_screen_probes_pipeline_id.0),
+            pipeline_cache.get_compute_pipeline(shade_view_target_pipeline_id.0),
             camera.physical_viewport_size,
         ) else {
             return Ok(());
@@ -76,6 +87,9 @@ impl Node for SolariNode {
             solari_pass.dispatch_workgroups(width, height, 1);
 
             solari_pass.set_pipeline(filter_screen_probes_pipeline);
+            solari_pass.dispatch_workgroups(width, height, 1);
+
+            solari_pass.set_pipeline(shade_view_target_pipeline);
             solari_pass.dispatch_workgroups(width, height, 1);
         }
 

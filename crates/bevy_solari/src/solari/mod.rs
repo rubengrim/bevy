@@ -3,6 +3,7 @@ mod filter_screen_probes;
 mod gm_buffer;
 pub mod node;
 mod resources;
+mod shade_view_target;
 mod update_screen_probes;
 
 use self::{
@@ -12,6 +13,7 @@ use self::{
     },
     gm_buffer::{prepare_gm_buffer_pipelines, SolariGmBufferPipeline},
     resources::{prepare_resources, queue_bind_groups, SolariBindGroupLayout},
+    shade_view_target::{prepare_shade_view_target_pipelines, SolariShadeViewTargetPipeline},
     update_screen_probes::{
         prepare_update_screen_probe_pipelines, SolariUpdateScreenProbesPipeline,
     },
@@ -36,6 +38,8 @@ const SOLARI_UPDATE_SCREEN_PROBES_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 7717171717171755);
 const SOLARI_FILTER_SCREEN_PROBES_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 8717171717171755);
+const SOLARI_SHADE_VIEW_TARGET: HandleUntyped =
+    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 9717171717171755);
 
 impl Plugin for SolariRealtimePlugin {
     fn build(&self, app: &mut App) {
@@ -63,6 +67,12 @@ impl Plugin for SolariRealtimePlugin {
             "filter_screen_probes.wgsl",
             Shader::from_wgsl
         );
+        load_internal_asset!(
+            app,
+            SOLARI_SHADE_VIEW_TARGET,
+            "shade_view_target.wgsl",
+            Shader::from_wgsl
+        );
 
         app.add_plugin(ExtractComponentPlugin::<SolariSettings>::default());
 
@@ -71,9 +81,11 @@ impl Plugin for SolariRealtimePlugin {
             .init_resource::<SolariGmBufferPipeline>()
             .init_resource::<SolariUpdateScreenProbesPipeline>()
             .init_resource::<SolariFilterScreenProbesPipeline>()
+            .init_resource::<SolariShadeViewTargetPipeline>()
             .init_resource::<SpecializedComputePipelines<SolariGmBufferPipeline>>()
             .init_resource::<SpecializedComputePipelines<SolariUpdateScreenProbesPipeline>>()
             .init_resource::<SpecializedComputePipelines<SolariFilterScreenProbesPipeline>>()
+            .init_resource::<SpecializedComputePipelines<SolariShadeViewTargetPipeline>>()
             .add_systems(
                 Render,
                 (
@@ -81,6 +93,7 @@ impl Plugin for SolariRealtimePlugin {
                     prepare_gm_buffer_pipelines,
                     prepare_update_screen_probe_pipelines,
                     prepare_filter_screen_probe_pipelines,
+                    prepare_shade_view_target_pipelines,
                 )
                     .in_set(RenderSet::Prepare),
             )
