@@ -1,5 +1,7 @@
 #define_import_path bevy_solari::scene_bindings
 
+#import bevy_solari::scene_types
+
 @group(0) @binding(0)
 var tlas: acceleration_structure;
 @group(0) @binding(1)

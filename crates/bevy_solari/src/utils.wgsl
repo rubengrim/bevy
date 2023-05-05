@@ -95,13 +95,3 @@ fn decode_m_buffer(m_buffer_pixel: vec4<u32>, pixel_uv: vec2<f32>) -> SolariSamp
     let texture_coordinates = unpack2x16float((m_buffer_pixel.b << 16u) | m_buffer_pixel.a);
     return sample_material(materials[material_index], texture_coordinates);
 }
-
-struct SphericalHarmonicsPacked {
-    b0: vec4<f32>,
-    b1: vec4<f32>,
-    b2: vec4<f32>,
-    b3: vec4<f32>,
-    b4: vec4<f32>,
-    b5: vec4<f32>,
-    b6: vec3<f32>,
-}

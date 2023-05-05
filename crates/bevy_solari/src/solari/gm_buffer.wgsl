@@ -1,17 +1,6 @@
-#import bevy_solari::scene_types
 #import bevy_solari::scene_bindings
+#import bevy_solari::view_bindings
 #import bevy_solari::utils
-#import bevy_render::view
-#import bevy_render::globals
-
-@group(1) @binding(0)
-var<uniform> view: View;
-@group(1) @binding(1)
-var<uniform> globals: Globals;
-@group(1) @binding(2)
-var g_buffer: texture_storage_2d<rgba16uint, write>;
-@group(1) @binding(3)
-var m_buffer: texture_storage_2d<rgba16uint, write>;
 
 @compute @workgroup_size(8, 8, 1)
 fn gm_buffer(@builtin(global_invocation_id) global_id: vec3<u32>) {

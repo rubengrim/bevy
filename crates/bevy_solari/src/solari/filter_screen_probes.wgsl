@@ -1,21 +1,6 @@
-#import bevy_solari::scene_types
 #import bevy_solari::scene_bindings
+#import bevy_solari::view_bindings
 #import bevy_solari::utils
-#import bevy_render::view
-#import bevy_render::globals
-
-@group(1) @binding(0)
-var<uniform> view: View;
-@group(1) @binding(1)
-var<uniform> globals: Globals;
-@group(1) @binding(2)
-var g_buffer: texture_storage_2d<rgba16uint, read>;
-@group(1) @binding(3)
-var m_buffer: texture_storage_2d<rgba16uint, read>;
-@group(1) @binding(4)
-var<storage, read> screen_probe_spherical_harmonics: array<SphericalHarmonicsPacked>;
-@group(1) @binding(5)
-var view_target: texture_storage_2d<rgba16float, write>;
 
 @compute @workgroup_size(8, 8, 1)
 fn filter_screen_probes(

@@ -1,7 +1,6 @@
-#import bevy_solari::scene_types
 #import bevy_solari::scene_bindings
-#import bevy_solari::utils
 #import bevy_render::view
+#import bevy_solari::utils
 
 @group(1) @binding(0)
 var<uniform> view: View;

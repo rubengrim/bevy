@@ -1,4 +1,4 @@
-use super::SOLARI_FILTER_SCREEN_PROBES_SHADER;
+use super::{resources::SolariBindGroupLayout, SOLARI_FILTER_SCREEN_PROBES_SHADER};
 use crate::{scene::bind_group_layout::SolariSceneResources, SolariSettings};
 use bevy_ecs::{
     prelude::{Component, Entity},
@@ -6,95 +6,25 @@ use bevy_ecs::{
     system::{Commands, Query, Res, ResMut, Resource},
     world::{FromWorld, World},
 };
-use bevy_render::{
-    globals::GlobalsUniform, render_resource::*, renderer::RenderDevice, view::ViewUniform,
+use bevy_render::render_resource::{
+    BindGroupLayout, CachedComputePipelineId, ComputePipelineDescriptor, PipelineCache,
+    SpecializedComputePipeline, SpecializedComputePipelines,
 };
-use std::num::NonZeroU64;
 
 #[derive(Resource)]
 pub struct SolariFilterScreenProbesPipeline {
-    pub bind_group_layout: BindGroupLayout,
     scene_bind_group_layout: BindGroupLayout,
+    bind_group_layout: BindGroupLayout,
 }
 
 impl FromWorld for SolariFilterScreenProbesPipeline {
     fn from_world(world: &mut World) -> Self {
         let scene_resources = world.resource::<SolariSceneResources>();
-        let render_device = world.resource::<RenderDevice>();
+        let bind_group_layout = world.resource::<SolariBindGroupLayout>();
 
         Self {
-            bind_group_layout: render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
-                label: Some("solari_filter_screen_probes_bind_group_layout"),
-                entries: &[
-                    // View
-                    BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: ShaderStages::COMPUTE,
-                        ty: BindingType::Buffer {
-                            ty: BufferBindingType::Uniform,
-                            has_dynamic_offset: true,
-                            min_binding_size: Some(ViewUniform::min_size()),
-                        },
-                        count: None,
-                    },
-                    // Globals
-                    BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: ShaderStages::COMPUTE,
-                        ty: BindingType::Buffer {
-                            ty: BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: Some(GlobalsUniform::min_size()),
-                        },
-                        count: None,
-                    },
-                    // G-buffer
-                    BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: ShaderStages::COMPUTE,
-                        ty: BindingType::StorageTexture {
-                            access: StorageTextureAccess::ReadOnly,
-                            format: TextureFormat::Rgba16Uint,
-                            view_dimension: TextureViewDimension::D2,
-                        },
-                        count: None,
-                    },
-                    // M-buffer
-                    BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: ShaderStages::COMPUTE,
-                        ty: BindingType::StorageTexture {
-                            access: StorageTextureAccess::ReadOnly,
-                            format: TextureFormat::Rgba16Uint,
-                            view_dimension: TextureViewDimension::D2,
-                        },
-                        count: None,
-                    },
-                    // Screen probe spherical harmonics
-                    BindGroupLayoutEntry {
-                        binding: 4,
-                        visibility: ShaderStages::COMPUTE,
-                        ty: BindingType::Buffer {
-                            ty: BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: Some(unsafe { NonZeroU64::new_unchecked(112) }),
-                        },
-                        count: None,
-                    },
-                    // View target
-                    BindGroupLayoutEntry {
-                        binding: 5,
-                        visibility: ShaderStages::COMPUTE,
-                        ty: BindingType::StorageTexture {
-                            access: StorageTextureAccess::WriteOnly,
-                            format: TextureFormat::Rgba16Float,
-                            view_dimension: TextureViewDimension::D2,
-                        },
-                        count: None,
-                    },
-                ],
-            }),
             scene_bind_group_layout: scene_resources.bind_group_layout.clone(),
+            bind_group_layout: bind_group_layout.0.clone(),
         }
     }
 }

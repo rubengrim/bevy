@@ -1,19 +1,6 @@
-#import bevy_solari::scene_types
 #import bevy_solari::scene_bindings
+#import bevy_solari::view_bindings
 #import bevy_solari::utils
-#import bevy_render::view
-#import bevy_render::globals
-
-@group(1) @binding(0)
-var<uniform> view: View;
-@group(1) @binding(1)
-var<uniform> globals: Globals;
-@group(1) @binding(2)
-var g_buffer: texture_storage_2d<rgba16uint, read>;
-@group(1) @binding(3)
-var screen_probes: texture_storage_2d<rgba16float, read_write>;
-@group(1) @binding(4)
-var<storage, read_write> screen_probe_spherical_harmonics: array<SphericalHarmonicsPacked>;
 
 var<workgroup> probe_g_pixel: vec4<u32>;
 var<workgroup> probe_pixel_uv: vec2<f32>;
@@ -70,7 +57,7 @@ fn update_screen_probes(
     }
 
     // var blended_radiance = color;
-    let previous_pixel = textureLoad(screen_probes, global_id.xy);
+    let previous_pixel = textureLoad(screen_probes_unfiltered, global_id.xy);
     // if previous_pixel.a == 1.0 {
     //     let current_radiance = color;
     //     let previous_radiance = previous_pixel.rgb;
@@ -82,7 +69,7 @@ fn update_screen_probes(
     //     blended_radiance = mix(current_radiance, previous_radiance, a);
     // }
     let new_color = (color + previous_pixel.a * previous_pixel.rgb) / (previous_pixel.a + 1.0);
-    textureStore(screen_probes, global_id.xy, vec4(new_color, previous_pixel.a + 1.0));
+    textureStore(screen_probes_unfiltered, global_id.xy, vec4(new_color, previous_pixel.a + 1.0));
 
     var x = octahedral_normal.x;
     var y = octahedral_normal.y;

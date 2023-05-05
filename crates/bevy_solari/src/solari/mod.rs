@@ -11,7 +11,7 @@ use self::{
         prepare_filter_screen_probe_pipelines, SolariFilterScreenProbesPipeline,
     },
     gm_buffer::{prepare_gm_buffer_pipelines, SolariGmBufferPipeline},
-    resources::{prepare_resources, queue_bind_groups},
+    resources::{prepare_resources, queue_bind_groups, SolariBindGroupLayout},
     update_screen_probes::{
         prepare_update_screen_probe_pipelines, SolariUpdateScreenProbesPipeline,
     },
@@ -28,15 +28,23 @@ use bevy_render::{
 
 pub struct SolariRealtimePlugin;
 
-const SOLARI_GM_BUFFER_SHADER: HandleUntyped =
+const SOLARI_VIEW_BINDINGS_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 5717171717171755);
-const SOLARI_UPDATE_SCREEN_PROBES_SHADER: HandleUntyped =
+const SOLARI_GM_BUFFER_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 6717171717171755);
-const SOLARI_FILTER_SCREEN_PROBES_SHADER: HandleUntyped =
+const SOLARI_UPDATE_SCREEN_PROBES_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 7717171717171755);
+const SOLARI_FILTER_SCREEN_PROBES_SHADER: HandleUntyped =
+    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 8717171717171755);
 
 impl Plugin for SolariRealtimePlugin {
     fn build(&self, app: &mut App) {
+        load_internal_asset!(
+            app,
+            SOLARI_VIEW_BINDINGS_SHADER,
+            "view_bindings.wgsl",
+            Shader::from_wgsl
+        );
         load_internal_asset!(
             app,
             SOLARI_GM_BUFFER_SHADER,
@@ -59,6 +67,7 @@ impl Plugin for SolariRealtimePlugin {
         app.add_plugin(ExtractComponentPlugin::<SolariSettings>::default());
 
         app.sub_app_mut(RenderApp)
+            .init_resource::<SolariBindGroupLayout>()
             .init_resource::<SolariGmBufferPipeline>()
             .init_resource::<SolariUpdateScreenProbesPipeline>()
             .init_resource::<SolariFilterScreenProbesPipeline>()
