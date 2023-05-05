@@ -17,6 +17,7 @@ fn filter_screen_probes(
     let frame_index = globals.frame_count * 5782582u;
     var rng = pixel_index + frame_index;
 
+    // TODO: Validate screen_probes_unfiltered indices
     let tl = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(-8i, 8i)).rgb;
     let tm = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(0i, 8i)).rgb;
     let tr = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(8i, 8i)).rgb;

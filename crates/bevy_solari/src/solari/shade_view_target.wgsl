@@ -38,6 +38,8 @@ fn shade_view_target(
     let zz = z * z;
     let xx_yy = x * x - y * y;
 
+    // TODO: Validate screen_probe_spherical_harmonics indices
+
     var sh = screen_probe_spherical_harmonics[probe_index];
     var L00 = sh.b0.xyz;
     var L11 = vec3(sh.b0.w, sh.b1.xy);
