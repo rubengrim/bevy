@@ -22,6 +22,8 @@ fn shade_view_target(
     let pixel_world_normal = decode_g_buffer_world_normal(g_buffer_pixel);
     let material = decode_m_buffer(textureLoad(m_buffer, global_id.xy), pixel_uv);
 
+    var irradiance = vec3(0.0);
+
     let c1 = 0.429043;
     let c2 = 0.511664;
     let c3 = 0.743125;
@@ -35,17 +37,68 @@ fn shade_view_target(
     let xy = x * y;
     let zz = z * z;
     let xx_yy = x * x - y * y;
-    let sh = screen_probe_spherical_harmonics[probe_index];
-    let L00 = sh.b0.xyz;
-    let L11 = vec3(sh.b0.w, sh.b1.xy);
-    let L10 = vec3(sh.b1.zw, sh.b2.x);
-    let L1_1 = sh.b2.yzw;
-    let L21 = sh.b3.xyz;
-    let L2_1 = vec3(sh.b3.w, sh.b4.xy);
-    let L2_2 = vec3(sh.b4.zw, sh.b5.x);
-    let L20 = sh.b5.yzw;
-    let L22 = sh.b6;
-    let irradiance = (c1 * L22 * xx_yy) + (c3 * L20 * zz) + (c4 * L00) - (c5 * L20) + (2.0 * c1 * ((L2_2 * xy) + (L21 * xz) + (L2_1 * yz))) + (2.0 * c2 * ((L11 * x) + (L1_1 * y) + (L10 * z)));
+
+    var sh = screen_probe_spherical_harmonics[probe_index];
+    var L00 = sh.b0.xyz;
+    var L11 = vec3(sh.b0.w, sh.b1.xy);
+    var L10 = vec3(sh.b1.zw, sh.b2.x);
+    var L1_1 = sh.b2.yzw;
+    var L21 = sh.b3.xyz;
+    var L2_1 = vec3(sh.b3.w, sh.b4.xy);
+    var L2_2 = vec3(sh.b4.zw, sh.b5.x);
+    var L20 = sh.b5.yzw;
+    var L22 = sh.b6;
+    irradiance += (c1 * L22 * xx_yy) + (c3 * L20 * zz) + (c4 * L00) - (c5 * L20) + (2.0 * c1 * ((L2_2 * xy) + (L21 * xz) + (L2_1 * yz))) + (2.0 * c2 * ((L11 * x) + (L1_1 * y) + (L10 * z)));
+
+    sh = screen_probe_spherical_harmonics[probe_index - 1];
+    L00 = sh.b0.xyz;
+    L11 = vec3(sh.b0.w, sh.b1.xy);
+    L10 = vec3(sh.b1.zw, sh.b2.x);
+    L1_1 = sh.b2.yzw;
+    L21 = sh.b3.xyz;
+    L2_1 = vec3(sh.b3.w, sh.b4.xy);
+    L2_2 = vec3(sh.b4.zw, sh.b5.x);
+    L20 = sh.b5.yzw;
+    L22 = sh.b6;
+    irradiance += (c1 * L22 * xx_yy) + (c3 * L20 * zz) + (c4 * L00) - (c5 * L20) + (2.0 * c1 * ((L2_2 * xy) + (L21 * xz) + (L2_1 * yz))) + (2.0 * c2 * ((L11 * x) + (L1_1 * y) + (L10 * z)));
+
+    sh = screen_probe_spherical_harmonics[probe_index + 1];
+    L00 = sh.b0.xyz;
+    L11 = vec3(sh.b0.w, sh.b1.xy);
+    L10 = vec3(sh.b1.zw, sh.b2.x);
+    L1_1 = sh.b2.yzw;
+    L21 = sh.b3.xyz;
+    L2_1 = vec3(sh.b3.w, sh.b4.xy);
+    L2_2 = vec3(sh.b4.zw, sh.b5.x);
+    L20 = sh.b5.yzw;
+    L22 = sh.b6;
+    irradiance += (c1 * L22 * xx_yy) + (c3 * L20 * zz) + (c4 * L00) - (c5 * L20) + (2.0 * c1 * ((L2_2 * xy) + (L21 * xz) + (L2_1 * yz))) + (2.0 * c2 * ((L11 * x) + (L1_1 * y) + (L10 * z)));
+
+    sh = screen_probe_spherical_harmonics[probe_index + workgroup_count.x];
+    L00 = sh.b0.xyz;
+    L11 = vec3(sh.b0.w, sh.b1.xy);
+    L10 = vec3(sh.b1.zw, sh.b2.x);
+    L1_1 = sh.b2.yzw;
+    L21 = sh.b3.xyz;
+    L2_1 = vec3(sh.b3.w, sh.b4.xy);
+    L2_2 = vec3(sh.b4.zw, sh.b5.x);
+    L20 = sh.b5.yzw;
+    L22 = sh.b6;
+    irradiance += (c1 * L22 * xx_yy) + (c3 * L20 * zz) + (c4 * L00) - (c5 * L20) + (2.0 * c1 * ((L2_2 * xy) + (L21 * xz) + (L2_1 * yz))) + (2.0 * c2 * ((L11 * x) + (L1_1 * y) + (L10 * z)));
+
+    sh = screen_probe_spherical_harmonics[probe_index - workgroup_count.x];
+    L00 = sh.b0.xyz;
+    L11 = vec3(sh.b0.w, sh.b1.xy);
+    L10 = vec3(sh.b1.zw, sh.b2.x);
+    L1_1 = sh.b2.yzw;
+    L21 = sh.b3.xyz;
+    L2_1 = vec3(sh.b3.w, sh.b4.xy);
+    L2_2 = vec3(sh.b4.zw, sh.b5.x);
+    L20 = sh.b5.yzw;
+    L22 = sh.b6;
+    irradiance += (c1 * L22 * xx_yy) + (c3 * L20 * zz) + (c4 * L00) - (c5 * L20) + (2.0 * c1 * ((L2_2 * xy) + (L21 * xz) + (L2_1 * yz))) + (2.0 * c2 * ((L11 * x) + (L1_1 * y) + (L10 * z)));
+
+    irradiance /= 5.0;
 
     let final_color = (material.base_color * irradiance) + material.emission;
     textureStore(view_target, global_id.xy, vec4(final_color, 1.0));
