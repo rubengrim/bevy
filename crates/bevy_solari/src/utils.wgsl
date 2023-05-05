@@ -90,7 +90,7 @@ fn decode_g_buffer_world_normal(g_buffer_pixel: vec4<u32>) -> vec3<f32> {
     return octahedral_decode(unpack2x16float((g_buffer_pixel.b << 16u) | g_buffer_pixel.a));
 }
 
-fn decode_m_buffer(m_buffer_pixel: vec4<u32>, pixel_uv: vec2<f32>) -> SolariSampledMaterial {
+fn decode_m_buffer(m_buffer_pixel: vec4<u32>) -> SolariSampledMaterial {
     let material_index = (m_buffer_pixel.r << 16u) | m_buffer_pixel.g;
     let texture_coordinates = unpack2x16float((m_buffer_pixel.b << 16u) | m_buffer_pixel.a);
     return sample_material(materials[material_index], texture_coordinates);
