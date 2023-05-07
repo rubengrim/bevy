@@ -4,6 +4,8 @@
 
 var<workgroup> probe_g_pixel: vec4<u32>;
 var<workgroup> probe_pixel_uv: vec2<f32>;
+var<workgroup> probe_cell_prefix_sum: array<f32, 64>;
+var<workgroup> probe_cell_new_radiance: array<array<vec3<f32>, 64>, 64>;
 
 @compute @workgroup_size(8, 8, 1)
 fn update_screen_probes(
@@ -27,7 +29,29 @@ fn update_screen_probes(
         return;
     }
 
-    let octahedral_pixel_center = vec2<f32>(local_id.xy) + rand_vec2(&rng);
+    let previous_pixel = textureLoad(screen_probes_unfiltered, global_id.xy);
+    let previous_radiance = previous_pixel.rgb;
+
+    // TODO: MIS with BRDF weight
+    probe_cell_prefix_sum[local_index] = dot(previous_radiance, vec3(0.2126, 0.7152, 0.0722));
+    workgroupBarrier();
+    for (var t = 1u; t > 64u; t <<= 1u) {
+        if local_index >= t {
+            probe_cell_prefix_sum[local_index] += probe_cell_prefix_sum[local_index - t];
+        }
+        workgroupBarrier();
+    }
+    let search_target = rand_f(&rng) * (probe_cell_prefix_sum[63u] - 1.0) / 2.0;
+    var octahedral_pixel_index = 0;
+    // TODO: Binary search
+    while octahedral_pixel_index < 64u {
+        if probe_cell_prefix_sum[octahedral_pixel_index] >= search_target { break; }
+    }
+
+    let octahedral_pixel_x = octahedral_pixel_index % 8u;
+    let octahedral_pixel_y = (octahedral_pixel_index - octahedral_pixel_y) / 8u;
+    let octahedral_pixel_id = vec2<f32>(octahedral_pixel_x, octahedral_pixel_y) ;
+    let octahedral_pixel_center = octahedral_pixel_id + rand_vec2(&rng);
     let octahedral_pixel_uv = octahedral_pixel_center / 8.0;
     let octahedral_normal = octahedral_decode(octahedral_pixel_uv);
 
@@ -52,8 +76,15 @@ fn update_screen_probes(
         } else { break; }
     }
 
+    // TODO: Replace with subgroup/wave ops when supported
+    probe_cell_new_radiance[octahedral_pixel_index][local_index] = color;
+    workgroupBarrier();
+    var new_radiance = vec3(0.0);
+    for (var i = 0u; i < 64u; i += 1u) {
+        new_radiance += probe_cell_new_radiance[local_index][i];
+    }
+
     // var blended_radiance = color;
-    let previous_pixel = textureLoad(screen_probes_unfiltered, global_id.xy);
     // if previous_pixel.a == 1.0 {
     //     let current_radiance = color;
     //     let previous_radiance = previous_pixel.rgb;
@@ -64,6 +95,6 @@ fn update_screen_probes(
     //     a *= a;
     //     blended_radiance = mix(current_radiance, previous_radiance, a);
     // }
-    let new_color = (color + previous_pixel.a * previous_pixel.rgb) / (previous_pixel.a + 1.0);
-    textureStore(screen_probes_unfiltered, global_id.xy, vec4(new_color, previous_pixel.a + 1.0));
+    new_radiance = (new_radiance + previous_pixel.a * previous_radiance) / (previous_pixel.a + 1.0);
+    textureStore(screen_probes_unfiltered, global_id.xy, vec4(new_radiance, previous_pixel.a + 1.0));
 }

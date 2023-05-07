@@ -9,14 +9,7 @@ fn filter_screen_probes(
     @builtin(global_invocation_id) global_id: vec3<u32>,
     @builtin(local_invocation_id) local_id: vec3<u32>,
     @builtin(local_invocation_index) local_index: u32,
-    @builtin(workgroup_id) workgroup_id: vec3<u32>,
-    @builtin(num_workgroups) workgroup_count: vec3<u32>,
 ) {
-    let probe_index = workgroup_id.x + workgroup_id.y * workgroup_count.x;
-    let pixel_index = global_id.x + global_id.y * u32(view.viewport.z);
-    let frame_index = globals.frame_count * 5782582u;
-    var rng = pixel_index + frame_index;
-
     // TODO: Validate neighbor screen_probes_unfiltered indices exist
     // TODO: Depth + angle weighted average
     let tl = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(-8i, 8i)).rgb;
@@ -31,7 +24,7 @@ fn filter_screen_probes(
     let filtered = (tl + tm + tr + ml + mm + mr + bl + bm + br) / 16.0;
     textureStore(screen_probes_filtered, global_id.xy, vec4(filtered, 1.0));
 
-    let octahedral_pixel_center = vec2<f32>(local_id.xy) + rand_vec2(&rng);
+    let octahedral_pixel_center = vec2<f32>(local_id.xy) + 0.5;
     let octahedral_normal = octahedral_decode(octahedral_pixel_center / 8.0);
     let x = octahedral_normal.x;
     let y = octahedral_normal.y;
