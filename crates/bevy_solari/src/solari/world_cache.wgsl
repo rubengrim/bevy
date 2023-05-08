@@ -72,13 +72,16 @@ fn query_world_cache(world_position: vec3<f32>) -> vec3<f32> {
     for (var i = 0u; i < WORLD_CACHE_MAX_SEARCH_STEPS; i++) {
         let existing_checksum = atomicCompareExchangeWeak(&world_cache_headers[key].checksum, checksum, WORLD_CACHE_NULL);
         if existing_checksum == checksum {
+            // Key is already stored - get the corresponding irradiance and reset cell lifetime
             atomicStore(&world_cache_data[key].life, WORLD_CACHE_CELL_LIFETIME);
             return world_cache_data[key].irradiance;
         } else if existing_checksum == WORLD_CACHE_NULL {
+            // Key is not stored - reset cell lifetime so that it starts getting updated next frame
             atomicStore(&world_cache_data[key].life, WORLD_CACHE_CELL_LIFETIME);
             world_cache_data[key].position = world_position;
-            return world_cache_data[key].irradiance;
+            return vec3(0.0)
         } else {
+            // Collision - jump to next cell
             key = wrap_key(pcg_hash(key));
         }
     }
