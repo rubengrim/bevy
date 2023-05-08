@@ -14,7 +14,7 @@ struct WorldCacheData {
     irradiance: vec3<f32>,
 }
 
-/// Maximum amount of entries in the world cache
+/// Maximum amount of entries in the world cache (must be a power of 2)
 const WORLD_CACHE_SIZE: u32 = 4194304u;
 /// Maximum amount of frames a cell can live for without being queried
 const WORLD_CACHE_CELL_LIFETIME: u32 = 10u;
