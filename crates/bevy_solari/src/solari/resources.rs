@@ -21,13 +21,14 @@ pub struct SolariResources {
     m_buffer: CachedTexture,
     screen_probes_unfiltered: CachedTexture,
     screen_probes_filtered: CachedTexture,
-    screen_probe_spherical_harmonics: Buffer,
+    screen_probe_spherical_harmonics: CachedBuffer,
 }
 
 pub fn prepare_resources(
     views: Query<(Entity, &ExtractedCamera), With<SolariSettings>>,
     mut commands: Commands,
     mut texture_cache: ResMut<TextureCache>,
+    mut buffer_cache: ResMut<BufferCache>,
     render_device: Res<RenderDevice>,
 ) {
     for (entity, camera) in &views {
@@ -95,7 +96,6 @@ pub fn prepare_resources(
                 view_formats: &[],
             };
 
-            // TODO: Cache buffer
             let screen_probe_spherical_harmonics = BufferDescriptor {
                 label: Some("solari_screen_probe_spherical_harmonics"),
                 size: probe_count * 112,
@@ -109,8 +109,8 @@ pub fn prepare_resources(
                 screen_probes_unfiltered: texture_cache
                     .get(&render_device, screen_probes_unfiltered),
                 screen_probes_filtered: texture_cache.get(&render_device, screen_probes_filtered),
-                screen_probe_spherical_harmonics: render_device
-                    .create_buffer(&screen_probe_spherical_harmonics),
+                screen_probe_spherical_harmonics: buffer_cache
+                    .get(&render_device, screen_probe_spherical_harmonics),
             });
         }
     }
@@ -269,6 +269,7 @@ pub fn queue_bind_groups(
                     binding: 6,
                     resource: solari_resources
                         .screen_probe_spherical_harmonics
+                        .buffer
                         .as_entire_binding(),
                 },
                 BindGroupEntry {
