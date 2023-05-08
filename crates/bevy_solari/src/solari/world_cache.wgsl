@@ -1,34 +1,41 @@
-struct WorldCacheHeader {
-    checksum: atomic<u32>,
-    last_change_index: atomic<u32>,
-}
-
-struct WorldCacheChangelist {
-    sampled_radiance: vec3<f32>,
-    previous_change_index: atomic<u32>,
-}
-
-struct WorldCacheData {
-    life: atomic<u32>,
-    position: vec3<f32>,
-    irradiance: vec3<f32>,
-}
-
 /// Maximum amount of entries in the world cache (must be a power of 2)
 const WORLD_CACHE_SIZE: u32 = 4194304u;
 /// Maximum amount of frames a cell can live for without being queried
 const WORLD_CACHE_CELL_LIFETIME: u32 = 10u;
-/// Marker value for an empty cell or previous changelist
-const WORLD_CACHE_NULL: u32 = 4294967295u;
+/// Marker value for an empty cell
+const WORLD_CACHE_EMPTY_CELL: u32 = 4294967295u;
 /// Maximum amount of steps to linearly probe for on key collision before giving up
 const WORLD_CACHE_MAX_SEARCH_STEPS: u32 = 10u;
 
 @group(0) @binding(0)
-var<storage, read_write> world_cache_headers: array<WorldCacheHeader, WORLD_CACHE_SIZE>;
+var<storage, read_write> world_cache_checksums: array<atomic<u32>, WORLD_CACHE_SIZE>;
+
+// Accessed as atomic in most passes, except for decrement_world_cache_cell_life
 @group(0) @binding(1)
-var<storage, read_write> world_cache_data: array<WorldCacheData, WORLD_CACHE_SIZE>;
+var<storage, read_write> world_cache_life: array<atomic<u32>, WORLD_CACHE_SIZE>;
+@group(0) @binding(1)
+var<storage, read_write> world_cache_life_non_atomic: array<u32, WORLD_CACHE_SIZE>;
+
 @group(0) @binding(2)
-var<storage, read_write> world_cache_changelist: array<WorldCacheChangelist, WORLD_CACHE_SIZE>;
+var<storage, read_write> world_cache_irradiance: array<vec3<f32>, WORLD_CACHE_SIZE>;
+
+struct WorldCacheExtraData {
+    position: vec3<f32>,
+}
+@group(0) @binding(3)
+var<storage, read_write> world_cache_extra_data: array<WorldCacheExtraData, WORLD_CACHE_SIZE>;
+
+@group(0) @binding(4)
+var<storage, read_write> world_cache_active_cells: array<u32, WORLD_CACHE_SIZE>;
+struct DispatchIndirect {
+    x: u32,
+    y: u32,
+    z: u32,
+}
+@group(0) @binding(5)
+var<storage, read_write> world_cache_active_cells_dispatch_count: DispatchIndirect;
+@group(0) @binding(6)
+var<storage, read_write> world_cache_active_cells_new_irradiance: array<vec3<f32>, WORLD_CACHE_SIZE>;
 
 // ------------------------------------------------------------------------------
 
@@ -70,21 +77,46 @@ fn query_world_cache(world_position: vec3<f32>) -> vec3<f32> {
     let checksum = compute_checksum(world_position);
 
     for (var i = 0u; i < WORLD_CACHE_MAX_SEARCH_STEPS; i++) {
-        let existing_checksum = atomicCompareExchangeWeak(&world_cache_headers[key].checksum, checksum, WORLD_CACHE_NULL);
+        let existing_checksum = atomicCompareExchangeWeak(&world_cache_checksums[key], checksum, WORLD_CACHE_EMPTY_CELL);
         if existing_checksum == checksum {
             // Key is already stored - get the corresponding irradiance and reset cell lifetime
-            atomicStore(&world_cache_data[key].life, WORLD_CACHE_CELL_LIFETIME);
-            return world_cache_data[key].irradiance;
-        } else if existing_checksum == WORLD_CACHE_NULL {
+            atomicStore(&world_cache_life[key], WORLD_CACHE_CELL_LIFETIME);
+            return world_cache_irradiance[key];
+        } else if existing_checksum == WORLD_CACHE_EMPTY_CELL {
             // Key is not stored - reset cell lifetime so that it starts getting updated next frame
-            atomicStore(&world_cache_data[key].life, WORLD_CACHE_CELL_LIFETIME);
-            world_cache_data[key].position = world_position;
+            atomicStore(&world_cache_life[key], WORLD_CACHE_CELL_LIFETIME);
+            world_cache_extra_data[key].position = world_position;
             return vec3(0.0)
         } else {
             // Collision - jump to next cell
-            key = wrap_key(pcg_hash(key));
+            key = wrap_key(key + 1u); // TODO: Compare +1 vs hashing the key again
         }
     }
 
     return vec3(0.0);
+}
+
+fn decrement_world_cache_cell_life(cell_index: u32) {
+    let life = world_cache_life_non_atomic[cell_index];
+    if life > 0u {
+        world_cache_life_non_atomic[cell_index] -= 1u;
+        if life == 1u {
+            world_cache_life_non_atomic[cell_index] = WORLD_CACHE_EMPTY_CELL;
+        }
+    }
+}
+
+fn compact_active_cells() {
+    // TODO: For each alive thread, write into world_cache_active_cells using prefix sum to calculate position,
+    // and then figure out how to write dispatch size to world_cache_active_cells_dispatch_count
+}
+
+fn trace_world_cache_cell_ray(active_cell_index: u32, cell_index: u32) {
+    // TODO: Trace rays from cell position. If hit a point, add emittance, but also world cache irradiance
+    // using query_world_cache()
+}
+
+fn blend_world_cache_cell_irradiance(active_cell_index: u32, cell_index: u32) {
+    // TODO: Read sample from world_cache_active_cells_new_irradiance, blend with existing
+    // irradiance in world_cache_irradiance
 }
