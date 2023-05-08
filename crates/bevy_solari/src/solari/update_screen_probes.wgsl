@@ -18,7 +18,7 @@ fn update_screen_probes(
 
     let probe_thread_index = u32(floor(rand_f(&rng2) * 63.0));
     if local_index == probe_thread_index {
-        probe_g_pixel = textureLoad(g_buffer, global_id.xy);
+        probe_g_pixel = textureLoad(g_buffer, global_id.xy); // TODO: may not exist
         probe_pixel_uv = (vec2<f32>(global_id.xy) + rand_vec2(&rng2)) / view.viewport.zw;
     }
     workgroupBarrier();

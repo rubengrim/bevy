@@ -56,8 +56,13 @@ fn shade_view_target(
     @builtin(workgroup_id) workgroup_id: vec3<u32>,
     @builtin(num_workgroups) workgroup_count: vec3<u32>,
 ) {
+    let screen_size = vec2<u32>(view.viewport.zw);
+    if global_id.x >= screen_size.x || global_id.y >= screen_size.y {
+        return;
+    }
+
     let probe_index = workgroup_id.x + workgroup_id.y * workgroup_count.x;
-    let pixel_index = global_id.x + global_id.y * u32(view.viewport.z);
+    let pixel_index = global_id.x + global_id.y * screen_size.x;
     let frame_index = globals.frame_count * 5782582u;
     var rng = pixel_index + frame_index;
     var rng2 = frame_index;

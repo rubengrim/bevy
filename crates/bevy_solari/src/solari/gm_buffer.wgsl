@@ -4,12 +4,17 @@
 
 @compute @workgroup_size(8, 8, 1)
 fn gm_buffer(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    let screen_size = vec2<u32>(view.viewport.zw);
+    if global_id.x >= screen_size.x || global_id.y >= screen_size.y {
+        return;
+    }
+
     var ray_distance = -1.0;
     var world_normal = vec3(-1.0);
     var material_index = 999999u;
     var texture_coordinates = vec2(-1.0);
 
-    let pixel_index = global_id.x + global_id.y * u32(view.viewport.z);
+    let pixel_index = global_id.x + global_id.y * screen_size.x;
     let frame_index = globals.frame_count * 5782582u;
     var rng = pixel_index + frame_index;
 
