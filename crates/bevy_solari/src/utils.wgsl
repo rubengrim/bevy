@@ -20,10 +20,14 @@ fn trace_ray(ray_origin: vec3<f32>, ray_direction: vec3<f32>, ray_t_min: f32) ->
     return rayQueryGetCommittedIntersection(&rq);
 }
 
-fn rand_f(state: ptr<function, u32>) -> f32 {
+fn pcg_hash(state: ptr<function, u32>) -> u32 {
     *state = *state * 747796405u + 2891336453u;
     let word = ((*state >> ((*state >> 28u) + 4u)) ^ *state) * 277803737u;
-    return f32((word >> 22u) ^ word) * bitcast<f32>(0x2f800004u);
+    return (word >> 22u) ^ word;
+}
+
+fn rand_f(state: ptr<function, u32>) -> f32 {
+    return f32(pcg_hash(state)) * bitcast<f32>(0x2f800004u);
 }
 
 fn rand_vec2(state: ptr<function, u32>) -> vec2<f32> {
