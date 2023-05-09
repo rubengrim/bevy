@@ -134,7 +134,7 @@ fn pass2(local_invocation_index: u32, workgroup_index: u32) {
 }
 
 fn pass3() {
-    b2[workgroup_index] = b1[last element of 1024 chunk];
+    b2[thread_index] = b1[last element of 1024 chunk];
     storageBarrier();
 
     exclusivePrefixSum(b2);
