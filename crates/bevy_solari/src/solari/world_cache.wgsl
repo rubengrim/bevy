@@ -124,19 +124,19 @@ fn pass1(cell_index: u32) {
             world_cache_life_non_atomic[cell_index] = WORLD_CACHE_EMPTY_CELL;
         }
     }
-
-    b1[cell_index] = life == 0u;
 }
 
 fn pass2(local_invocation_index: u32, workgroup_index: u32) {
-    inclusivePrefixSum(b1[1024 chunk based on workgroup_index]);
+    b1[cell_index] = world_cache_life_non_atomic[cell_index] == 0u;
+    storageBarrier();
 
-    if local_invocation_index == 1023u {
-        b2[workgroup_index] = b1[last element of 1024 chunk];
-    }
+    inclusivePrefixSum(b1[1024 chunk based on workgroup_index]);
 }
 
 fn pass3() {
+    b2[workgroup_index] = b1[last element of 1024 chunk];
+    storageBarrier();
+
     exclusivePrefixSum(b2);
 }
 
