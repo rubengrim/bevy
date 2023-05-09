@@ -77,7 +77,7 @@ fn query_world_cache(world_position: vec3<f32>) -> vec3<f32> {
             // Key is not stored - reset cell lifetime so that it starts getting updated next frame
             atomicStore(&world_cache_life[key], WORLD_CACHE_CELL_LIFETIME);
             world_cache_extra_data[key].position = world_position;
-            return vec3(0.0)
+            return vec3(0.0);
         } else {
             // Collision - jump to next cell
             key = wrap_key(key + 1u); // TODO: Compare +1 vs hashing the key again
@@ -110,46 +110,80 @@ struct DispatchIndirect {
 
 var<storage, read_write> b1: array<u32, WORLD_CACHE_SIZE>;
 var<storage, read_write> b2: array<u32, 1024u>;
+var<workgroup> w1: array<u32, 1024u>;
+var<workgroup> w2: array<u32, 1024u>;
 
 var<storage, read_write> world_cache_active_cells: array<u32, WORLD_CACHE_SIZE>;
 var<storage, read_write> world_cache_active_cell_count: u32;
 var<storage, read_write> world_cache_active_cells_dispatch: DispatchIndirect;
 
-fn pass1(cell_index: u32) {
-    var life = world_cache_life_non_atomic[cell_index];
+@compute(1024, 1, 1)
+fn decay_world_cache_cells(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    var life = world_cache_life_non_atomic[global_id.x];
     if life > 0u {
         life -= 1u;
-        world_cache_life_non_atomic[cell_index] = life;
+        world_cache_life_non_atomic[global_id.x] = life;
+
         if life == 0u {
-            world_cache_life_non_atomic[cell_index] = WORLD_CACHE_EMPTY_CELL;
+            world_cache_life_non_atomic[global_id.x] = WORLD_CACHE_EMPTY_CELL;
+            world_cache_irradiance[global_id.x] = vec3(0.0);
         }
     }
 }
 
-fn pass2(local_invocation_index: u32, workgroup_index: u32) {
-    b1[cell_index] = world_cache_life_non_atomic[cell_index] == 0u;
-    storageBarrier();
-
-    inclusivePrefixSum(b1[1024 chunk based on workgroup_index]);
+@compute(1024, 1, 1)
+fn compact_world_cache_single_block(
+    @builtin(global_invocation_id) cell_id: vec3<u32>,
+    @builtin(local_invocation_index) t: u32,
+) {
+    if t == 0u { w1[0u] = 0u } else { w1[t] = world_cache_life_non_atomic[cell_id.x - 1u] != 0u }; workgroupBarrier();
+    if t < 1u { w2[t] = w1[t] } else { w2[t] = w1[t] + w1[t - 1u] } workgroupBarrier();
+    if t < 2u { w1[t] = w2[t] } else { w1[t] = w2[t] + w2[t - 2u] } workgroupBarrier();
+    if t < 4u { w2[t] = w1[t] } else { w2[t] = w1[t] + w1[t - 4u] } workgroupBarrier();
+    if t < 8u { w1[t] = w2[t] } else { w1[t] = w2[t] + w2[t - 8u] } workgroupBarrier();
+    if t < 16u { w2[t] = w1[t] } else { w2[t] = w1[t] + w1[t - 16u] } workgroupBarrier();
+    if t < 32u { w1[t] = w2[t] } else { w1[t] = w2[t] + w2[t - 32u] } workgroupBarrier();
+    if t < 64u { w2[t] = w1[t] } else { w2[t] = w1[t] + w1[t - 64u] } workgroupBarrier();
+    if t < 128u { w1[t] = w2[t] } else { w1[t] = w2[t] + w2[t - 128u] } workgroupBarrier();
+    if t < 256u { w2[t] = w1[t] } else { w2[t] = w1[t] + w1[t - 256u] } workgroupBarrier();
+    if t < 512u { b1[t] = w2[t] } else { b1[t] = w2[t] + w2[t - 512u] }
 }
 
-fn pass3() {
-    b2[thread_index] = b1[last element of 1024 chunk];
-    storageBarrier();
-
-    exclusivePrefixSum(b2);
+@compute(1024, 1, 1)
+fn compact_world_cache_blocks(@builtin(local_invocation_index) t: u32) {
+    if t == 0u { w1[0u] = 0u } else { w1[t] = b1[t * 1024u - 1u] != 0u }; workgroupBarrier();
+    if t < 1u { w2[t] = w1[t] } else { w2[t] = w1[t] + w1[t - 1u] } workgroupBarrier();
+    if t < 2u { w1[t] = w2[t] } else { w1[t] = w2[t] + w2[t - 2u] } workgroupBarrier();
+    if t < 4u { w2[t] = w1[t] } else { w2[t] = w1[t] + w1[t - 4u] } workgroupBarrier();
+    if t < 8u { w1[t] = w2[t] } else { w1[t] = w2[t] + w2[t - 8u] } workgroupBarrier();
+    if t < 16u { w2[t] = w1[t] } else { w2[t] = w1[t] + w1[t - 16u] } workgroupBarrier();
+    if t < 32u { w1[t] = w2[t] } else { w1[t] = w2[t] + w2[t - 32u] } workgroupBarrier();
+    if t < 64u { w2[t] = w1[t] } else { w2[t] = w1[t] + w1[t - 64u] } workgroupBarrier();
+    if t < 128u { w1[t] = w2[t] } else { w1[t] = w2[t] + w2[t - 128u] } workgroupBarrier();
+    if t < 256u { w2[t] = w1[t] } else { w2[t] = w1[t] + w1[t - 256u] } workgroupBarrier();
+    if t < 512u { b2[t] = w2[t] } else { b2[t] = w2[t] + w2[t - 512u] }
 }
 
-fn pass4(cell_index: u32, local_invocation_index: u32, workgroup_index: u32) {
-    let left_dead_count = b1[cell_index] + b2[workgroup_index];
-    if world_cache_life_non_atomic[cell_index] != 0u {
-        let compacted_index = cell_index - left_dead_count;
-        world_cache_active_cells[compacted_index] = cell_index;
+var<workgroup> w_b2: u32;
+
+@compute(1024, 1, 1)
+fn compact_world_cache_write_active_cells(
+    @builtin(global_invocation_id) cell_id: vec3<u32>,
+    @builtin(workgroup_id) workgroup_id: vec3<u32>,
+    @builtin(local_invocation_index) thread_index: u32,
+) {
+    if thread_index == 0u {
+        w_b2 = b2[workgroup_id.x];
+    }
+    workgroupBarrier();
+
+    let compacted_index = b1[cell_id.x] + w_b2;
+    if world_cache_life_non_atomic[cell_id.x] != 0u {
+        world_cache_active_cells[compacted_index] = cell_id.x;
     }
 
-    // last thread, globally
-    if local_invocation_index == 1023u && workgroup_index == 1023u {
-        world_cache_active_cell_count = WORLD_CACHE_SIZE - left_dead_count;
+    if thread_index == 0u && workgroup_id.x == 0u {
+        world_cache_active_cell_count = compacted_index + 1u;
         world_cache_active_cells_dispatch = DispatchIndirect((world_cache_active_cell_count + 1023u) / 1024u, 1u, 1u);
     }
 }
