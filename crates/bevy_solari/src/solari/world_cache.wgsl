@@ -87,16 +87,6 @@ fn query_world_cache(world_position: vec3<f32>) -> vec3<f32> {
     return vec3(0.0);
 }
 
-fn decrement_world_cache_cell_life(cell_index: u32) {
-    let life = world_cache_life_non_atomic[cell_index];
-    if life > 0u {
-        world_cache_life_non_atomic[cell_index] -= 1u;
-        if life == 1u {
-            world_cache_life_non_atomic[cell_index] = WORLD_CACHE_EMPTY_CELL;
-        }
-    }
-}
-
 fn trace_world_cache_cell_ray(active_cell_index: u32, cell_index: u32) {
     // TODO: Trace rays from cell position. If hit a point, add emittance, but also world cache irradiance
     // using query_world_cache()
