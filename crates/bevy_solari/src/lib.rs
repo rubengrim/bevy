@@ -11,7 +11,7 @@ pub use crate::{
 use crate::{
     path_tracer::{node::SolariPathTracerNode, SolariPathTracerPlugin},
     scene::SolariScenePlugin,
-    solari::{node::SolariNode, SolariRealtimePlugin},
+    solari::{node::SolariNode, world_cache::node::SolariWorldCacheNode, SolariRealtimePlugin},
 };
 use bevy_app::{App, Plugin};
 use bevy_asset::{load_internal_asset, HandleUntyped};
@@ -20,11 +20,15 @@ use bevy_core_pipeline::{
     tonemapping::TonemappingNode,
     upscaling::UpscalingNode,
 };
-use bevy_ecs::system::Resource;
+use bevy_ecs::{system::Resource, world::FromWorld};
 use bevy_reflect::TypeUuid;
 use bevy_render::{
-    render_graph::RenderGraphApp, render_resource::Shader, renderer::RenderDevice,
-    settings::WgpuFeatures, RenderApp,
+    main_graph::node::CAMERA_DRIVER,
+    render_graph::{RenderGraph, RenderGraphApp},
+    render_resource::Shader,
+    renderer::RenderDevice,
+    settings::WgpuFeatures,
+    RenderApp,
 };
 
 #[derive(Resource)]
@@ -35,6 +39,7 @@ pub struct SolariPlugin;
 
 const SOLARI_GRAPH: &str = "solari_graph";
 const SOLARI_NODE: &str = "solari_node";
+const SOLARI_WORLD_CACHE_NODE: &str = "solari_world_cache";
 const SOLARI_PATH_TRACER_NODE: &str = "solari_path_tracer_node";
 
 const SOLARI_UTILS_SHADER: HandleUntyped =
@@ -64,7 +69,14 @@ impl Plugin for SolariPlugin {
             .add_plugin(SolariRealtimePlugin)
             .add_plugin(SolariPathTracerPlugin);
 
-        app.sub_app_mut(RenderApp)
+        let render_app = &mut app.sub_app_mut(RenderApp);
+
+        let world_cache_node = SolariWorldCacheNode::from_world(&mut render_app.world);
+        let render_graph = &mut render_app.world.resource_mut::<RenderGraph>();
+        render_graph.add_node(SOLARI_WORLD_CACHE_NODE, world_cache_node);
+        render_graph.add_node_edge(CAMERA_DRIVER, SOLARI_WORLD_CACHE_NODE);
+
+        render_app
             .add_render_sub_graph(SOLARI_GRAPH)
             .add_render_graph_node::<SolariNode>(SOLARI_GRAPH, SOLARI_NODE)
             .add_render_graph_node::<SolariPathTracerNode>(SOLARI_GRAPH, SOLARI_PATH_TRACER_NODE)

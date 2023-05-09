@@ -5,6 +5,7 @@ pub mod node;
 mod resources;
 mod shade_view_target;
 mod update_screen_probes;
+pub mod world_cache;
 
 use self::{
     camera::SolariSettings,
@@ -17,6 +18,7 @@ use self::{
     update_screen_probes::{
         prepare_update_screen_probe_pipelines, SolariUpdateScreenProbesPipeline,
     },
+    world_cache::SolariWorldCachePlugin,
 };
 use bevy_app::{App, Plugin};
 use bevy_asset::{load_internal_asset, HandleUntyped};
@@ -74,7 +76,8 @@ impl Plugin for SolariRealtimePlugin {
             Shader::from_wgsl
         );
 
-        app.add_plugin(ExtractComponentPlugin::<SolariSettings>::default());
+        app.add_plugin(SolariWorldCachePlugin)
+            .add_plugin(ExtractComponentPlugin::<SolariSettings>::default());
 
         app.sub_app_mut(RenderApp)
             .init_resource::<SolariBindGroupLayout>()

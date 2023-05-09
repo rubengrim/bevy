@@ -1,0 +1,45 @@
+#define_import_path bevy_solari::world_cache::bindings
+
+/// Maximum amount of entries in the world cache (must be a power of 2)
+const WORLD_CACHE_SIZE: u32 = 1048576u;
+/// Maximum amount of frames a cell can live for without being queried
+const WORLD_CACHE_CELL_LIFETIME: u32 = 10u;
+/// Maximum amount of steps to linearly probe for on key collision before giving up
+const WORLD_CACHE_MAX_SEARCH_STEPS: u32 = 10u;
+/// Marker value for an empty cell
+const WORLD_CACHE_EMPTY_CELL: u32 = 4294967295u;
+
+struct WorldCacheExtraData {
+    position: vec3<f32>,
+}
+
+struct DispatchIndirect {
+    x: u32,
+    y: u32,
+    z: u32,
+}
+
+@group(0) @binding(0)
+var<storage, read_write> world_cache_checksums: array<atomic<u32>, WORLD_CACHE_SIZE>;
+@group(0) @binding(1)
+#ifdef WORLD_CACHE_NON_ATOMIC_LIFE_BUFFER
+var<storage, read_write> world_cache_life: array<u32, WORLD_CACHE_SIZE>;
+#else
+var<storage, read_write> world_cache_life: array<atomic<u32>, WORLD_CACHE_SIZE>;
+#endif
+@group(0) @binding(2)
+var<storage, read_write> world_cache_irradiance: array<vec3<f32>, WORLD_CACHE_SIZE>;
+@group(0) @binding(3)
+var<storage, read_write> world_cache_extra_data: array<WorldCacheExtraData, WORLD_CACHE_SIZE>;
+@group(0) @binding(4)
+var<storage, read_write> world_cache_active_cells_new_irradiance: array<vec3<f32>, WORLD_CACHE_SIZE>;
+@group(0) @binding(5)
+var<storage, read_write> world_cache_b1: array<u32, WORLD_CACHE_SIZE>;
+@group(0) @binding(6)
+var<storage, read_write> world_cache_b2: array<u32, 1024u>;
+@group(0) @binding(7)
+var<storage, read_write> world_cache_active_cell_indices: array<u32, WORLD_CACHE_SIZE>;
+@group(0) @binding(8)
+var<storage, read_write> world_cache_active_cells_count: u32;
+@group(0) @binding(9)
+var<storage, read_write> world_cache_active_cells_dispatch: DispatchIndirect;
