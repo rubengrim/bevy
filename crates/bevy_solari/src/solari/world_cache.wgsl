@@ -125,7 +125,7 @@ fn decay_world_cache_cells(@builtin(global_invocation_id) global_id: vec3<u32>) 
         world_cache_life_non_atomic[global_id.x] = life;
 
         if life == 0u {
-            world_cache_life_non_atomic[global_id.x] = WORLD_CACHE_EMPTY_CELL;
+            world_cache_checksums[global_id.x] = WORLD_CACHE_EMPTY_CELL;
             world_cache_irradiance[global_id.x] = vec3(0.0);
         }
     }
