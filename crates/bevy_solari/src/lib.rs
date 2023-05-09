@@ -74,7 +74,7 @@ impl Plugin for SolariPlugin {
         let world_cache_node = SolariWorldCacheNode::from_world(&mut render_app.world);
         let render_graph = &mut render_app.world.resource_mut::<RenderGraph>();
         render_graph.add_node(SOLARI_WORLD_CACHE_NODE, world_cache_node);
-        render_graph.add_node_edge(CAMERA_DRIVER, SOLARI_WORLD_CACHE_NODE);
+        render_graph.add_node_edge(SOLARI_WORLD_CACHE_NODE, CAMERA_DRIVER);
 
         render_app
             .add_render_sub_graph(SOLARI_GRAPH)

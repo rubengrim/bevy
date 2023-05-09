@@ -19,27 +19,27 @@ struct DispatchIndirect {
     z: u32,
 }
 
-@group(0) @binding(0)
+@group(#WORLD_CACHE_BIND_GROUP) @binding(0)
 var<storage, read_write> world_cache_checksums: array<atomic<u32>, WORLD_CACHE_SIZE>;
-@group(0) @binding(1)
+@group(#WORLD_CACHE_BIND_GROUP) @binding(1)
 #ifdef WORLD_CACHE_NON_ATOMIC_LIFE_BUFFER
 var<storage, read_write> world_cache_life: array<u32, WORLD_CACHE_SIZE>;
 #else
 var<storage, read_write> world_cache_life: array<atomic<u32>, WORLD_CACHE_SIZE>;
 #endif
-@group(0) @binding(2)
+@group(#WORLD_CACHE_BIND_GROUP) @binding(2)
 var<storage, read_write> world_cache_irradiance: array<vec3<f32>, WORLD_CACHE_SIZE>;
-@group(0) @binding(3)
+@group(#WORLD_CACHE_BIND_GROUP) @binding(3)
 var<storage, read_write> world_cache_extra_data: array<WorldCacheExtraData, WORLD_CACHE_SIZE>;
-@group(0) @binding(4)
+@group(#WORLD_CACHE_BIND_GROUP) @binding(4)
 var<storage, read_write> world_cache_active_cells_new_irradiance: array<vec3<f32>, WORLD_CACHE_SIZE>;
-@group(0) @binding(5)
+@group(#WORLD_CACHE_BIND_GROUP) @binding(5)
 var<storage, read_write> world_cache_b1: array<u32, WORLD_CACHE_SIZE>;
-@group(0) @binding(6)
+@group(#WORLD_CACHE_BIND_GROUP) @binding(6)
 var<storage, read_write> world_cache_b2: array<u32, 1024u>;
-@group(0) @binding(7)
+@group(#WORLD_CACHE_BIND_GROUP) @binding(7)
 var<storage, read_write> world_cache_active_cell_indices: array<u32, WORLD_CACHE_SIZE>;
-@group(0) @binding(8)
+@group(#WORLD_CACHE_BIND_GROUP) @binding(8)
 var<storage, read_write> world_cache_active_cells_count: u32;
-@group(0) @binding(9)
+@group(#WORLD_CACHE_BIND_GROUP) @binding(9)
 var<storage, read_write> world_cache_active_cells_dispatch: DispatchIndirect;

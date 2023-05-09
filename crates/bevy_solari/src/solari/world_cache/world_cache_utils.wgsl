@@ -31,12 +31,13 @@ fn compute_checksum(world_position: vec3<f32>) -> u32 {
     return key;
 }
 
+#ifndef WORLD_CACHE_NON_ATOMIC_LIFE_BUFFER
 fn query_world_cache(world_position: vec3<f32>) -> vec3<f32> {
     var key = compute_key(world_position);
     let checksum = compute_checksum(world_position);
 
     for (var i = 0u; i < WORLD_CACHE_MAX_SEARCH_STEPS; i++) {
-        let existing_checksum = atomicCompareExchangeWeak(&world_cache_checksums[key], checksum, WORLD_CACHE_EMPTY_CELL);
+        let existing_checksum = atomicCompareExchangeWeak(&world_cache_checksums[key], checksum, WORLD_CACHE_EMPTY_CELL).old_value;
         if existing_checksum == checksum {
             // Key is already stored - get the corresponding irradiance and reset cell lifetime
             atomicStore(&world_cache_life[key], WORLD_CACHE_CELL_LIFETIME);
@@ -54,3 +55,4 @@ fn query_world_cache(world_position: vec3<f32>) -> vec3<f32> {
 
     return vec3(0.0);
 }
+#endif

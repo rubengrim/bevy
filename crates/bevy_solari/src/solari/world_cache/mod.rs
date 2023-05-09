@@ -1,12 +1,15 @@
 pub mod node;
+mod pipelines;
 mod resources;
 
-use self::resources::SolariWorldCacheResources;
+use self::{pipelines::SolariWorldCachePipelineIds, resources::SolariWorldCacheResources};
 use bevy_app::{App, Plugin};
 use bevy_asset::{load_internal_asset, HandleUntyped};
 
 use bevy_reflect::TypeUuid;
 use bevy_render::{render_resource::Shader, RenderApp};
+
+const WORLD_CACHE_SIZE: u64 = 1048576;
 
 pub struct SolariWorldCachePlugin;
 
@@ -39,6 +42,7 @@ impl Plugin for SolariWorldCachePlugin {
         );
 
         app.sub_app_mut(RenderApp)
-            .init_resource::<SolariWorldCacheResources>();
+            .init_resource::<SolariWorldCacheResources>()
+            .init_resource::<SolariWorldCachePipelineIds>();
     }
 }
