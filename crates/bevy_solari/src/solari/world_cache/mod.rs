@@ -1,6 +1,6 @@
 pub mod node;
 mod pipelines;
-mod resources;
+pub mod resources;
 
 use self::{pipelines::SolariWorldCachePipelineIds, resources::SolariWorldCacheResources};
 use bevy_app::{App, Plugin};

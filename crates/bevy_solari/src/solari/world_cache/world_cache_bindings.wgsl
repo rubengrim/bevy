@@ -7,7 +7,7 @@ const WORLD_CACHE_CELL_LIFETIME: u32 = 10u;
 /// Maximum amount of steps to linearly probe for on key collision before giving up
 const WORLD_CACHE_MAX_SEARCH_STEPS: u32 = 10u;
 /// Marker value for an empty cell
-const WORLD_CACHE_EMPTY_CELL: u32 = 4294967295u;
+const WORLD_CACHE_EMPTY_CELL: u32 = 0u;
 
 struct WorldCacheExtraData {
     position: vec3<f32>,

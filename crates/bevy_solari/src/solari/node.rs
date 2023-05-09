@@ -2,6 +2,7 @@ use super::{
     filter_screen_probes::SolariFilterScreenProbesPipelineId, gm_buffer::SolariGmBufferPipelineId,
     resources::SolariBindGroup, shade_view_target::SolariShadeViewTargetPipelineId,
     update_screen_probes::SolariUpdateScreenProbesPipelineId,
+    world_cache::resources::SolariWorldCacheResources,
 };
 use crate::scene::bind_group::SolariSceneBindGroup;
 use bevy_ecs::{
@@ -46,10 +47,12 @@ impl Node for SolariNode {
             )),
             Some(pipeline_cache),
             Some(SolariSceneBindGroup(Some(scene_bind_group))),
+            Some(world_cache_resources),
         ) = (
             self.0.get_manual(world, graph.view_entity()),
             world.get_resource::<PipelineCache>(),
             world.get_resource::<SolariSceneBindGroup>(),
+            world.get_resource::<SolariWorldCacheResources>(),
         ) else {
             return Ok(());
         };
@@ -79,6 +82,7 @@ impl Node for SolariNode {
             });
             solari_pass.set_bind_group(0, &scene_bind_group, &[]);
             solari_pass.set_bind_group(1, &bind_group.0, &[view_uniform_offset.offset]);
+            solari_pass.set_bind_group(2, &world_cache_resources.bind_group, &[]);
 
             solari_pass.set_pipeline(gm_buffer_pipeline);
             solari_pass.dispatch_workgroups(width, height, 1);
