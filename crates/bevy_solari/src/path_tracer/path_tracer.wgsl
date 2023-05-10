@@ -8,6 +8,8 @@ var<uniform> view: View;
 var accumulation_texture: texture_storage_2d<rgba32float, read_write>;
 @group(1) @binding(2)
 var output_texture: texture_storage_2d<rgba16float, read_write>;
+@group(1) @binding(3)
+var<storage, read_write> rays: array<RayDesc>;
 var<push_constant> previous_sample_count: f32;
 
 @compute @workgroup_size(8, 8, 1)
@@ -29,29 +31,12 @@ fn path_trace(@builtin(global_invocation_id) global_id: vec3<u32>) {
     // TODO: Specular BRDF
     // TODO: BRDF energy conservation
 
-    var color = vec3(0.0);
-    var throughput = vec3(1.0);
-    loop {
-        let ray_hit = trace_ray(ray_origin, ray_direction, ray_t_min);
-        if ray_hit.kind != RAY_QUERY_INTERSECTION_NONE {
-            let ray_hit = map_ray_hit(ray_hit);
+    let ray_hit = trace_ray(ray_origin, ray_direction, ray_t_min);
+    if ray_hit.kind != RAY_QUERY_INTERSECTION_NONE {
+        let ray_hit = map_ray_hit(ray_hit);
 
-            color += ray_hit.material.emission * throughput;
-            throughput *= ray_hit.material.base_color;
-
-            let p = max(max(throughput.r, throughput.g), throughput.b);
-            if rand_f(&rng) > p { break; }
-            throughput *= 1.0 / p;
-
-            ray_origin = ray_hit.world_position;
-            ray_direction = sample_cosine_hemisphere(ray_hit.world_normal, &rng);
-            ray_t_min = 0.001;
-        } else { break; }
+        ray_origin = ray_hit.world_position;
+        ray_direction = sample_cosine_hemisphere(ray_hit.world_normal, &rng);
     }
-
-    let old_color = textureLoad(accumulation_texture, global_id.xy).rgb;
-    let new_color = vec4((color + previous_sample_count * old_color) / (previous_sample_count + 1.0), 1.0);
-
-    textureStore(accumulation_texture, global_id.xy, new_color);
-    textureStore(output_texture, global_id.xy, new_color);
+    rays[pixel_index] = RayDesc(vec4(ray_origin, bitcast<f32>(global_id.x)), vec4(ray_direction, bitcast<f32>(global_id.y)));
 }
