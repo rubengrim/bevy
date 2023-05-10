@@ -93,7 +93,7 @@ impl Node for SolariPathTracerNode {
 
         let previous_sample_count = path_tracer.sample_count.fetch_add(1, Ordering::SeqCst) as f32;
 
-        let ray_count = ((viewport.x * viewport.y) + 63) / 64;
+        let ray_count = ((viewport.x * viewport.y) + 4095) / 4096;
         let block_count = ray_count / 64;
 
         {
@@ -108,13 +108,22 @@ impl Node for SolariPathTracerNode {
             solari_pass.set_push_constants(0, &previous_sample_count.to_le_bytes());
             solari_pass.dispatch_workgroups((viewport.x + 7) / 8, (viewport.y + 7) / 8, 1);
 
-            let mut starting_bit = 32;
+            let mut starting_bit = 30;
             let mut swap = false;
             solari_pass.set_pipeline(gen_key32_pipeline);
-            solari_pass.dispatch_workgroups(block_count, block_count, 1);
-            while starting_bit > 0 {
-                solari_pass.set_pipeline(check_key32_pipeline);
-                solari_pass.dispatch_workgroups(block_count, block_count, 1);
+            solari_pass.dispatch_workgroups(block_count, 1, 1);
+            while starting_bit >= 0 {
+                solari_pass.set_pipeline(ps_first_pipeline);
+                solari_pass.dispatch_workgroups(ray_count, 1, 1);
+
+                solari_pass.set_pipeline(ps_second_pipeline);
+                solari_pass.dispatch_workgroups(1, 1, 1);
+
+                solari_pass.set_pipeline(ps_third_pipeline);
+                solari_pass.dispatch_workgroups(ray_count, 1, 1);
+
+                solari_pass.set_pipeline(map_key32_pipeline);
+                solari_pass.dispatch_workgroups(block_count, 1, 1);
 
                 swap = !swap;
                 if swap {

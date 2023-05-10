@@ -266,7 +266,7 @@ impl SpecializedComputePipeline for PrefixSumFirstPass {
             push_constant_ranges: vec![],
             shader: SOLARI_SORT_RAYS_SHADER.typed(),
             shader_defs: vec![],
-            entry_point: "prefix_sum_first_pass".into(),
+            entry_point: "prefix_sum_step1".into(),
         }
     }
 }
@@ -320,7 +320,7 @@ impl SpecializedComputePipeline for PrefixSumSecondPass {
             push_constant_ranges: vec![],
             shader: SOLARI_SORT_RAYS_SHADER.typed(),
             shader_defs: vec![],
-            entry_point: "prefix_sum_second_pass".into(),
+            entry_point: "prefix_sum_block_sum".into(),
         }
     }
 }
@@ -374,7 +374,7 @@ impl SpecializedComputePipeline for PrefixSumThirdPass {
             push_constant_ranges: vec![],
             shader: SOLARI_SORT_RAYS_SHADER.typed(),
             shader_defs: vec![],
-            entry_point: "prefix_sum_third_pass".into(),
+            entry_point: "prefix_sum_step2".into(),
         }
     }
 }

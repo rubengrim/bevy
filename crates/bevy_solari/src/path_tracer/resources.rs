@@ -392,14 +392,25 @@ pub fn create_view_bind_group(
                 },
                 BindGroupEntry {
                     binding: 4,
-                    resource: accumulation_texture.keys32.buffer.as_entire_binding(),
+                    resource: if swap {
+                        accumulation_texture.keys32.buffer.as_entire_binding()
+                    } else {
+                        accumulation_texture.keys32_out.buffer.as_entire_binding()
+                    },
                 },
                 BindGroupEntry {
                     binding: 5,
-                    resource: accumulation_texture
-                        .block_start_for_radix
-                        .buffer
-                        .as_entire_binding(),
+                    resource: if swap {
+                        accumulation_texture
+                            .block_start_for_radix
+                            .buffer
+                            .as_entire_binding()
+                    } else {
+                        accumulation_texture
+                            .block_start_for_radix_output
+                            .buffer
+                            .as_entire_binding()
+                    },
                 },
                 BindGroupEntry {
                     binding: 6,
@@ -437,14 +448,25 @@ pub fn create_view_bind_group(
                 },
                 BindGroupEntry {
                     binding: 12,
-                    resource: accumulation_texture
-                        .block_start_for_radix_output
-                        .buffer
-                        .as_entire_binding(),
+                    resource: if swap {
+                        accumulation_texture
+                            .block_start_for_radix_output
+                            .buffer
+                            .as_entire_binding()
+                    } else {
+                        accumulation_texture
+                            .block_start_for_radix
+                            .buffer
+                            .as_entire_binding()
+                    },
                 },
                 BindGroupEntry {
                     binding: 13,
-                    resource: accumulation_texture.keys32_out.buffer.as_entire_binding(),
+                    resource: if swap {
+                        accumulation_texture.keys32_out.buffer.as_entire_binding()
+                    } else {
+                        accumulation_texture.keys32.buffer.as_entire_binding()
+                    },
                 },
                 BindGroupEntry {
                     binding: 14,
