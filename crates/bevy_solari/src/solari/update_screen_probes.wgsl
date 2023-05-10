@@ -40,7 +40,7 @@ fn update_screen_probes(
         let ray_hit = map_ray_hit(ray_hit);
         let material = ray_hit.material;
         let irradiance = query_world_cache(ray_hit.world_position, ray_hit.world_normal);
-        color = (material.base_color * irradiance) + material.emission;
+        color = material.emission + (material.base_color * irradiance);
     }
 
     // var blended_radiance = color;
