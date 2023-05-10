@@ -1,5 +1,6 @@
 use super::{
     camera::SolariPathTracer, resources::create_view_bind_group_layout, SOLARI_PATH_TRACER_SHADER,
+    SOLARI_TRACE_RAYS_SHADER,
 };
 use crate::scene::bind_group_layout::SolariSceneResources;
 use bevy_ecs::{
@@ -73,5 +74,59 @@ pub fn prepare_pipelines(
         commands
             .entity(entity)
             .insert(SolariPathTracerPipelineId(pipeline_id));
+    }
+}
+
+#[derive(Resource)]
+pub struct TraceRaysFromBuffer {
+    pub view_bind_group_layout: BindGroupLayout,
+    pub scene_bind_group_layout: BindGroupLayout,
+}
+
+impl FromWorld for TraceRaysFromBuffer {
+    fn from_world(world: &mut World) -> Self {
+        let scene_resources = world.resource::<SolariSceneResources>();
+        Self {
+            view_bind_group_layout: create_view_bind_group_layout(world.resource::<RenderDevice>()),
+            scene_bind_group_layout: scene_resources.bind_group_layout.clone(),
+        }
+    }
+}
+
+impl SpecializedComputePipeline for TraceRaysFromBuffer {
+    type Key = SolariPathTracerPipelineKey;
+
+    fn specialize(&self, _key: Self::Key) -> ComputePipelineDescriptor {
+        ComputePipelineDescriptor {
+            label: Some("solari_path_tracer_pipeline".into()),
+            layout: vec![
+                self.scene_bind_group_layout.clone(),
+                self.view_bind_group_layout.clone(),
+            ],
+            push_constant_ranges: vec![],
+            shader: SOLARI_TRACE_RAYS_SHADER.typed(),
+            shader_defs: vec![],
+            entry_point: "trace_rays".into(),
+        }
+    }
+}
+
+#[derive(Component)]
+pub struct TraceRaysFromBufferId(pub CachedComputePipelineId);
+
+pub fn prepare_pipelines(
+    views: Query<Entity, With<SolariPathTracer>>,
+    mut commands: Commands,
+    pipeline_cache: Res<PipelineCache>,
+    mut pipelines: ResMut<SpecializedComputePipelines<TraceRaysFromBuffer>>,
+    pipeline: Res<TraceRaysFromBuffer>,
+) {
+    for entity in &views {
+        let pipeline_id =
+            pipelines.specialize(&pipeline_cache, &pipeline, SolariPathTracerPipelineKey {});
+
+        commands
+            .entity(entity)
+            .insert(TraceRaysFromBufferId(pipeline_id));
     }
 }

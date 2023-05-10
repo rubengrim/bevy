@@ -3,6 +3,8 @@ pub mod node;
 mod pipeline;
 mod resources;
 
+use crate::path_tracer::pipeline::TraceRaysFromBuffer;
+
 use self::{
     camera::{reset_accumulation_on_camera_movement, SolariPathTracer},
     pipeline::{prepare_pipelines, SolariPathtracerPipeline},
@@ -23,6 +25,8 @@ pub struct SolariPathTracerPlugin;
 
 const SOLARI_PATH_TRACER_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 3717171717171755);
+const SOLARI_TRACE_RAYS_SHADER: HandleUntyped =
+    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 5517471717171755);
 
 impl Plugin for SolariPathTracerPlugin {
     fn build(&self, app: &mut App) {
@@ -30,6 +34,12 @@ impl Plugin for SolariPathTracerPlugin {
             app,
             SOLARI_PATH_TRACER_SHADER,
             "path_tracer.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            SOLARI_TRACE_RAYS_SHADER,
+            "trace_rays.wgsl",
             Shader::from_wgsl
         );
 
@@ -42,6 +52,8 @@ impl Plugin for SolariPathTracerPlugin {
         app.sub_app_mut(RenderApp)
             .init_resource::<SolariPathtracerPipeline>()
             .init_resource::<SpecializedComputePipelines<SolariPathtracerPipeline>>()
+            .init_resource::<TraceRaysFromBuffer>()
+            .init_resource::<SpecializedComputePipelines<TraceRaysFromBuffer>>()
             .add_systems(
                 Render,
                 (prepare_accumulation_textures, prepare_pipelines).in_set(RenderSet::Prepare),

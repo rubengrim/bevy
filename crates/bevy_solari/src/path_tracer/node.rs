@@ -1,6 +1,6 @@
 use super::{
     camera::SolariPathTracer,
-    pipeline::{SolariPathTracerPipelineId, SolariPathtracerPipeline},
+    pipeline::{SolariPathTracerPipelineId, SolariPathtracerPipeline, TraceRaysFromBufferId},
     resources::{create_view_bind_group, SolariPathTracerAccumulationTexture},
 };
 use crate::scene::bind_group::SolariSceneBindGroup;
@@ -21,6 +21,7 @@ pub struct SolariPathTracerNode(
     QueryState<(
         &'static SolariPathTracer,
         &'static SolariPathTracerPipelineId,
+        &'static TraceRaysFromBufferId,
         &'static SolariPathTracerAccumulationTexture,
         &'static ViewTarget,
         &'static ViewUniformOffset,
@@ -36,7 +37,7 @@ impl Node for SolariPathTracerNode {
         world: &World,
     ) -> Result<(), NodeRunError> {
         let (
-            Ok((path_tracer, pipeline_id, accumulation_texture, view_target, view_uniform_offset, camera)),
+            Ok((path_tracer, pipeline_id,tr_id, accumulation_texture, view_target, view_uniform_offset, camera)),
             Some(pipeline_cache),
             Some(SolariSceneBindGroup(Some(scene_bind_group))),
             Some(view_uniforms),
@@ -50,7 +51,7 @@ impl Node for SolariPathTracerNode {
         ) else {
             return Ok(());
         };
-        let (Some(pipeline), Some(viewport)) = (pipeline_cache.get_compute_pipeline(pipeline_id.0), camera.physical_viewport_size) else {
+        let (Some(pipeline), Some(tr_pipeline), Some(viewport)) = (pipeline_cache.get_compute_pipeline(pipeline_id.0), pipeline_cache.get_compute_pipeline(tr_id.0), camera.physical_viewport_size) else {
             return Ok(());
         };
         let Some(view_bind_group) = create_view_bind_group(view_uniforms, accumulation_texture, view_target, solari_pipeline, render_context.render_device()) else {
@@ -64,11 +65,14 @@ impl Node for SolariPathTracerNode {
             let mut solari_pass = command_encoder.begin_compute_pass(&ComputePassDescriptor {
                 label: Some("solari_path_tracer_pass"),
             });
-
-            solari_pass.set_pipeline(pipeline);
             solari_pass.set_bind_group(0, &scene_bind_group, &[]);
             solari_pass.set_bind_group(1, &view_bind_group, &[view_uniform_offset.offset]);
+
+            solari_pass.set_pipeline(pipeline);
             solari_pass.set_push_constants(0, &previous_sample_count.to_le_bytes());
+            solari_pass.dispatch_workgroups((viewport.x + 7) / 8, (viewport.y + 7) / 8, 1);
+
+            solari_pass.set_pipeline(tr_pipeline);
             solari_pass.dispatch_workgroups((viewport.x + 7) / 8, (viewport.y + 7) / 8, 1);
         }
 
