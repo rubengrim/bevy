@@ -65,7 +65,7 @@ impl Node for SolariPathTracerNode {
             Some(pipeline),
             Some(tr_pipeline),
             Some(gen_key32_pipeline),
-            Some(check_ky32_pipeline),
+            Some(check_key32_pipeline),
             Some(ps_first_pipeline),
             Some(ps_second_pipeline),
             Some(ps_third_pipeline),
@@ -84,14 +84,17 @@ impl Node for SolariPathTracerNode {
         ) else {
             return Ok(());
         };
-        let Some(mut view_bind_group1) = create_view_bind_group(view_uniforms, accumulation_texture, view_target, solari_pipeline, render_context.render_device(), false) else {
+        let Some(view_bind_group1) = create_view_bind_group(view_uniforms, accumulation_texture, view_target, solari_pipeline, render_context.render_device(), false) else {
             return Ok(());
         };
-        let Some(mut view_bind_group2) = create_view_bind_group(view_uniforms, accumulation_texture, view_target, solari_pipeline, render_context.render_device(), true) else {
+        let Some(view_bind_group2) = create_view_bind_group(view_uniforms, accumulation_texture, view_target, solari_pipeline, render_context.render_device(), true) else {
             return Ok(());
         };
 
         let previous_sample_count = path_tracer.sample_count.fetch_add(1, Ordering::SeqCst) as f32;
+
+        let ray_count = ((viewport.x * viewport.y) + 63) / 64;
+        let block_count = ray_count / 64;
 
         {
             let command_encoder = render_context.command_encoder();
@@ -106,11 +109,20 @@ impl Node for SolariPathTracerNode {
             solari_pass.dispatch_workgroups((viewport.x + 7) / 8, (viewport.y + 7) / 8, 1);
 
             let mut starting_bit = 32;
+            let mut swap = false;
+            solari_pass.set_pipeline(gen_key32_pipeline);
+            solari_pass.dispatch_workgroups(block_count, block_count, 1);
             while starting_bit > 0 {
-                // TODO: Run passes
+                solari_pass.set_pipeline(check_key32_pipeline);
+                solari_pass.dispatch_workgroups(block_count, block_count, 1);
 
-                std::mem::swap(&mut view_bind_group1, &mut view_bind_group2);
-                solari_pass.set_bind_group(1, &view_bind_group1, &[view_uniform_offset.offset]);
+                swap = !swap;
+                if swap {
+                    solari_pass.set_bind_group(1, &view_bind_group2, &[view_uniform_offset.offset]);
+                } else {
+                    solari_pass.set_bind_group(1, &view_bind_group1, &[view_uniform_offset.offset]);
+                }
+
                 starting_bit -= 2;
             }
 

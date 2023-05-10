@@ -3,7 +3,10 @@ pub mod node;
 mod pipeline;
 mod resources;
 
-use crate::path_tracer::pipeline::TraceRaysFromBuffer;
+use crate::path_tracer::pipeline::{
+    CheckOrderKey32, GenerateKey32, MapArrayKey32Pass, PrefixSumFirstPass, PrefixSumSecondPass,
+    PrefixSumThirdPass, TraceRaysFromBuffer,
+};
 
 use self::{
     camera::{reset_accumulation_on_camera_movement, SolariPathTracer},
@@ -66,6 +69,18 @@ impl Plugin for SolariPathTracerPlugin {
             .init_resource::<SpecializedComputePipelines<SolariPathtracerPipeline>>()
             .init_resource::<TraceRaysFromBuffer>()
             .init_resource::<SpecializedComputePipelines<TraceRaysFromBuffer>>()
+            .init_resource::<GenerateKey32>()
+            .init_resource::<CheckOrderKey32>()
+            .init_resource::<PrefixSumFirstPass>()
+            .init_resource::<PrefixSumSecondPass>()
+            .init_resource::<PrefixSumThirdPass>()
+            .init_resource::<MapArrayKey32Pass>()
+            .init_resource::<SpecializedComputePipelines<GenerateKey32>>()
+            .init_resource::<SpecializedComputePipelines<CheckOrderKey32>>()
+            .init_resource::<SpecializedComputePipelines<PrefixSumFirstPass>>()
+            .init_resource::<SpecializedComputePipelines<PrefixSumSecondPass>>()
+            .init_resource::<SpecializedComputePipelines<PrefixSumThirdPass>>()
+            .init_resource::<SpecializedComputePipelines<MapArrayKey32Pass>>()
             .add_systems(
                 Render,
                 (
