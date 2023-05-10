@@ -11,14 +11,19 @@ use bevy_render::{
     texture::{CachedTexture, TextureCache},
     view::{ViewTarget, ViewUniform, ViewUniforms},
 };
+use std::num::NonZeroU64;
 
 #[derive(Component)]
-pub struct SolariPathTracerAccumulationTexture(CachedTexture);
+pub struct SolariPathTracerAccumulationTexture {
+    accumulation_texture: CachedTexture,
+    rays: CachedBuffer,
+}
 
 pub fn prepare_accumulation_textures(
     views: Query<(Entity, &ExtractedCamera), With<SolariPathTracer>>,
     mut commands: Commands,
     mut texture_cache: ResMut<TextureCache>,
+    mut buffer_cache: ResMut<BufferCache>,
     render_device: Res<RenderDevice>,
 ) {
     for (entity, camera) in &views {
@@ -38,11 +43,19 @@ pub fn prepare_accumulation_textures(
                 view_formats: &[],
             };
 
+            let rays = BufferDescriptor {
+                label: None,
+                size: viewport.x * viewport.y * 64,
+                usage: BufferUsages::STORAGE,
+                mapped_at_creation: false,
+            };
+
             commands
                 .entity(entity)
-                .insert(SolariPathTracerAccumulationTexture(
-                    texture_cache.get(&render_device, texture_descriptor),
-                ));
+                .insert(SolariPathTracerAccumulationTexture {
+                    accumulation_texture: texture_cache.get(&render_device, texture_descriptor),
+                    rays: buffer_cache.get(&render_device, rays),
+                });
         }
     }
 }
@@ -84,6 +97,17 @@ pub fn create_view_bind_group_layout(render_device: &RenderDevice) -> BindGroupL
                 },
                 count: None,
             },
+            // Rays
+            BindGroupLayoutEntry {
+                binding: 3,
+                visibility: ShaderStages::COMPUTE,
+                ty: BindingType::Buffer {
+                    ty: BufferBindingType::Storage { read_only: false },
+                    has_dynamic_offset: false,
+                    min_binding_size: Some(unsafe { NonZeroU64::new_unchecked(64) }),
+                },
+                count: None,
+            },
         ],
     })
 }
@@ -106,11 +130,17 @@ pub fn create_view_bind_group(
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: BindingResource::TextureView(&accumulation_texture.0.default_view),
+                    resource: BindingResource::TextureView(
+                        &accumulation_texture.accumulation_texture.default_view,
+                    ),
                 },
                 BindGroupEntry {
                     binding: 2,
                     resource: BindingResource::TextureView(view_target.main_texture()),
+                },
+                BindGroupEntry {
+                    binding: 3,
+                    resource: accumulation_texture.rays.buffer.as_entire_binding(),
                 },
             ],
         })
