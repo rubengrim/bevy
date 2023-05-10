@@ -114,7 +114,7 @@ impl SpecializedComputePipeline for TraceRaysFromBuffer {
 #[derive(Component)]
 pub struct TraceRaysFromBufferId(pub CachedComputePipelineId);
 
-pub fn prepare_pipelines(
+pub fn prepare_pipelines2(
     views: Query<Entity, With<SolariPathTracer>>,
     mut commands: Commands,
     pipeline_cache: Res<PipelineCache>,

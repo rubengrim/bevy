@@ -9,7 +9,7 @@ var accumulation_texture: texture_storage_2d<rgba32float, read_write>;
 @group(1) @binding(2)
 var output_texture: texture_storage_2d<rgba16float, read_write>;
 @group(1) @binding(3)
-var<storage, read_write> rays: array<RayDesc>;
+var<storage, read_write> rays: array<RayDesc2>;
 var<push_constant> previous_sample_count: f32;
 
 @compute @workgroup_size(8, 8, 1)
@@ -38,5 +38,5 @@ fn path_trace(@builtin(global_invocation_id) global_id: vec3<u32>) {
         ray_origin = ray_hit.world_position;
         ray_direction = sample_cosine_hemisphere(ray_hit.world_normal, &rng);
     }
-    rays[pixel_index] = RayDesc(vec4(ray_origin, bitcast<f32>(global_id.x)), vec4(ray_direction, bitcast<f32>(global_id.y)));
+    rays[pixel_index] = RayDesc2(vec4(ray_origin, bitcast<f32>(global_id.x)), vec4(ray_direction, bitcast<f32>(global_id.y)));
 }

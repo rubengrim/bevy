@@ -93,7 +93,7 @@ fn map_ray_hit(ray_hit: RayIntersection) -> SolariRayHit {
     return SolariRayHit(world_position, world_normal, uv, sampled_material);
 }
 
-struct RayDesc {
+struct RayDesc2 {
     origin: vec4<f32>,
     direction: vec4<f32>,
 }

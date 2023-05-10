@@ -45,7 +45,7 @@ pub fn prepare_accumulation_textures(
 
             let rays = BufferDescriptor {
                 label: None,
-                size: viewport.x * viewport.y * 64,
+                size: (viewport.x * viewport.y * 64) as u64,
                 usage: BufferUsages::STORAGE,
                 mapped_at_creation: false,
             };

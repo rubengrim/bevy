@@ -7,7 +7,7 @@ use crate::path_tracer::pipeline::TraceRaysFromBuffer;
 
 use self::{
     camera::{reset_accumulation_on_camera_movement, SolariPathTracer},
-    pipeline::{prepare_pipelines, SolariPathtracerPipeline},
+    pipeline::{prepare_pipelines, prepare_pipelines2, SolariPathtracerPipeline},
     resources::prepare_accumulation_textures,
 };
 use bevy_app::{App, Plugin, PostUpdate};
@@ -56,7 +56,12 @@ impl Plugin for SolariPathTracerPlugin {
             .init_resource::<SpecializedComputePipelines<TraceRaysFromBuffer>>()
             .add_systems(
                 Render,
-                (prepare_accumulation_textures, prepare_pipelines).in_set(RenderSet::Prepare),
+                (
+                    prepare_accumulation_textures,
+                    prepare_pipelines,
+                    prepare_pipelines2,
+                )
+                    .in_set(RenderSet::Prepare),
             );
     }
 }
