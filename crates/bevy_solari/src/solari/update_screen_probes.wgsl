@@ -39,7 +39,7 @@ fn update_screen_probes(
     if ray_hit.kind != RAY_QUERY_INTERSECTION_NONE {
         let ray_hit = map_ray_hit(ray_hit);
         let material = ray_hit.material;
-        let irradiance = query_world_cache(ray_hit.world_position);
+        let irradiance = query_world_cache(ray_hit.world_position, ray_hit.world_normal);
         color = (material.base_color * irradiance) + material.emission;
     }
 

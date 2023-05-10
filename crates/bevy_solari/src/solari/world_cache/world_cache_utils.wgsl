@@ -15,26 +15,34 @@ fn wrap_key(key: u32) -> u32 {
     return key & (WORLD_CACHE_SIZE - 1u);
 }
 
-fn compute_key(world_position: vec3<f32>) -> u32 {
-    let world_position_quantized = vec3<u32>(world_position / 8.0);
+fn compute_key(world_position: vec3<f32>, world_normal: vec3<f32>) -> u32 {
+    let world_position_quantized = bitcast<vec3<u32>>(floor(world_position * 8.0));
+    let world_normal_quantized = bitcast<vec3<u32>>(floor(world_normal * 3.0));
     var key = pcg_hash(world_position_quantized.x);
     key = pcg_hash(key + world_position_quantized.y);
     key = pcg_hash(key + world_position_quantized.z);
+    key = pcg_hash(key + world_normal_quantized.x);
+    key = pcg_hash(key + world_normal_quantized.y);
+    key = pcg_hash(key + world_normal_quantized.z);
     return wrap_key(key);
 }
 
-fn compute_checksum(world_position: vec3<f32>) -> u32 {
-    let world_position_quantized = vec3<u32>(world_position / 8.0);
+fn compute_checksum(world_position: vec3<f32>, world_normal: vec3<f32>) -> u32 {
+    let world_position_quantized = bitcast<vec3<u32>>(floor(world_position * 8.0));
+    let world_normal_quantized = bitcast<vec3<u32>>(floor(world_normal * 3.0));
     var key = iqint_hash(world_position_quantized.x);
     key = iqint_hash(key + world_position_quantized.y);
     key = iqint_hash(key + world_position_quantized.z);
+    key = iqint_hash(key + world_normal_quantized.x);
+    key = iqint_hash(key + world_normal_quantized.y);
+    key = iqint_hash(key + world_normal_quantized.z);
     return key;
 }
 
 #ifndef WORLD_CACHE_NON_ATOMIC_LIFE_BUFFER
-fn query_world_cache(world_position: vec3<f32>) -> vec3<f32> {
-    var key = compute_key(world_position);
-    let checksum = compute_checksum(world_position);
+fn query_world_cache(world_position: vec3<f32>, world_normal: vec3<f32>) -> vec3<f32> {
+    var key = compute_key(world_position, world_normal);
+    let checksum = compute_checksum(world_position, world_normal);
 
     for (var i = 0u; i < WORLD_CACHE_MAX_SEARCH_STEPS; i++) {
         let existing_checksum = atomicCompareExchangeWeak(&world_cache_checksums[key], WORLD_CACHE_EMPTY_CELL, checksum).old_value;
