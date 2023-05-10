@@ -193,45 +193,43 @@ impl FromWorld for SolariWorldCacheResources {
         let bind_group_entries = &[
             BindGroupEntry {
                 binding: 0,
-                resource: BindingResource::Buffer(checksums.as_entire_buffer_binding()),
+                resource: checksums.as_entire_binding(),
             },
             BindGroupEntry {
                 binding: 1,
-                resource: BindingResource::Buffer(life.as_entire_buffer_binding()),
+                resource: life.as_entire_binding(),
             },
             BindGroupEntry {
                 binding: 2,
-                resource: BindingResource::Buffer(irradiance.as_entire_buffer_binding()),
+                resource: irradiance.as_entire_binding(),
             },
             BindGroupEntry {
                 binding: 3,
-                resource: BindingResource::Buffer(extra_data.as_entire_buffer_binding()),
+                resource: extra_data.as_entire_binding(),
             },
             BindGroupEntry {
                 binding: 4,
-                resource: BindingResource::Buffer(
-                    active_cells_new_irradiance.as_entire_buffer_binding(),
-                ),
+                resource: active_cells_new_irradiance.as_entire_binding(),
             },
             BindGroupEntry {
                 binding: 5,
-                resource: BindingResource::Buffer(b1.as_entire_buffer_binding()),
+                resource: b1.as_entire_binding(),
             },
             BindGroupEntry {
                 binding: 6,
-                resource: BindingResource::Buffer(b2.as_entire_buffer_binding()),
+                resource: b2.as_entire_binding(),
             },
             BindGroupEntry {
                 binding: 7,
-                resource: BindingResource::Buffer(active_cell_indices.as_entire_buffer_binding()),
+                resource: active_cell_indices.as_entire_binding(),
             },
             BindGroupEntry {
                 binding: 8,
-                resource: BindingResource::Buffer(active_cells_count.as_entire_buffer_binding()),
+                resource: active_cells_count.as_entire_binding(),
             },
             BindGroupEntry {
                 binding: 9,
-                resource: BindingResource::Buffer(active_cells_dispatch.as_entire_buffer_binding()),
+                resource: active_cells_dispatch.as_entire_binding(),
             },
         ];
 
