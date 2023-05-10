@@ -54,7 +54,10 @@ impl Node for SolariPathTracerNode {
         let (Some(pipeline), Some(tr_pipeline), Some(viewport)) = (pipeline_cache.get_compute_pipeline(pipeline_id.0), pipeline_cache.get_compute_pipeline(tr_id.0), camera.physical_viewport_size) else {
             return Ok(());
         };
-        let Some(view_bind_group) = create_view_bind_group(view_uniforms, accumulation_texture, view_target, solari_pipeline, render_context.render_device()) else {
+        let Some(view_bind_group1) = create_view_bind_group(view_uniforms, accumulation_texture, view_target, solari_pipeline, render_context.render_device(), false) else {
+            return Ok(());
+        };
+        let Some(view_bind_group2) = create_view_bind_group(view_uniforms, accumulation_texture, view_target, solari_pipeline, render_context.render_device(), true) else {
             return Ok(());
         };
 
@@ -66,7 +69,7 @@ impl Node for SolariPathTracerNode {
                 label: Some("solari_path_tracer_pass"),
             });
             solari_pass.set_bind_group(0, &scene_bind_group, &[]);
-            solari_pass.set_bind_group(1, &view_bind_group, &[view_uniform_offset.offset]);
+            solari_pass.set_bind_group(1, &view_bind_group1, &[view_uniform_offset.offset]);
 
             solari_pass.set_pipeline(pipeline);
             solari_pass.set_push_constants(0, &previous_sample_count.to_le_bytes());
