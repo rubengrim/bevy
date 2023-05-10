@@ -55,8 +55,8 @@ pub fn prepare_accumulation_textures(
                 view_formats: &[],
             };
 
-            let ray_count = (viewport.x * viewport.y) as u64;
-            let block_count = todo!();
+            let ray_count = ((viewport.x * viewport.y) + 63) / 64 as u64;
+            let block_count = ray_count / 64;
 
             let rays = BufferDescriptor {
                 label: Some("rays"),
