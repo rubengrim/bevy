@@ -27,6 +27,8 @@ const SOLARI_PATH_TRACER_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 3717171717171755);
 const SOLARI_TRACE_RAYS_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 5517471717171755);
+const SOLARI_SORT_RAYS_SHADER: HandleUntyped =
+    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 4715557147171743);
 
 impl Plugin for SolariPathTracerPlugin {
     fn build(&self, app: &mut App) {
@@ -40,6 +42,12 @@ impl Plugin for SolariPathTracerPlugin {
             app,
             SOLARI_TRACE_RAYS_SHADER,
             "trace_rays.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            SOLARI_SORT_RAYS_SHADER,
+            "sort_rays.wgsl",
             Shader::from_wgsl
         );
 
