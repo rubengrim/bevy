@@ -3,7 +3,7 @@ use bevy_ecs::{
     system::Resource,
     world::{FromWorld, World},
 };
-use bevy_render::{render_resource::*, renderer::RenderDevice};
+use bevy_render::{globals::GlobalsUniform, render_resource::*, renderer::RenderDevice};
 use bevy_utils::default;
 use std::num::NonZeroU32;
 
@@ -98,6 +98,17 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
             binding: 6,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Sampler(SamplerBindingType::Filtering),
+            count: None,
+        },
+        // Globals
+        BindGroupLayoutEntry {
+            binding: 7,
+            visibility: ShaderStages::COMPUTE,
+            ty: BindingType::Buffer {
+                ty: BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: Some(GlobalsUniform::min_size()),
+            },
             count: None,
         },
     ];

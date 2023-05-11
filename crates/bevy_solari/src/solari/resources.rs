@@ -7,7 +7,6 @@ use bevy_ecs::{
 };
 use bevy_render::{
     camera::ExtractedCamera,
-    globals::{GlobalsBuffer, GlobalsUniform},
     render_resource::*,
     renderer::RenderDevice,
     texture::{CachedTexture, TextureCache},
@@ -133,20 +132,9 @@ impl FromWorld for SolariBindGroupLayout {
                 },
                 count: None,
             },
-            // Globals
-            BindGroupLayoutEntry {
-                binding: 1,
-                visibility: ShaderStages::COMPUTE,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: Some(GlobalsUniform::min_size()),
-                },
-                count: None,
-            },
             // G-buffer
             BindGroupLayoutEntry {
-                binding: 2,
+                binding: 1,
                 visibility: ShaderStages::COMPUTE,
                 ty: BindingType::StorageTexture {
                     access: StorageTextureAccess::ReadWrite,
@@ -157,7 +145,7 @@ impl FromWorld for SolariBindGroupLayout {
             },
             // M-buffer
             BindGroupLayoutEntry {
-                binding: 3,
+                binding: 2,
                 visibility: ShaderStages::COMPUTE,
                 ty: BindingType::StorageTexture {
                     access: StorageTextureAccess::ReadWrite,
@@ -168,7 +156,7 @@ impl FromWorld for SolariBindGroupLayout {
             },
             // Screen probes (unfiltered)
             BindGroupLayoutEntry {
-                binding: 4,
+                binding: 3,
                 visibility: ShaderStages::COMPUTE,
                 ty: BindingType::StorageTexture {
                     access: StorageTextureAccess::ReadWrite,
@@ -179,7 +167,7 @@ impl FromWorld for SolariBindGroupLayout {
             },
             // Screen probes (filtered)
             BindGroupLayoutEntry {
-                binding: 5,
+                binding: 4,
                 visibility: ShaderStages::COMPUTE,
                 ty: BindingType::StorageTexture {
                     access: StorageTextureAccess::ReadWrite,
@@ -190,7 +178,7 @@ impl FromWorld for SolariBindGroupLayout {
             },
             // Screen probe spherical harmonics
             BindGroupLayoutEntry {
-                binding: 6,
+                binding: 5,
                 visibility: ShaderStages::COMPUTE,
                 ty: BindingType::Buffer {
                     ty: BufferBindingType::Storage { read_only: false },
@@ -201,7 +189,7 @@ impl FromWorld for SolariBindGroupLayout {
             },
             // View target
             BindGroupLayoutEntry {
-                binding: 7,
+                binding: 6,
                 visibility: ShaderStages::COMPUTE,
                 ty: BindingType::StorageTexture {
                     access: StorageTextureAccess::WriteOnly,
@@ -227,14 +215,11 @@ pub struct SolariBindGroup(pub BindGroup);
 pub fn queue_bind_groups(
     views: Query<(Entity, &SolariResources, &ViewTarget)>,
     view_uniforms: Res<ViewUniforms>,
-    globals: Res<GlobalsBuffer>,
     bind_group_layout: Res<SolariBindGroupLayout>,
     mut commands: Commands,
     render_device: Res<RenderDevice>,
 ) {
-    if let (Some(view_uniforms), Some(globals)) =
-        (view_uniforms.uniforms.binding(), globals.buffer.binding())
-    {
+    if let Some(view_uniforms) = view_uniforms.uniforms.binding() {
         for (entity, solari_resources, view_target) in &views {
             let entries = &[
                 BindGroupEntry {
@@ -243,37 +228,33 @@ pub fn queue_bind_groups(
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: globals.clone(),
-                },
-                BindGroupEntry {
-                    binding: 2,
                     resource: BindingResource::TextureView(&solari_resources.g_buffer.default_view),
                 },
                 BindGroupEntry {
-                    binding: 3,
+                    binding: 2,
                     resource: BindingResource::TextureView(&solari_resources.m_buffer.default_view),
                 },
                 BindGroupEntry {
-                    binding: 4,
+                    binding: 3,
                     resource: BindingResource::TextureView(
                         &solari_resources.screen_probes_unfiltered.default_view,
                     ),
                 },
                 BindGroupEntry {
-                    binding: 5,
+                    binding: 4,
                     resource: BindingResource::TextureView(
                         &solari_resources.screen_probes_filtered.default_view,
                     ),
                 },
                 BindGroupEntry {
-                    binding: 6,
+                    binding: 5,
                     resource: solari_resources
                         .screen_probe_spherical_harmonics
                         .buffer
                         .as_entire_binding(),
                 },
                 BindGroupEntry {
-                    binding: 7,
+                    binding: 6,
                     resource: BindingResource::TextureView(view_target.main_texture()),
                 },
             ];

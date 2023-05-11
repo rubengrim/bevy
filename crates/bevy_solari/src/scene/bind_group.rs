@@ -7,6 +7,7 @@ use super::{
 use bevy_asset::Handle;
 use bevy_ecs::system::{Query, Res, ResMut, Resource};
 use bevy_render::{
+    globals::GlobalsBuffer,
     mesh::GpuBufferInfo,
     prelude::{Color, Mesh},
     render_asset::RenderAssets,
@@ -32,6 +33,7 @@ pub fn queue_scene_bind_group(
     mesh_assets: Res<RenderAssets<Mesh>>,
     image_assets: Res<RenderAssets<Image>>,
     blas_storage: Res<BlasStorage>,
+    globals_buffer: Res<GlobalsBuffer>,
     fallback_image: Res<FallbackImage>,
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
@@ -176,6 +178,10 @@ pub fn queue_scene_bind_group(
             BindGroupEntry {
                 binding: 6,
                 resource: BindingResource::Sampler(&scene_resources.sampler),
+            },
+            BindGroupEntry {
+                binding: 7,
+                resource: globals_buffer.buffer.binding().unwrap(), // TODO
             },
         ],
     }));
