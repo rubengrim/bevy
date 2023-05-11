@@ -58,7 +58,7 @@ fn compact_world_cache_write_active_cells(
     @builtin(workgroup_id) workgroup_id: vec3<u32>,
     @builtin(local_invocation_index) thread_index: u32,
 ) {
-    if thread_index == 0u {
+    if thread_index == 1023u {
         w_b2 = world_cache_b2[workgroup_id.x];
     }
     workgroupBarrier();
@@ -68,7 +68,7 @@ fn compact_world_cache_write_active_cells(
         world_cache_active_cell_indices[compacted_index] = cell_id.x;
     }
 
-    if thread_index == 0u && workgroup_id.x == 0u {
+    if thread_index == 1023u && workgroup_id.x == 1023u {
         world_cache_active_cells_count = compacted_index + 1u;
         world_cache_active_cells_dispatch = DispatchIndirect((world_cache_active_cells_count + 1023u) / 1024u, 1u, 1u);
     }
