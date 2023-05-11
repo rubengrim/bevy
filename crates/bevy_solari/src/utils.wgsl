@@ -2,11 +2,13 @@
 
 const PI: f32 = 3.141592653589793;
 
+#ifndef EXCLUDE_VIEW
 fn pixel_to_ray_direction(pixel_uv: vec2<f32>) -> vec3<f32> {
     let pixel_ndc = (pixel_uv * 2.0) - 1.0;
     let primary_ray_target = view.inverse_view_proj * vec4(pixel_ndc.x, -pixel_ndc.y, 1.0, 1.0);
     return normalize((primary_ray_target.xyz / primary_ray_target.w) - view.world_position);
 }
+#endif
 
 fn trace_ray(ray_origin: vec3<f32>, ray_direction: vec3<f32>, ray_t_min: f32) -> RayIntersection {
     let ray_flags = RAY_FLAG_NONE;
@@ -82,9 +84,11 @@ fn decode_g_buffer_depth(g_buffer_pixel: vec4<u32>) -> f32 {
     return bitcast<f32>((g_buffer_pixel.r << 16u) | g_buffer_pixel.g);
 }
 
+#ifndef EXCLUDE_VIEW
 fn depth_to_world_position(ray_distance: f32, pixel_uv: vec2<f32>) -> vec3<f32> {
     return view.world_position + (ray_distance * pixel_to_ray_direction(pixel_uv));
 }
+#endif
 
 fn decode_g_buffer_world_normal(g_buffer_pixel: vec4<u32>) -> vec3<f32> {
     return octahedral_decode(unpack2x16float((g_buffer_pixel.b << 16u) | g_buffer_pixel.a));

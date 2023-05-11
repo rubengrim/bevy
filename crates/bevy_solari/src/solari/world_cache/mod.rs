@@ -19,6 +19,8 @@ const SOLARI_WORLD_CACHE_UTILS_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 2717171717171756);
 const SOLARI_WORLD_CACHE_COMPACT_ACTIVE_CELLS_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 3717171717171756);
+const SOLARI_WORLD_CACHE_UPDATE_SHADER: HandleUntyped =
+    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 4717171717171756);
 
 impl Plugin for SolariWorldCachePlugin {
     fn build(&self, app: &mut App) {
@@ -38,6 +40,12 @@ impl Plugin for SolariWorldCachePlugin {
             app,
             SOLARI_WORLD_CACHE_COMPACT_ACTIVE_CELLS_SHADER,
             "compact_active_cells.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            SOLARI_WORLD_CACHE_UPDATE_SHADER,
+            "update_world_cache.wgsl",
             Shader::from_wgsl
         );
 

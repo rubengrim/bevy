@@ -9,7 +9,10 @@ use std::num::NonZeroU64;
 #[derive(Resource)]
 pub struct SolariWorldCacheResources {
     pub bind_group_layout: BindGroupLayout,
+    pub bind_group_layout_no_dispatch: BindGroupLayout,
     pub bind_group: BindGroup,
+    pub bind_group_no_dispatch: BindGroup,
+    pub active_cells_dispatch_buffer: Buffer,
 }
 
 impl FromWorld for SolariWorldCacheResources {
@@ -50,14 +53,14 @@ impl FromWorld for SolariWorldCacheResources {
                 },
                 count: None,
             },
-            // Extra data
+            // Cell data
             BindGroupLayoutEntry {
                 binding: 3,
                 visibility: ShaderStages::COMPUTE,
                 ty: BindingType::Buffer {
                     ty: BufferBindingType::Storage { read_only: false },
                     has_dynamic_offset: false,
-                    min_binding_size: Some(unsafe { NonZeroU64::new_unchecked(16) }),
+                    min_binding_size: Some(unsafe { NonZeroU64::new_unchecked(32) }),
                 },
                 count: None,
             },
@@ -147,9 +150,9 @@ impl FromWorld for SolariWorldCacheResources {
             usage: BufferUsages::STORAGE,
             mapped_at_creation: false,
         });
-        let extra_data = render_device.create_buffer(&BufferDescriptor {
-            label: Some("bevy_solari_world_cache_extra_data"),
-            size: 16 * WORLD_CACHE_SIZE,
+        let cell_data = render_device.create_buffer(&BufferDescriptor {
+            label: Some("bevy_solari_world_cache_cell_data"),
+            size: 32 * WORLD_CACHE_SIZE,
             usage: BufferUsages::STORAGE,
             mapped_at_creation: false,
         });
@@ -183,8 +186,8 @@ impl FromWorld for SolariWorldCacheResources {
             usage: BufferUsages::STORAGE,
             mapped_at_creation: false,
         });
-        let active_cells_dispatch = render_device.create_buffer(&BufferDescriptor {
-            label: Some("bevy_solari_world_cache_active_cells_dispatch"),
+        let active_cells_dispatch_buffer = render_device.create_buffer(&BufferDescriptor {
+            label: Some("bevy_solari_world_cache_active_cells_dispatch_buffer"),
             size: 12,
             usage: BufferUsages::STORAGE | BufferUsages::INDIRECT,
             mapped_at_creation: false,
@@ -205,7 +208,7 @@ impl FromWorld for SolariWorldCacheResources {
             },
             BindGroupEntry {
                 binding: 3,
-                resource: extra_data.as_entire_binding(),
+                resource: cell_data.as_entire_binding(),
             },
             BindGroupEntry {
                 binding: 4,
@@ -229,7 +232,7 @@ impl FromWorld for SolariWorldCacheResources {
             },
             BindGroupEntry {
                 binding: 9,
-                resource: active_cells_dispatch.as_entire_binding(),
+                resource: active_cells_dispatch_buffer.as_entire_binding(),
             },
         ];
 
@@ -239,15 +242,30 @@ impl FromWorld for SolariWorldCacheResources {
                 entries: bind_group_layout_entries,
             });
 
+        let bind_group_layout_no_dispatch =
+            render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: Some("solari_world_cache_bind_group_layout_no_dispatch"),
+                entries: &bind_group_layout_entries[0..bind_group_entries.len() - 1],
+            });
+
         let bind_group = render_device.create_bind_group(&BindGroupDescriptor {
             label: Some("solari_world_cache_bind_group"),
             layout: &bind_group_layout,
             entries: bind_group_entries,
         });
 
+        let bind_group_no_dispatch = render_device.create_bind_group(&BindGroupDescriptor {
+            label: Some("solari_world_cache_bind_group_no_dispatch"),
+            layout: &bind_group_layout_no_dispatch,
+            entries: &bind_group_entries[0..bind_group_entries.len() - 1],
+        });
+
         Self {
             bind_group_layout,
+            bind_group_layout_no_dispatch,
             bind_group,
+            bind_group_no_dispatch,
+            active_cells_dispatch_buffer,
         }
     }
 }

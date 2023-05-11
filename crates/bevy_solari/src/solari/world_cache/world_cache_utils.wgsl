@@ -49,11 +49,12 @@ fn query_world_cache(world_position: vec3<f32>, world_normal: vec3<f32>) -> vec3
         if existing_checksum == checksum {
             // Key is already stored - get the corresponding irradiance and reset cell lifetime
             atomicStore(&world_cache_life[key], WORLD_CACHE_CELL_LIFETIME);
-            return world_cache_irradiance[key];
+            return world_cache_irradiance[key].rgb;
         } else if existing_checksum == WORLD_CACHE_EMPTY_CELL {
             // Key is not stored - reset cell lifetime so that it starts getting updated next frame
             atomicStore(&world_cache_life[key], WORLD_CACHE_CELL_LIFETIME);
-            world_cache_extra_data[key].position = world_position;
+            world_cache_cell_data[key].position = world_position;
+            world_cache_cell_data[key].normal = world_normal;
             return vec3(0.0);
         } else {
             // Collision - jump to next cell
