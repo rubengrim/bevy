@@ -3,7 +3,7 @@
 /// Maximum amount of entries in the world cache (must be a power of 2)
 const WORLD_CACHE_SIZE: u32 = 1048576u;
 /// Maximum amount of frames a cell can live for without being queried
-const WORLD_CACHE_CELL_LIFETIME: u32 = 10u;
+const WORLD_CACHE_CELL_LIFETIME: u32 = 30u;
 /// Maximum amount of steps to linearly probe for on key collision before giving up
 const WORLD_CACHE_MAX_SEARCH_STEPS: u32 = 10u;
 /// Marker value for an empty cell
