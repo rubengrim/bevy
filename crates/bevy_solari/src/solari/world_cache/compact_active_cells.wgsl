@@ -34,7 +34,7 @@ fn compact_world_cache_single_block(
     if t < 64u { w2[t] = w1[t]; } else { w2[t] = w1[t] + w1[t - 64u]; } workgroupBarrier();
     if t < 128u { w1[t] = w2[t]; } else { w1[t] = w2[t] + w2[t - 128u]; } workgroupBarrier();
     if t < 256u { w2[t] = w1[t]; } else { w2[t] = w1[t] + w1[t - 256u]; } workgroupBarrier();
-    if t < 512u { world_cache_b1[t] = w2[t]; } else { world_cache_b1[t] = w2[t] + w2[t - 512u]; }
+    if t < 512u { world_cache_b1[cell_id.x] = w2[t]; } else { world_cache_b1[cell_id.x] = w2[t] + w2[t - 512u]; }
 }
 
 @compute @workgroup_size(1024, 1, 1)
