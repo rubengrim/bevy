@@ -1,6 +1,6 @@
 use super::{
     resources::SolariBindGroupLayout, world_cache::resources::SolariWorldCacheResources,
-    SOLARI_GM_BUFFER_SHADER,
+    SOLARI_GMT_BUFFER_SHADER,
 };
 use crate::{scene::bind_group_layout::SolariSceneResources, SolariSettings};
 use bevy_ecs::{
@@ -15,13 +15,13 @@ use bevy_render::render_resource::{
 };
 
 #[derive(Resource)]
-pub struct SolariGmBufferPipeline {
+pub struct SolariGmtBufferPipeline {
     scene_bind_group_layout: BindGroupLayout,
     bind_group_layout: BindGroupLayout,
     world_cache_bind_group_layout: BindGroupLayout,
 }
 
-impl FromWorld for SolariGmBufferPipeline {
+impl FromWorld for SolariGmtBufferPipeline {
     fn from_world(world: &mut World) -> Self {
         let scene_resources = world.resource::<SolariSceneResources>();
         let bind_group_layout = world.resource::<SolariBindGroupLayout>();
@@ -36,43 +36,43 @@ impl FromWorld for SolariGmBufferPipeline {
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
-pub struct SolariGmBufferPipelineKey {}
+pub struct SolariGmtBufferPipelineKey {}
 
-impl SpecializedComputePipeline for SolariGmBufferPipeline {
-    type Key = SolariGmBufferPipelineKey;
+impl SpecializedComputePipeline for SolariGmtBufferPipeline {
+    type Key = SolariGmtBufferPipelineKey;
 
     fn specialize(&self, _key: Self::Key) -> ComputePipelineDescriptor {
         ComputePipelineDescriptor {
-            label: Some("solari_gm_buffer_pipeline".into()),
+            label: Some("solari_gmt_buffer_pipeline".into()),
             layout: vec![
                 self.scene_bind_group_layout.clone(),
                 self.bind_group_layout.clone(),
                 self.world_cache_bind_group_layout.clone(),
             ],
             push_constant_ranges: vec![],
-            shader: SOLARI_GM_BUFFER_SHADER.typed(),
+            shader: SOLARI_GMT_BUFFER_SHADER.typed(),
             shader_defs: vec![ShaderDefVal::UInt("WORLD_CACHE_BIND_GROUP".into(), 2)],
-            entry_point: "gm_buffer".into(),
+            entry_point: "gmt_buffer".into(),
         }
     }
 }
 
 #[derive(Component)]
-pub struct SolariGmBufferPipelineId(pub CachedComputePipelineId);
+pub struct SolariGmtBufferPipelineId(pub CachedComputePipelineId);
 
-pub fn prepare_gm_buffer_pipelines(
+pub fn prepare_gmt_buffer_pipelines(
     views: Query<Entity, With<SolariSettings>>,
     mut commands: Commands,
     pipeline_cache: Res<PipelineCache>,
-    mut pipelines: ResMut<SpecializedComputePipelines<SolariGmBufferPipeline>>,
-    pipeline: Res<SolariGmBufferPipeline>,
+    mut pipelines: ResMut<SpecializedComputePipelines<SolariGmtBufferPipeline>>,
+    pipeline: Res<SolariGmtBufferPipeline>,
 ) {
     for entity in &views {
         let pipeline_id =
-            pipelines.specialize(&pipeline_cache, &pipeline, SolariGmBufferPipelineKey {});
+            pipelines.specialize(&pipeline_cache, &pipeline, SolariGmtBufferPipelineKey {});
 
         commands
             .entity(entity)
-            .insert(SolariGmBufferPipelineId(pipeline_id));
+            .insert(SolariGmtBufferPipelineId(pipeline_id));
     }
 }

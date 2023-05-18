@@ -21,10 +21,12 @@ var g_buffer: texture_storage_2d<rgba16uint, read_write>;
 @group(1) @binding(3)
 var m_buffer: texture_storage_2d<rgba16uint, read_write>;
 @group(1) @binding(4)
-var screen_probes_unfiltered: texture_storage_2d<rgba32float, read_write>;
+var t_buffer: texture_storage_2d<rg16float, read_write>;
 @group(1) @binding(5)
-var screen_probes_filtered: texture_storage_2d<rgba32float, read_write>;
+var screen_probes_unfiltered: texture_storage_2d<rgba32float, read_write>;
 @group(1) @binding(6)
-var<storage, read_write> screen_probe_spherical_harmonics: array<SphericalHarmonicsPacked>;
+var screen_probes_filtered: texture_storage_2d<rgba32float, read_write>;
 @group(1) @binding(7)
+var<storage, read_write> screen_probe_spherical_harmonics: array<SphericalHarmonicsPacked>;
+@group(1) @binding(8)
 var view_target: texture_storage_2d<rgba16float, write>;

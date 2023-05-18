@@ -1,7 +1,8 @@
 use super::{
     camera::PreviousViewProjectionUniformOffset,
-    filter_screen_probes::SolariFilterScreenProbesPipelineId, gm_buffer::SolariGmBufferPipelineId,
-    resources::SolariBindGroup, shade_view_target::SolariShadeViewTargetPipelineId,
+    filter_screen_probes::SolariFilterScreenProbesPipelineId,
+    gmt_buffer::SolariGmtBufferPipelineId, resources::SolariBindGroup,
+    shade_view_target::SolariShadeViewTargetPipelineId,
     update_screen_probes::SolariUpdateScreenProbesPipelineId,
     world_cache::resources::SolariWorldCacheResources,
 };
@@ -21,7 +22,7 @@ use bevy_render::{
 pub struct SolariNode(
     QueryState<(
         &'static SolariBindGroup,
-        &'static SolariGmBufferPipelineId,
+        &'static SolariGmtBufferPipelineId,
         &'static SolariUpdateScreenProbesPipelineId,
         &'static SolariFilterScreenProbesPipelineId,
         &'static SolariShadeViewTargetPipelineId,
@@ -40,7 +41,7 @@ impl Node for SolariNode {
     ) -> Result<(), NodeRunError> {
         let (
             Ok((bind_group,
-                gm_buffer_pipeline_id,
+                gmt_buffer_pipeline_id,
                 update_screen_probes_pipeline_id,
                 filter_screen_probes_pipeline_id,
                 shade_view_target_pipeline_id,
@@ -60,13 +61,13 @@ impl Node for SolariNode {
             return Ok(());
         };
         let (
-            Some(gm_buffer_pipeline),
+            Some(gmt_buffer_pipeline),
             Some(update_screen_probes_pipeline),
             Some(filter_screen_probes_pipeline),
             Some(shade_view_target_pipeline),
             Some(viewport),
         ) = (
-            pipeline_cache.get_compute_pipeline(gm_buffer_pipeline_id.0),
+            pipeline_cache.get_compute_pipeline(gmt_buffer_pipeline_id.0),
             pipeline_cache.get_compute_pipeline(update_screen_probes_pipeline_id.0),
             pipeline_cache.get_compute_pipeline(filter_screen_probes_pipeline_id.0),
             pipeline_cache.get_compute_pipeline(shade_view_target_pipeline_id.0),
@@ -91,7 +92,7 @@ impl Node for SolariNode {
             solari_pass.set_bind_group(1, &bind_group.0, &view_dynamic_offsets);
             solari_pass.set_bind_group(2, &world_cache_resources.bind_group, &[]);
 
-            solari_pass.set_pipeline(gm_buffer_pipeline);
+            solari_pass.set_pipeline(gmt_buffer_pipeline);
             solari_pass.dispatch_workgroups(width, height, 1);
 
             solari_pass.set_pipeline(update_screen_probes_pipeline);
