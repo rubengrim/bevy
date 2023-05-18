@@ -1,4 +1,7 @@
-use super::material::{GpuSolariMaterial, MeshMaterial};
+use super::{
+    material::{GpuSolariMaterial, MeshMaterial},
+    scene::PreviousGlobalTransform,
+};
 use bevy_ecs::{
     system::Resource,
     world::{FromWorld, World},
@@ -71,9 +74,20 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
             },
             count: Some(unsafe { NonZeroU32::new_unchecked(50_000) }),
         },
-        // Material buffer
+        // Previous transform buffer
         BindGroupLayoutEntry {
             binding: 4,
+            visibility: ShaderStages::COMPUTE,
+            ty: BindingType::Buffer {
+                ty: BufferBindingType::Storage { read_only: true },
+                has_dynamic_offset: false,
+                min_binding_size: Some(PreviousGlobalTransform::min_size()),
+            },
+            count: None,
+        },
+        // Material buffer
+        BindGroupLayoutEntry {
+            binding: 5,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Buffer {
                 ty: BufferBindingType::Storage { read_only: true },
@@ -84,7 +98,7 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
         },
         // Texture maps
         BindGroupLayoutEntry {
-            binding: 5,
+            binding: 6,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Texture {
                 sample_type: TextureSampleType::Float { filterable: true },
@@ -95,14 +109,14 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
         },
         // Texture sampler
         BindGroupLayoutEntry {
-            binding: 6,
+            binding: 7,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Sampler(SamplerBindingType::Filtering),
             count: None,
         },
         // Globals
         BindGroupLayoutEntry {
-            binding: 7,
+            binding: 8,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Buffer {
                 ty: BufferBindingType::Uniform,

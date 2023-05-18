@@ -3,25 +3,20 @@ pub mod bind_group_layout;
 pub mod blas;
 pub mod material;
 mod misc;
+mod scene;
 
 use self::{
     bind_group::{queue_scene_bind_group, SolariSceneBindGroup},
     bind_group_layout::SolariSceneResources,
     blas::{prepare_blas, BlasStorage},
     material::SolariMaterial,
+    scene::{extract_scene, update_mesh_previous_global_transforms},
 };
-use bevy_app::{App, Plugin};
-use bevy_asset::{load_internal_asset, AddAsset, Assets, Handle, HandleUntyped};
-use bevy_ecs::{
-    prelude::Entity,
-    schedule::IntoSystemConfigs,
-    system::{Commands, Query, Res},
-};
+use bevy_app::{App, Plugin, PreUpdate};
+use bevy_asset::{load_internal_asset, AddAsset, HandleUntyped};
+use bevy_ecs::schedule::IntoSystemConfigs;
 use bevy_reflect::TypeUuid;
-use bevy_render::{
-    prelude::Mesh, render_resource::Shader, Extract, ExtractSchedule, Render, RenderApp, RenderSet,
-};
-use bevy_transform::prelude::GlobalTransform;
+use bevy_render::{render_resource::Shader, ExtractSchedule, Render, RenderApp, RenderSet};
 
 // TODO: Document valid mesh attributes + layout + indices
 
@@ -47,7 +42,8 @@ impl Plugin for SolariScenePlugin {
             Shader::from_wgsl
         );
 
-        app.add_asset::<SolariMaterial>();
+        app.add_asset::<SolariMaterial>()
+            .add_systems(PreUpdate, update_mesh_previous_global_transforms);
 
         app.sub_app_mut(RenderApp)
             .init_resource::<BlasStorage>()
@@ -57,36 +53,4 @@ impl Plugin for SolariScenePlugin {
             .add_systems(Render, prepare_blas.in_set(RenderSet::Prepare))
             .add_systems(Render, queue_scene_bind_group.in_set(RenderSet::Queue));
     }
-}
-
-fn extract_scene(
-    meshes: Extract<
-        Query<(
-            Entity,
-            &Handle<Mesh>,
-            &Handle<SolariMaterial>,
-            &GlobalTransform,
-        )>,
-    >,
-    materials: Extract<Res<Assets<SolariMaterial>>>,
-    mut commands: Commands,
-) {
-    commands.insert_or_spawn_batch(
-        meshes
-            .iter()
-            .filter_map(|(entity, mesh_handle, material_handle, transform)| {
-                materials.get(material_handle).map(|material| {
-                    (
-                        entity,
-                        (
-                            mesh_handle.clone_weak(),
-                            material_handle.clone_weak(),
-                            material.clone(),
-                            transform.clone(),
-                        ),
-                    )
-                })
-            })
-            .collect::<Vec<_>>(),
-    );
 }

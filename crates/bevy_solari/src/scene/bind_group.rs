@@ -3,6 +3,7 @@ use super::{
     blas::BlasStorage,
     material::{GpuSolariMaterial, MeshMaterial, SolariMaterial},
     misc::{new_storage_buffer, tlas_transform, IndexedVec},
+    scene::PreviousGlobalTransform,
 };
 use bevy_asset::Handle;
 use bevy_ecs::system::{Query, Res, ResMut, Resource};
@@ -27,6 +28,7 @@ pub fn queue_scene_bind_group(
         &Handle<SolariMaterial>,
         &SolariMaterial,
         &GlobalTransform,
+        &PreviousGlobalTransform,
     )>,
     mut scene_bind_group: ResMut<SolariSceneBindGroup>,
     scene_resources: Res<SolariSceneResources>,
@@ -40,9 +42,10 @@ pub fn queue_scene_bind_group(
 ) {
     // Create CPU buffers for scene resources
     // TODO: Reuse memory each frame
-    let mut mesh_materials = IndexedVec::new();
+    let mut mesh_materials = Vec::new();
     let mut index_buffers = IndexedVec::new();
     let mut vertex_buffers = Vec::new();
+    let mut previous_transforms = Vec::new();
     let mut materials = IndexedVec::new();
     let mut texture_maps = IndexedVec::new();
     let objects = objects.iter().collect::<Vec<_>>();
@@ -96,21 +99,20 @@ pub fn queue_scene_bind_group(
 
     // Fill TLAS and scene buffers
     // TODO: Parallelize loop
-    for (i, (mesh_handle, material_handle, material, transform)) in objects.into_iter().enumerate()
+    for (i, (mesh_handle, material_handle, material, transform, previous_transform)) in
+        objects.into_iter().enumerate()
     {
         if let Some(blas) = blas_storage.get(mesh_handle) {
-            let object_i = mesh_materials.get_index(
-                (mesh_handle, material_handle),
-                |(mesh_handle, material_handle)| MeshMaterial {
-                    mesh_index: get_mesh_index(mesh_handle),
-                    material_index: get_material_index(material_handle, material),
-                },
-            );
+            previous_transforms.push(previous_transform);
+            mesh_materials.push(MeshMaterial {
+                mesh_index: get_mesh_index(mesh_handle),
+                material_index: get_material_index(material_handle, material),
+            });
 
             *tlas.get_mut_single(i).unwrap() = Some(TlasInstance::new(
                 blas,
                 tlas_transform(transform),
-                object_i,
+                i as u32,
                 0xFF,
             ));
         }
@@ -126,8 +128,14 @@ pub fn queue_scene_bind_group(
     // Upload buffers to the GPU
     // TODO: Reuse GPU buffers each frame
     let mesh_materials_buffer = new_storage_buffer(
-        mesh_materials.vec,
+        mesh_materials,
         "solari_mesh_materials_buffer",
+        &render_device,
+        &render_queue,
+    );
+    let previous_transform_buffer = new_storage_buffer(
+        previous_transforms,
+        "solari_previous_transform_buffer",
         &render_device,
         &render_queue,
     );
@@ -169,18 +177,22 @@ pub fn queue_scene_bind_group(
             },
             BindGroupEntry {
                 binding: 4,
-                resource: materials_buffer.binding().unwrap(),
+                resource: previous_transform_buffer.binding().unwrap(),
             },
             BindGroupEntry {
                 binding: 5,
-                resource: BindingResource::TextureViewArray(texture_maps.vec.as_slice()),
+                resource: materials_buffer.binding().unwrap(),
             },
             BindGroupEntry {
                 binding: 6,
-                resource: BindingResource::Sampler(&scene_resources.sampler),
+                resource: BindingResource::TextureViewArray(texture_maps.vec.as_slice()),
             },
             BindGroupEntry {
                 binding: 7,
+                resource: BindingResource::Sampler(&scene_resources.sampler),
+            },
+            BindGroupEntry {
+                binding: 8,
                 resource: globals_buffer.buffer.binding().unwrap(), // TODO
             },
         ],

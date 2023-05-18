@@ -12,10 +12,12 @@ var<storage> index_buffers: binding_array<SolariIndexBuffer>;
 @group(0) @binding(3)
 var<storage> vertex_buffers: binding_array<SolariVertexBuffer>;
 @group(0) @binding(4)
-var<storage> materials: array<SolariMaterial>;
+var<storage> previous_transforms: array<mat4x4<f32>>;
 @group(0) @binding(5)
-var texture_maps: binding_array<texture_2d<f32>>;
+var<storage> materials: array<SolariMaterial>;
 @group(0) @binding(6)
-var texture_sampler: sampler;
+var texture_maps: binding_array<texture_2d<f32>>;
 @group(0) @binding(7)
+var texture_sampler: sampler;
+@group(0) @binding(8)
 var<uniform> globals: Globals;
