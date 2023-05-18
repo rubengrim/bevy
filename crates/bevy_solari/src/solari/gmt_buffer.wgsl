@@ -38,6 +38,7 @@ fn gmt_buffer(@builtin(global_invocation_id) global_id: vec3<u32>) {
         texture_coordinates = mat3x2(vertices[0].uv, vertices[1].uv, vertices[2].uv) * barycentrics;
 
         let current_clip_position = (vec2<f32>(global_id.xy) / view.viewport.zw) * 2.0 - 1.0;
+        // TODO: I think there's still jitter here due to the use of `barycentrics` coming from the jittered ray
         let current_local_position = mat3x3(vertices[0].local_position, vertices[1].local_position, vertices[2].local_position) * barycentrics;
         let previous_world_position = previous_transforms[ray_hit.instance_custom_index] * vec4(current_local_position, 1.0);
         let previous_clip_position_t = previous_view_proj * previous_world_position;
