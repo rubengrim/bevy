@@ -15,14 +15,16 @@ struct SphericalHarmonicsPacked {
 @group(1) @binding(0)
 var<uniform> view: View;
 @group(1) @binding(1)
-var g_buffer: texture_storage_2d<rgba16uint, read_write>;
+var<uniform> previous_view_proj: mat4x4<f32>;
 @group(1) @binding(2)
-var m_buffer: texture_storage_2d<rgba16uint, read_write>;
+var g_buffer: texture_storage_2d<rgba16uint, read_write>;
 @group(1) @binding(3)
-var screen_probes_unfiltered: texture_storage_2d<rgba32float, read_write>;
+var m_buffer: texture_storage_2d<rgba16uint, read_write>;
 @group(1) @binding(4)
-var screen_probes_filtered: texture_storage_2d<rgba32float, read_write>;
+var screen_probes_unfiltered: texture_storage_2d<rgba32float, read_write>;
 @group(1) @binding(5)
-var<storage, read_write> screen_probe_spherical_harmonics: array<SphericalHarmonicsPacked>;
+var screen_probes_filtered: texture_storage_2d<rgba32float, read_write>;
 @group(1) @binding(6)
+var<storage, read_write> screen_probe_spherical_harmonics: array<SphericalHarmonicsPacked>;
+@group(1) @binding(7)
 var view_target: texture_storage_2d<rgba16float, write>;

@@ -8,7 +8,10 @@ mod update_screen_probes;
 pub mod world_cache;
 
 use self::{
-    camera::SolariSettings,
+    camera::{
+        prepare_previous_view_projection_uniforms, update_previous_view_projections,
+        PreviousViewProjectionUniforms, SolariSettings,
+    },
     filter_screen_probes::{
         prepare_filter_screen_probe_pipelines, SolariFilterScreenProbesPipeline,
     },
@@ -20,7 +23,7 @@ use self::{
     },
     world_cache::SolariWorldCachePlugin,
 };
-use bevy_app::{App, Plugin};
+use bevy_app::{App, Plugin, PreUpdate};
 use bevy_asset::{load_internal_asset, HandleUntyped};
 use bevy_ecs::schedule::IntoSystemConfigs;
 use bevy_reflect::TypeUuid;
@@ -77,9 +80,11 @@ impl Plugin for SolariRealtimePlugin {
         );
 
         app.add_plugin(SolariWorldCachePlugin)
-            .add_plugin(ExtractComponentPlugin::<SolariSettings>::default());
+            .add_plugin(ExtractComponentPlugin::<SolariSettings>::default())
+            .add_systems(PreUpdate, update_previous_view_projections);
 
         app.sub_app_mut(RenderApp)
+            .init_resource::<PreviousViewProjectionUniforms>()
             .init_resource::<SolariBindGroupLayout>()
             .init_resource::<SolariGmBufferPipeline>()
             .init_resource::<SolariUpdateScreenProbesPipeline>()
@@ -92,6 +97,7 @@ impl Plugin for SolariRealtimePlugin {
             .add_systems(
                 Render,
                 (
+                    prepare_previous_view_projection_uniforms,
                     prepare_resources,
                     prepare_gm_buffer_pipelines,
                     prepare_update_screen_probe_pipelines,

@@ -1,4 +1,4 @@
-use super::camera::SolariSettings;
+use super::camera::{PreviousViewProjection, PreviousViewProjectionUniforms, SolariSettings};
 use bevy_ecs::{
     prelude::{Component, Entity},
     query::With,
@@ -132,18 +132,18 @@ impl FromWorld for SolariBindGroupLayout {
                 },
                 count: None,
             },
-            // G-buffer
+            // Previous view projection
             BindGroupLayoutEntry {
                 binding: 1,
                 visibility: ShaderStages::COMPUTE,
-                ty: BindingType::StorageTexture {
-                    access: StorageTextureAccess::ReadWrite,
-                    format: TextureFormat::Rgba16Uint,
-                    view_dimension: TextureViewDimension::D2,
+                ty: BindingType::Buffer {
+                    ty: BufferBindingType::Uniform,
+                    has_dynamic_offset: true,
+                    min_binding_size: Some(PreviousViewProjection::min_size()),
                 },
                 count: None,
             },
-            // M-buffer
+            // G-buffer
             BindGroupLayoutEntry {
                 binding: 2,
                 visibility: ShaderStages::COMPUTE,
@@ -154,18 +154,18 @@ impl FromWorld for SolariBindGroupLayout {
                 },
                 count: None,
             },
-            // Screen probes (unfiltered)
+            // M-buffer
             BindGroupLayoutEntry {
                 binding: 3,
                 visibility: ShaderStages::COMPUTE,
                 ty: BindingType::StorageTexture {
                     access: StorageTextureAccess::ReadWrite,
-                    format: TextureFormat::Rgba32Float,
+                    format: TextureFormat::Rgba16Uint,
                     view_dimension: TextureViewDimension::D2,
                 },
                 count: None,
             },
-            // Screen probes (filtered)
+            // Screen probes (unfiltered)
             BindGroupLayoutEntry {
                 binding: 4,
                 visibility: ShaderStages::COMPUTE,
@@ -176,9 +176,20 @@ impl FromWorld for SolariBindGroupLayout {
                 },
                 count: None,
             },
-            // Screen probe spherical harmonics
+            // Screen probes (filtered)
             BindGroupLayoutEntry {
                 binding: 5,
+                visibility: ShaderStages::COMPUTE,
+                ty: BindingType::StorageTexture {
+                    access: StorageTextureAccess::ReadWrite,
+                    format: TextureFormat::Rgba32Float,
+                    view_dimension: TextureViewDimension::D2,
+                },
+                count: None,
+            },
+            // Screen probe spherical harmonics
+            BindGroupLayoutEntry {
+                binding: 6,
                 visibility: ShaderStages::COMPUTE,
                 ty: BindingType::Buffer {
                     ty: BufferBindingType::Storage { read_only: false },
@@ -189,7 +200,7 @@ impl FromWorld for SolariBindGroupLayout {
             },
             // View target
             BindGroupLayoutEntry {
-                binding: 6,
+                binding: 7,
                 visibility: ShaderStages::COMPUTE,
                 ty: BindingType::StorageTexture {
                     access: StorageTextureAccess::WriteOnly,
@@ -215,11 +226,15 @@ pub struct SolariBindGroup(pub BindGroup);
 pub fn queue_bind_groups(
     views: Query<(Entity, &SolariResources, &ViewTarget)>,
     view_uniforms: Res<ViewUniforms>,
+    previous_view_proj_uniforms: Res<PreviousViewProjectionUniforms>,
     bind_group_layout: Res<SolariBindGroupLayout>,
     mut commands: Commands,
     render_device: Res<RenderDevice>,
 ) {
-    if let Some(view_uniforms) = view_uniforms.uniforms.binding() {
+    if let (Some(view_uniforms), Some(previous_view_proj_uniforms)) = (
+        view_uniforms.uniforms.binding(),
+        previous_view_proj_uniforms.uniforms.binding(),
+    ) {
         for (entity, solari_resources, view_target) in &views {
             let entries = &[
                 BindGroupEntry {
@@ -228,33 +243,37 @@ pub fn queue_bind_groups(
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: BindingResource::TextureView(&solari_resources.g_buffer.default_view),
+                    resource: previous_view_proj_uniforms.clone(),
                 },
                 BindGroupEntry {
                     binding: 2,
-                    resource: BindingResource::TextureView(&solari_resources.m_buffer.default_view),
+                    resource: BindingResource::TextureView(&solari_resources.g_buffer.default_view),
                 },
                 BindGroupEntry {
                     binding: 3,
+                    resource: BindingResource::TextureView(&solari_resources.m_buffer.default_view),
+                },
+                BindGroupEntry {
+                    binding: 4,
                     resource: BindingResource::TextureView(
                         &solari_resources.screen_probes_unfiltered.default_view,
                     ),
                 },
                 BindGroupEntry {
-                    binding: 4,
+                    binding: 5,
                     resource: BindingResource::TextureView(
                         &solari_resources.screen_probes_filtered.default_view,
                     ),
                 },
                 BindGroupEntry {
-                    binding: 5,
+                    binding: 6,
                     resource: solari_resources
                         .screen_probe_spherical_harmonics
                         .buffer
                         .as_entire_binding(),
                 },
                 BindGroupEntry {
-                    binding: 6,
+                    binding: 7,
                     resource: BindingResource::TextureView(view_target.main_texture()),
                 },
             ];

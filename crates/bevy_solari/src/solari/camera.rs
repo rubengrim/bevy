@@ -1,11 +1,18 @@
 use crate::SOLARI_GRAPH;
 use bevy_core_pipeline::tonemapping::Tonemapping;
-use bevy_ecs::prelude::{Bundle, Component};
+use bevy_ecs::{
+    prelude::{Bundle, Component, Entity},
+    query::With,
+    system::{Commands, Query, Res, ResMut, Resource},
+};
+use bevy_math::Mat4;
 use bevy_render::{
     camera::CameraRenderGraph,
     extract_component::ExtractComponent,
     prelude::{Camera, Projection},
-    view::ColorGrading,
+    render_resource::{DynamicUniformBuffer, ShaderType},
+    renderer::{RenderDevice, RenderQueue},
+    view::{ColorGrading, ExtractedView},
 };
 use bevy_transform::prelude::{GlobalTransform, Transform};
 
@@ -40,4 +47,58 @@ impl Default for SolariCamera3dBundle {
             color_grading: Default::default(),
         }
     }
+}
+
+#[derive(Component, ShaderType, Clone)]
+pub struct PreviousViewProjection {
+    pub view_proj: Mat4,
+}
+
+pub fn update_previous_view_projections(
+    mut commands: Commands,
+    query: Query<(Entity, &Camera, &GlobalTransform), With<SolariSettings>>,
+) {
+    for (entity, camera, camera_transform) in &query {
+        commands.entity(entity).insert(PreviousViewProjection {
+            view_proj: camera.projection_matrix() * camera_transform.compute_matrix().inverse(),
+        });
+    }
+}
+
+#[derive(Resource, Default)]
+pub struct PreviousViewProjectionUniforms {
+    pub uniforms: DynamicUniformBuffer<PreviousViewProjection>,
+}
+
+#[derive(Component)]
+pub struct PreviousViewProjectionUniformOffset {
+    pub offset: u32,
+}
+
+pub fn prepare_previous_view_projection_uniforms(
+    mut commands: Commands,
+    render_device: Res<RenderDevice>,
+    render_queue: Res<RenderQueue>,
+    mut view_uniforms: ResMut<PreviousViewProjectionUniforms>,
+    views: Query<(Entity, &ExtractedView, Option<&PreviousViewProjection>), With<SolariSettings>>,
+) {
+    view_uniforms.uniforms.clear();
+
+    for (entity, camera, maybe_previous_view_proj) in &views {
+        let view_projection = match maybe_previous_view_proj {
+            Some(previous_view) => previous_view.clone(),
+            None => PreviousViewProjection {
+                view_proj: camera.projection * camera.transform.compute_matrix().inverse(),
+            },
+        };
+        commands
+            .entity(entity)
+            .insert(PreviousViewProjectionUniformOffset {
+                offset: view_uniforms.uniforms.push(view_projection),
+            });
+    }
+
+    view_uniforms
+        .uniforms
+        .write_buffer(&render_device, &render_queue);
 }

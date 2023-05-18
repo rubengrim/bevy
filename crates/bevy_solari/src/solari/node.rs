@@ -1,4 +1,5 @@
 use super::{
+    camera::PreviousViewProjectionUniformOffset,
     filter_screen_probes::SolariFilterScreenProbesPipelineId, gm_buffer::SolariGmBufferPipelineId,
     resources::SolariBindGroup, shade_view_target::SolariShadeViewTargetPipelineId,
     update_screen_probes::SolariUpdateScreenProbesPipelineId,
@@ -25,6 +26,7 @@ pub struct SolariNode(
         &'static SolariFilterScreenProbesPipelineId,
         &'static SolariShadeViewTargetPipelineId,
         &'static ViewUniformOffset,
+        &'static PreviousViewProjectionUniformOffset,
         &'static ExtractedCamera,
     )>,
 );
@@ -43,6 +45,7 @@ impl Node for SolariNode {
                 filter_screen_probes_pipeline_id,
                 shade_view_target_pipeline_id,
                 view_uniform_offset,
+                previous_view_projection_uniform_offset,
                 camera,
             )),
             Some(pipeline_cache),
@@ -81,7 +84,11 @@ impl Node for SolariNode {
                 label: Some("solari_pass"),
             });
             solari_pass.set_bind_group(0, &scene_bind_group, &[]);
-            solari_pass.set_bind_group(1, &bind_group.0, &[view_uniform_offset.offset]);
+            let view_dynamic_offsets = [
+                view_uniform_offset.offset,
+                previous_view_projection_uniform_offset.offset,
+            ];
+            solari_pass.set_bind_group(1, &bind_group.0, &view_dynamic_offsets);
             solari_pass.set_bind_group(2, &world_cache_resources.bind_group, &[]);
 
             solari_pass.set_pipeline(gm_buffer_pipeline);
