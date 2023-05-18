@@ -12,7 +12,7 @@ use bevy_render::{
     prelude::{Camera, Projection},
     render_resource::{DynamicUniformBuffer, ShaderType},
     renderer::{RenderDevice, RenderQueue},
-    view::{ColorGrading, ExtractedView},
+    view::ColorGrading,
 };
 use bevy_transform::prelude::{GlobalTransform, Transform};
 
@@ -80,21 +80,15 @@ pub fn prepare_previous_view_projection_uniforms(
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
     mut view_uniforms: ResMut<PreviousViewProjectionUniforms>,
-    views: Query<(Entity, &ExtractedView, Option<&PreviousViewProjection>), With<SolariSettings>>,
+    views: Query<(Entity, &PreviousViewProjection), With<SolariSettings>>,
 ) {
     view_uniforms.uniforms.clear();
 
-    for (entity, camera, maybe_previous_view_proj) in &views {
-        let view_projection = match maybe_previous_view_proj {
-            Some(previous_view) => previous_view.clone(),
-            None => PreviousViewProjection {
-                view_proj: camera.projection * camera.transform.compute_matrix().inverse(),
-            },
-        };
+    for (entity, previous_view_proj) in &views {
         commands
             .entity(entity)
             .insert(PreviousViewProjectionUniformOffset {
-                offset: view_uniforms.uniforms.push(view_projection),
+                offset: view_uniforms.uniforms.push(previous_view_proj.clone()),
             });
     }
 
