@@ -10,7 +10,7 @@ pub mod world_cache;
 use self::{
     camera::{
         prepare_previous_view_projection_uniforms, update_previous_view_projections,
-        PreviousViewProjectionUniforms, SolariSettings,
+        PreviousViewProjection, PreviousViewProjectionUniforms, SolariSettings,
     },
     filter_screen_probes::{
         prepare_filter_screen_probe_pipelines, SolariFilterScreenProbesPipeline,
@@ -81,6 +81,7 @@ impl Plugin for SolariRealtimePlugin {
 
         app.add_plugin(SolariWorldCachePlugin)
             .add_plugin(ExtractComponentPlugin::<SolariSettings>::default())
+            .add_plugin(ExtractComponentPlugin::<PreviousViewProjection>::default())
             .add_systems(PreUpdate, update_previous_view_projections);
 
         app.sub_app_mut(RenderApp)

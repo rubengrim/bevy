@@ -49,7 +49,7 @@ impl Default for SolariCamera3dBundle {
     }
 }
 
-#[derive(Component, ShaderType, Clone)]
+#[derive(Component, ExtractComponent, ShaderType, Clone)]
 pub struct PreviousViewProjection {
     pub view_proj: Mat4,
 }
