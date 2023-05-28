@@ -41,14 +41,14 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     });
 }
 
-fn solari_not_supported(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn solari_not_supported(mut commands: Commands) {
     commands.spawn(
         TextBundle::from_section(
             "Current GPU does not support bevy_solari",
             TextStyle {
-                font: asset_server.load("fonts/FiraMono-Medium.ttf"),
                 font_size: 48.0,
                 color: Color::WHITE,
+                ..default()
             },
         )
         .with_style(Style {
