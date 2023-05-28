@@ -54,7 +54,6 @@ impl Plugin for SolariPlugin {
             | WgpuFeatures::STORAGE_RESOURCE_BINDING_ARRAY
             | WgpuFeatures::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING
             | WgpuFeatures::PARTIALLY_BOUND_BINDING_ARRAY
-            | WgpuFeatures::PUSH_CONSTANTS
             | WgpuFeatures::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES;
 
         match app.world.get_resource::<RenderDevice>() {
