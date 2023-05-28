@@ -27,6 +27,7 @@ The default feature set enables most of the expected features of a game engine, 
 |bevy_text|Provides text functionality|
 |bevy_ui|A custom ECS-driven UI framework|
 |bevy_winit|winit window and input backend|
+|default_font|Include a default font, containing only ASCII characters, at the cost of a 20kB binary size increase|
 |filesystem_watcher|Enable watching file system for asset hot reload|
 |hdr|HDR image format support|
 |ktx2|KTX2 compressed texture support|
@@ -45,7 +46,6 @@ The default feature set enables most of the expected features of a game engine, 
 |basis-universal|Basis Universal compressed texture support|
 |bevy_ci_testing|Enable systems that allow for automated testing on CI|
 |bevy_dynamic_plugin|Plugin for dynamic loading (using [libloading](https://crates.io/crates/libloading))|
-|bevy_solari|Adds global-illumination rendering|
 |bmp|BMP image format support|
 |dds|DDS compressed texture support|
 |debug_asset_server|Enable the "debug asset server" for hot reloading internal assets|
@@ -59,6 +59,8 @@ The default feature set enables most of the expected features of a game engine, 
 |mp3|MP3 audio format support|
 |pnm|PNM image format support, includes pam, pbm, pgm and ppm|
 |serialize|Enable serialization support through serde|
+|shader_format_glsl|Enable support for shaders in GLSL|
+|shader_format_spirv|Enable support for shaders in SPIR-V|
 |subpixel_glyph_atlas|Enable rendering of font glyphs using subpixel accuracy|
 |symphonia-aac|AAC audio format support (through symphonia)|
 |symphonia-all|AAC, FLAC, MP3, MP4, OGG/VORBIS, and WAV audio formats support (through symphonia)|
