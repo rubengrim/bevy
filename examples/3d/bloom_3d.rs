@@ -25,7 +25,6 @@ fn setup_scene(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    asset_server: Res<AssetServer>,
 ) {
     commands.spawn((
         Camera3dBundle {
@@ -99,6 +98,7 @@ fn setup_scene(
             TextStyle {
                 font_size: 20.0,
                 color: Color::BLACK,
+                ..default()
             },
         )
         .with_style(Style {

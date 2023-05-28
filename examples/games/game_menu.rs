@@ -145,12 +145,9 @@ mod game {
 
     fn game_setup(
         mut commands: Commands,
-        asset_server: Res<AssetServer>,
         display_quality: Res<DisplayQuality>,
         volume: Res<Volume>,
     ) {
-        let font = asset_server.load("fonts/FiraSans-Bold.ttf");
-
         commands
             .spawn((
                 NodeBundle {
@@ -188,9 +185,9 @@ mod game {
                             TextBundle::from_section(
                                 "Will be back to the menu shortly...",
                                 TextStyle {
-                                    font: font.clone(),
                                     font_size: 80.0,
                                     color: TEXT_COLOR,
+                                    ..default()
                                 },
                             )
                             .with_style(Style {
@@ -203,25 +200,25 @@ mod game {
                                 TextSection::new(
                                     format!("quality: {:?}", *display_quality),
                                     TextStyle {
-                                        font: font.clone(),
                                         font_size: 60.0,
                                         color: Color::BLUE,
+                                        ..default()
                                     },
                                 ),
                                 TextSection::new(
                                     " - ",
                                     TextStyle {
-                                        font: font.clone(),
                                         font_size: 60.0,
                                         color: TEXT_COLOR,
+                                        ..default()
                                     },
                                 ),
                                 TextSection::new(
                                     format!("volume: {:?}", *volume),
                                     TextStyle {
-                                        font: font.clone(),
                                         font_size: 60.0,
                                         color: Color::GREEN,
+                                        ..default()
                                     },
                                 ),
                             ])
@@ -399,7 +396,6 @@ mod menu {
     }
 
     fn main_menu_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-        let font = asset_server.load("fonts/FiraSans-Bold.ttf");
         // Common style for all buttons on the screen
         let button_style = Style {
             width: Val::Px(250.0),
@@ -419,9 +415,9 @@ mod menu {
             ..default()
         };
         let button_text_style = TextStyle {
-            font: font.clone(),
             font_size: 40.0,
             color: TEXT_COLOR,
+            ..default()
         };
 
         commands
@@ -454,9 +450,9 @@ mod menu {
                             TextBundle::from_section(
                                 "Bevy Game Menu UI",
                                 TextStyle {
-                                    font: font.clone(),
                                     font_size: 80.0,
                                     color: TEXT_COLOR,
+                                    ..default()
                                 },
                             )
                             .with_style(Style {
@@ -533,7 +529,7 @@ mod menu {
             });
     }
 
-    fn settings_menu_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+    fn settings_menu_setup(mut commands: Commands) {
         let button_style = Style {
             width: Val::Px(200.0),
             height: Val::Px(65.0),
@@ -544,9 +540,9 @@ mod menu {
         };
 
         let button_text_style = TextStyle {
-            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
             font_size: 40.0,
             color: TEXT_COLOR,
+            ..default()
         };
 
         commands
@@ -599,11 +595,7 @@ mod menu {
             });
     }
 
-    fn display_settings_menu_setup(
-        mut commands: Commands,
-        asset_server: Res<AssetServer>,
-        display_quality: Res<DisplayQuality>,
-    ) {
+    fn display_settings_menu_setup(mut commands: Commands, display_quality: Res<DisplayQuality>) {
         let button_style = Style {
             width: Val::Px(200.0),
             height: Val::Px(65.0),
@@ -613,9 +605,9 @@ mod menu {
             ..default()
         };
         let button_text_style = TextStyle {
-            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
             font_size: 40.0,
             color: TEXT_COLOR,
+            ..default()
         };
 
         commands
@@ -703,11 +695,7 @@ mod menu {
             });
     }
 
-    fn sound_settings_menu_setup(
-        mut commands: Commands,
-        asset_server: Res<AssetServer>,
-        volume: Res<Volume>,
-    ) {
+    fn sound_settings_menu_setup(mut commands: Commands, volume: Res<Volume>) {
         let button_style = Style {
             width: Val::Px(200.0),
             height: Val::Px(65.0),
@@ -717,9 +705,9 @@ mod menu {
             ..default()
         };
         let button_text_style = TextStyle {
-            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
             font_size: 40.0,
             color: TEXT_COLOR,
+            ..default()
         };
 
         commands

@@ -15,7 +15,6 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    asset_server: Res<AssetServer>,
 ) {
     commands.spawn(Camera3dBundle {
         transform: Transform::from_xyz(0., 1.5, 6.).looking_at(Vec3::ZERO, Vec3::Y),
@@ -65,9 +64,7 @@ fn setup(
 
 fn system(mut gizmos: Gizmos, time: Res<Time>) {
     gizmos.cuboid(
-        Vec3::Y * -0.5,
-        Quat::IDENTITY,
-        Vec3::new(5., 1., 2.),
+        Transform::from_translation(Vec3::Y * -0.5).with_scale(Vec3::new(5., 1., 2.)),
         Color::BLACK,
     );
     gizmos.rect(
