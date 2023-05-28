@@ -94,7 +94,6 @@ fn shade_view_target(
     interpolate_probe(&irradiance, &weight, pixel_id, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(1i, -1i), probe_thread_id);
     irradiance /= weight;
 
-
     let final_color = material.emission + (material.base_color * irradiance);
     textureStore(view_target, global_id.xy, vec4(final_color, 1.0));
 }
