@@ -40,7 +40,7 @@ pub struct DynamicEntity {
     /// Components that reference this entity must consistently use this identifier.
     pub entity: Entity,
     /// A vector of boxed components that belong to the given entity and
-    /// implement the `Reflect` trait.
+    /// implement the [`Reflect`] trait.
     pub components: Vec<Box<dyn Reflect>>,
 }
 

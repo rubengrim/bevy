@@ -20,6 +20,9 @@ dds = ["ddsfile"]
 pnm = ["image/pnm"]
 bevy_ci_testing = ["bevy_app/bevy_ci_testing"]
 
+shader_format_glsl = ["naga/glsl-in", "naga/wgsl-out"]
+shader_format_spirv = ["wgpu/spirv", "naga/spv-in", "naga/spv-out"]
+
 # For ktx2 supercompression
 zlib = ["flate2"]
 zstd = ["ruzstd"]

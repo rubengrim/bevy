@@ -3,6 +3,7 @@ use bevy_asset::Handle;
 use bevy_ecs::{prelude::Component, reflect::ReflectComponent};
 use bevy_math::{Rect, Vec2};
 use bevy_reflect::prelude::*;
+use bevy_reflect::ReflectFromReflect;
 use bevy_render::{
     color::Color,
     texture::{Image, DEFAULT_IMAGE_HANDLE},
@@ -44,7 +45,7 @@ impl Node {
         Rect::from_center_size(transform.translation().truncate(), self.size())
     }
 
-    /// Returns the physical pixel coordinates of the UI node, based on its `GlobalTransform` and the scale factor.
+    /// Returns the physical pixel coordinates of the UI node, based on its [`GlobalTransform`] and the scale factor.
     #[inline]
     pub fn physical_rect(&self, transform: &GlobalTransform, scale_factor: f64) -> Rect {
         let rect = self.logical_rect(transform);
@@ -77,8 +78,8 @@ impl Default for Node {
 ///
 /// This enum allows specifying values for various [`Style`] properties in different units,
 /// such as logical pixels, percentages, or automatically determined values.
-#[derive(Copy, Clone, PartialEq, Debug, Serialize, Deserialize, Reflect)]
-#[reflect(PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Debug, Serialize, Deserialize, Reflect, FromReflect)]
+#[reflect(FromReflect, PartialEq, Serialize, Deserialize)]
 pub enum Val {
     /// Automatically determine the value based on the context and other `Style` properties.
     Auto,
@@ -293,8 +294,8 @@ impl Val {
 /// - [A Complete Guide To CSS Grid](https://css-tricks.com/snippets/css/complete-guide-grid/) by CSS Tricks. This is detailed guide with illustrations and comphrehensive written explanation of the different CSS Grid properties and how they work.
 /// - [CSS Grid Garden](https://cssgridgarden.com/). An interactive tutorial/game that teaches the essential parts of CSS Grid in a fun engaging way.
 
-#[derive(Component, Clone, PartialEq, Debug, Reflect)]
-#[reflect(Component, Default, PartialEq)]
+#[derive(Component, Clone, PartialEq, Debug, Reflect, FromReflect)]
+#[reflect(Component, FromReflect, Default, PartialEq)]
 pub struct Style {
     /// Which layout algorithm to use when laying out this node's contents:
     ///   - [`Display::Flex`]: Use the Flexbox layout algorithm
@@ -627,8 +628,8 @@ impl Default for Style {
 }
 
 /// How items are aligned according to the cross axis
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect)]
-#[reflect(PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect, FromReflect)]
+#[reflect(FromReflect, PartialEq, Serialize, Deserialize)]
 pub enum AlignItems {
     /// The items are packed in their default position as if no alignment was applied
     Default,
@@ -661,8 +662,8 @@ impl Default for AlignItems {
 }
 
 /// How items are aligned according to the cross axis
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect)]
-#[reflect(PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect, FromReflect)]
+#[reflect(FromReflect, PartialEq, Serialize, Deserialize)]
 pub enum JustifyItems {
     /// The items are packed in their default position as if no alignment was applied
     Default,
@@ -690,8 +691,8 @@ impl Default for JustifyItems {
 
 /// How this item is aligned according to the cross axis.
 /// Overrides [`AlignItems`].
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect)]
-#[reflect(PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect, FromReflect)]
+#[reflect(FromReflect, PartialEq, Serialize, Deserialize)]
 pub enum AlignSelf {
     /// Use the parent node's [`AlignItems`] value to determine how this item should be aligned.
     Auto,
@@ -725,8 +726,8 @@ impl Default for AlignSelf {
 
 /// How this item is aligned according to the cross axis.
 /// Overrides [`AlignItems`].
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect)]
-#[reflect(PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect, FromReflect)]
+#[reflect(FromReflect, PartialEq, Serialize, Deserialize)]
 pub enum JustifySelf {
     /// Use the parent node's [`AlignItems`] value to determine how this item should be aligned.
     Auto,
@@ -755,8 +756,8 @@ impl Default for JustifySelf {
 /// Defines how each line is aligned within the flexbox.
 ///
 /// It only applies if [`FlexWrap::Wrap`] is present and if there are multiple lines of items.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect)]
-#[reflect(PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect, FromReflect)]
+#[reflect(FromReflect, PartialEq, Serialize, Deserialize)]
 pub enum AlignContent {
     /// The items are packed in their default position as if no alignment was applied
     Default,
@@ -794,8 +795,8 @@ impl Default for AlignContent {
 }
 
 /// Defines how items are aligned according to the main axis
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect)]
-#[reflect(PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect, FromReflect)]
+#[reflect(FromReflect, PartialEq, Serialize, Deserialize)]
 pub enum JustifyContent {
     /// The items are packed in their default position as if no alignment was applied
     Default,
@@ -830,8 +831,8 @@ impl Default for JustifyContent {
 /// Defines the text direction
 ///
 /// For example English is written LTR (left-to-right) while Arabic is written RTL (right-to-left).
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect)]
-#[reflect(PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect, FromReflect)]
+#[reflect(FromReflect, PartialEq, Serialize, Deserialize)]
 pub enum Direction {
     /// Inherit from parent node.
     Inherit,
@@ -854,8 +855,8 @@ impl Default for Direction {
 /// Whether to use a Flexbox layout model.
 ///
 /// Part of the [`Style`] component.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect)]
-#[reflect(PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect, FromReflect)]
+#[reflect(FromReflect, PartialEq, Serialize, Deserialize)]
 pub enum Display {
     /// Use Flexbox layout model to determine the position of this [`Node`].
     Flex,
@@ -879,8 +880,8 @@ impl Default for Display {
 }
 
 /// Defines how flexbox items are ordered within a flexbox
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect)]
-#[reflect(PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect, FromReflect)]
+#[reflect(FromReflect, PartialEq, Serialize, Deserialize)]
 pub enum FlexDirection {
     /// Same way as text direction along the main axis.
     Row,
@@ -903,10 +904,10 @@ impl Default for FlexDirection {
 }
 
 /// Whether to show or hide overflowing items
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Reflect, Serialize, Deserialize)]
-#[reflect(PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Reflect, Serialize, Deserialize, FromReflect)]
+#[reflect(FromReflect, PartialEq, Serialize, Deserialize)]
 pub struct Overflow {
-    /// Whether to show or clip overflowing items on the x axis
+    /// Whether to show or clip overflowing items on the x axis        
     pub x: OverflowAxis,
     /// Whether to show or clip overflowing items on the y axis
     pub y: OverflowAxis,
@@ -963,8 +964,8 @@ impl Default for Overflow {
 }
 
 /// Whether to show or hide overflowing items
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Reflect, Serialize, Deserialize)]
-#[reflect(PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Reflect, FromReflect, Serialize, Deserialize)]
+#[reflect(FromReflect, PartialEq, Serialize, Deserialize)]
 pub enum OverflowAxis {
     /// Show overflowing items.
     Visible,
@@ -988,8 +989,8 @@ impl Default for OverflowAxis {
 }
 
 /// The strategy used to position this node
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect)]
-#[reflect(PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect, FromReflect)]
+#[reflect(FromReflect, PartialEq, Serialize, Deserialize)]
 pub enum PositionType {
     /// Relative to all other nodes with the [`PositionType::Relative`] value.
     Relative,
@@ -1010,8 +1011,8 @@ impl Default for PositionType {
 }
 
 /// Defines if flexbox items appear on a single line or on multiple lines
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect)]
-#[reflect(PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect, FromReflect)]
+#[reflect(FromReflect, PartialEq, Serialize, Deserialize)]
 pub enum FlexWrap {
     /// Single line, will overflow if needed.
     NoWrap,
@@ -1038,8 +1039,8 @@ impl Default for FlexWrap {
 /// Defaults to [`GridAutoFlow::Row`]
 ///
 /// <https://developer.mozilla.org/en-US/docs/Web/CSS/grid-auto-flow>
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect)]
-#[reflect(PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect, FromReflect)]
+#[reflect(FromReflect, PartialEq, Serialize, Deserialize)]
 pub enum GridAutoFlow {
     /// Items are placed by filling each row in turn, adding new rows as necessary
     Row,
@@ -1062,7 +1063,7 @@ impl Default for GridAutoFlow {
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, Serialize, Deserialize, Reflect, FromReflect)]
-#[reflect_value(PartialEq, Serialize, Deserialize)]
+#[reflect_value(FromReflect, PartialEq, Serialize, Deserialize)]
 pub enum MinTrackSizingFunction {
     /// Track minimum size should be a fixed pixel value
     Px(f32),
@@ -1077,7 +1078,7 @@ pub enum MinTrackSizingFunction {
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, Serialize, Deserialize, Reflect, FromReflect)]
-#[reflect_value(PartialEq, Serialize, Deserialize)]
+#[reflect_value(FromReflect, PartialEq, Serialize, Deserialize)]
 pub enum MaxTrackSizingFunction {
     /// Track maximum size should be a fixed pixel value
     Px(f32),
@@ -1102,7 +1103,7 @@ pub enum MaxTrackSizingFunction {
 /// A [`GridTrack`] is a Row or Column of a CSS Grid. This struct specifies what size the track should be.
 /// See below for the different "track sizing functions" you can specify.
 #[derive(Copy, Clone, PartialEq, Debug, Serialize, Deserialize, Reflect, FromReflect)]
-#[reflect(PartialEq, Serialize, Deserialize)]
+#[reflect(FromReflect, PartialEq, Serialize, Deserialize)]
 pub struct GridTrack {
     pub(crate) min_sizing_function: MinTrackSizingFunction,
     pub(crate) max_sizing_function: MaxTrackSizingFunction,
@@ -1220,7 +1221,7 @@ impl Default for GridTrack {
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, Serialize, Deserialize, Reflect, FromReflect)]
-#[reflect(PartialEq, Serialize, Deserialize)]
+#[reflect(FromReflect, PartialEq, Serialize, Deserialize)]
 /// How many times to repeat a repeated grid track
 ///
 /// <https://developer.mozilla.org/en-US/docs/Web/CSS/repeat>
@@ -1270,7 +1271,7 @@ impl From<usize> for GridTrackRepetition {
 /// then all track (in and outside of the repetition) must be fixed size (px or percent). Integer repetitions are just shorthand for writing out
 /// N tracks longhand and are not subject to the same limitations.
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize, Reflect, FromReflect)]
-#[reflect(PartialEq, Serialize, Deserialize)]
+#[reflect(FromReflect, PartialEq, Serialize, Deserialize)]
 pub struct RepeatedGridTrack {
     pub(crate) repetition: GridTrackRepetition,
     pub(crate) tracks: SmallVec<[GridTrack; 1]>,
@@ -1419,8 +1420,8 @@ impl From<RepeatedGridTrack> for Vec<RepeatedGridTrack> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect)]
-#[reflect(PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Reflect, FromReflect)]
+#[reflect(FromReflect, PartialEq, Serialize, Deserialize)]
 /// Represents the position of a grid item in a single axis.
 ///
 /// There are 3 fields which may be set:
@@ -1542,8 +1543,8 @@ impl Default for GridPlacement {
 ///
 /// This serves as the "fill" color.
 /// When combined with [`UiImage`], tints the provided texture.
-#[derive(Component, Copy, Clone, Debug, Reflect)]
-#[reflect(Component, Default)]
+#[derive(Component, Copy, Clone, Debug, Reflect, FromReflect)]
+#[reflect(FromReflect, Component, Default)]
 pub struct BackgroundColor(pub Color);
 
 impl BackgroundColor {
@@ -1614,8 +1615,8 @@ impl From<Handle<Image>> for UiImage {
 }
 
 /// The calculated clip of the node
-#[derive(Component, Default, Copy, Clone, Debug, Reflect)]
-#[reflect(Component)]
+#[derive(Component, Default, Copy, Clone, Debug, Reflect, FromReflect)]
+#[reflect(FromReflect, Component)]
 pub struct CalculatedClip {
     /// The rect of the clip
     pub clip: Rect,
@@ -1634,8 +1635,8 @@ pub struct CalculatedClip {
 /// [`ZIndex::Local(n)`] and [`ZIndex::Global(n)`] for root nodes.
 ///
 /// Nodes without this component will be treated as if they had a value of [`ZIndex::Local(0)`].
-#[derive(Component, Copy, Clone, Debug, Reflect)]
-#[reflect(Component)]
+#[derive(Component, Copy, Clone, Debug, Reflect, FromReflect)]
+#[reflect(Component, FromReflect)]
 pub enum ZIndex {
     /// Indicates the order in which this node should be rendered relative to its siblings.
     Local(i32),
