@@ -4,45 +4,49 @@ use super::{
     resources::{create_view_bind_group, SolariPathTracerAccumulationTexture},
 };
 use crate::scene::bind_group::SolariSceneBindGroup;
-use bevy_ecs::{
-    query::QueryState,
-    world::{FromWorld, World},
-};
+use bevy_ecs::{query::QueryItem, world::World};
 use bevy_render::{
     camera::ExtractedCamera,
-    render_graph::{Node, NodeRunError, RenderGraphContext},
+    render_graph::{NodeRunError, RenderGraphContext, ViewNode},
     render_resource::{ComputePassDescriptor, PipelineCache},
     renderer::RenderContext,
     view::{ViewTarget, ViewUniformOffset, ViewUniforms},
 };
 use std::sync::atomic::Ordering;
 
-pub struct SolariPathTracerNode(
-    QueryState<(
+#[derive(Default)]
+pub struct SolariPathTracerNode;
+
+impl ViewNode for SolariPathTracerNode {
+    type ViewQuery = (
         &'static SolariPathTracer,
         &'static SolariPathTracerPipelineId,
         &'static SolariPathTracerAccumulationTexture,
         &'static ViewTarget,
         &'static ViewUniformOffset,
         &'static ExtractedCamera,
-    )>,
-);
+    );
 
-impl Node for SolariPathTracerNode {
     fn run(
         &self,
-        graph: &mut RenderGraphContext,
+        _graph: &mut RenderGraphContext,
         render_context: &mut RenderContext,
+        (
+            path_tracer,
+            pipeline_id,
+            accumulation_texture,
+            view_target,
+            view_uniform_offset,
+            camera,
+        ): QueryItem<Self::ViewQuery>,
         world: &World,
     ) -> Result<(), NodeRunError> {
         let (
-            Ok((path_tracer, pipeline_id, accumulation_texture, view_target, view_uniform_offset, camera)),
             Some(pipeline_cache),
             Some(SolariSceneBindGroup(Some(scene_bind_group))),
             Some(view_uniforms),
             Some(solari_pipeline),
         ) = (
-            self.0.get_manual(world, graph.view_entity()),
             world.get_resource::<PipelineCache>(),
             world.get_resource::<SolariSceneBindGroup>(),
             world.get_resource::<ViewUniforms>(),
@@ -73,15 +77,5 @@ impl Node for SolariPathTracerNode {
         }
 
         Ok(())
-    }
-
-    fn update(&mut self, world: &mut World) {
-        self.0.update_archetypes(world);
-    }
-}
-
-impl FromWorld for SolariPathTracerNode {
-    fn from_world(world: &mut World) -> Self {
-        Self(QueryState::new(world))
     }
 }

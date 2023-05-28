@@ -20,7 +20,7 @@ use bevy_core_pipeline::{
     tonemapping::TonemappingNode,
     upscaling::UpscalingNode,
 };
-use bevy_ecs::{system::Resource, world::FromWorld};
+use bevy_ecs::system::Resource;
 use bevy_reflect::TypeUuid;
 use bevy_render::{
     main_graph::node::CAMERA_DRIVER,
@@ -70,15 +70,17 @@ impl Plugin for SolariPlugin {
 
         let render_app = &mut app.sub_app_mut(RenderApp);
 
-        let world_cache_node = SolariWorldCacheNode::from_world(&mut render_app.world);
         let render_graph = &mut render_app.world.resource_mut::<RenderGraph>();
-        render_graph.add_node(SOLARI_WORLD_CACHE_NODE, world_cache_node);
+        render_graph.add_node(SOLARI_WORLD_CACHE_NODE, SolariWorldCacheNode);
         render_graph.add_node_edge(SOLARI_WORLD_CACHE_NODE, CAMERA_DRIVER);
 
         render_app
             .add_render_sub_graph(SOLARI_GRAPH)
-            .add_render_graph_node::<SolariNode>(SOLARI_GRAPH, SOLARI_NODE)
-            .add_render_graph_node::<SolariPathTracerNode>(SOLARI_GRAPH, SOLARI_PATH_TRACER_NODE)
+            .add_render_graph_node::<ViewNodeRunner<SolariNode>>(SOLARI_GRAPH, SOLARI_NODE)
+            .add_render_graph_node::<ViewNodeRunner<SolariPathTracerNode>>(
+                SOLARI_GRAPH,
+                SOLARI_PATH_TRACER_NODE,
+            )
             .add_render_graph_node::<ViewNodeRunner<TonemappingNode>>(SOLARI_GRAPH, TONEMAPPING)
             .add_render_graph_node::<ViewNodeRunner<UpscalingNode>>(SOLARI_GRAPH, UPSCALING)
             .add_render_graph_edges(

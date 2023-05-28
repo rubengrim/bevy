@@ -7,20 +7,20 @@ use super::{
     world_cache::resources::SolariWorldCacheResources,
 };
 use crate::scene::bind_group::SolariSceneBindGroup;
-use bevy_ecs::{
-    query::QueryState,
-    world::{FromWorld, World},
-};
+use bevy_ecs::{query::QueryItem, world::World};
 use bevy_render::{
     camera::ExtractedCamera,
-    render_graph::{Node, NodeRunError, RenderGraphContext},
+    render_graph::{NodeRunError, RenderGraphContext, ViewNode},
     render_resource::{ComputePassDescriptor, PipelineCache},
     renderer::RenderContext,
     view::ViewUniformOffset,
 };
 
-pub struct SolariNode(
-    QueryState<(
+#[derive(Default)]
+pub struct SolariNode;
+
+impl ViewNode for SolariNode {
+    type ViewQuery = (
         &'static SolariBindGroup,
         &'static SolariGmtBufferPipelineId,
         &'static SolariUpdateScreenProbesPipelineId,
@@ -29,31 +29,29 @@ pub struct SolariNode(
         &'static ViewUniformOffset,
         &'static PreviousViewProjectionUniformOffset,
         &'static ExtractedCamera,
-    )>,
-);
+    );
 
-impl Node for SolariNode {
     fn run(
         &self,
-        graph: &mut RenderGraphContext,
+        _graph: &mut RenderGraphContext,
         render_context: &mut RenderContext,
+        (
+            bind_group,
+            gmt_buffer_pipeline_id,
+            update_screen_probes_pipeline_id,
+            filter_screen_probes_pipeline_id,
+            shade_view_target_pipeline_id,
+            view_uniform_offset,
+            previous_view_projection_uniform_offset,
+            camera,
+        ): QueryItem<Self::ViewQuery>,
         world: &World,
     ) -> Result<(), NodeRunError> {
         let (
-            Ok((bind_group,
-                gmt_buffer_pipeline_id,
-                update_screen_probes_pipeline_id,
-                filter_screen_probes_pipeline_id,
-                shade_view_target_pipeline_id,
-                view_uniform_offset,
-                previous_view_projection_uniform_offset,
-                camera,
-            )),
             Some(pipeline_cache),
             Some(SolariSceneBindGroup(Some(scene_bind_group))),
             Some(world_cache_resources),
         ) = (
-            self.0.get_manual(world, graph.view_entity()),
             world.get_resource::<PipelineCache>(),
             world.get_resource::<SolariSceneBindGroup>(),
             world.get_resource::<SolariWorldCacheResources>(),
@@ -106,15 +104,5 @@ impl Node for SolariNode {
         }
 
         Ok(())
-    }
-
-    fn update(&mut self, world: &mut World) {
-        self.0.update_archetypes(world);
-    }
-}
-
-impl FromWorld for SolariNode {
-    fn from_world(world: &mut World) -> Self {
-        Self(QueryState::new(world))
     }
 }

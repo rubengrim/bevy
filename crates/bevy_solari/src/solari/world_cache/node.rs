@@ -2,13 +2,14 @@ use super::{
     pipelines::SolariWorldCachePipelineIds, resources::SolariWorldCacheResources, WORLD_CACHE_SIZE,
 };
 use crate::scene::bind_group::SolariSceneBindGroup;
-use bevy_ecs::world::{FromWorld, World};
+use bevy_ecs::world::World;
 use bevy_render::{
     render_graph::{Node, NodeRunError, RenderGraphContext},
     render_resource::{ComputePassDescriptor, PipelineCache},
     renderer::RenderContext,
 };
 
+#[derive(Default)]
 pub struct SolariWorldCacheNode;
 
 impl Node for SolariWorldCacheNode {
@@ -85,13 +86,5 @@ impl Node for SolariWorldCacheNode {
         }
 
         Ok(())
-    }
-
-    fn update(&mut self, _world: &mut World) {}
-}
-
-impl FromWorld for SolariWorldCacheNode {
-    fn from_world(_world: &mut World) -> Self {
-        Self
     }
 }
