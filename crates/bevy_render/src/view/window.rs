@@ -5,12 +5,18 @@ use crate::{
 };
 use bevy_app::{App, Plugin};
 use bevy_ecs::prelude::*;
-use bevy_utils::{tracing::debug, HashMap, HashSet};
+use bevy_utils::{default, tracing::debug, HashMap, HashSet};
 use bevy_window::{
     CompositeAlphaMode, PresentMode, PrimaryWindow, RawHandleWrapper, Window, WindowClosed,
 };
 use std::ops::{Deref, DerefMut};
-use wgpu::TextureFormat;
+use wgpu::{BufferUsages, TextureFormat, TextureUsages, TextureViewDescriptor};
+
+pub mod screenshot;
+
+use screenshot::{
+    ScreenshotManager, ScreenshotPlugin, ScreenshotPreparedState, ScreenshotToScreenPipeline,
+};
 
 use super::Msaa;
 
@@ -37,6 +43,12 @@ impl Plugin for WindowRenderPlugin {
                 .add_systems(Render, prepare_windows.in_set(WindowSystem::Prepare));
         }
     }
+
+    fn finish(&self, app: &mut App) {
+        if let Ok(render_app) = app.get_sub_app_mut(RenderApp) {
+            render_app.init_resource::<ScreenshotToScreenPipeline>();
+        }
+    }
 }
 
 pub struct ExtractedWindow {
@@ -51,6 +63,20 @@ pub struct ExtractedWindow {
     pub size_changed: bool,
     pub present_mode_changed: bool,
     pub alpha_mode: CompositeAlphaMode,
+    pub screenshot_func: Option<screenshot::ScreenshotFn>,
+}
+
+impl ExtractedWindow {
+    fn set_swapchain_texture(&mut self, frame: wgpu::SurfaceTexture) {
+        let texture_view_descriptor = TextureViewDescriptor {
+            format: Some(frame.texture.format().add_srgb_suffix()),
+            ..default()
+        };
+        self.swap_chain_texture_view = Some(TextureView::from(
+            frame.texture.create_view(&texture_view_descriptor),
+        ));
+        self.swap_chain_texture = Some(SurfaceTexture::from(frame));
+    }
 }
 
 #[derive(Default, Resource)]
@@ -88,7 +114,7 @@ fn extract_windows(
             window.resolution.physical_height().max(1),
         );
 
-        let mut extracted_window = extracted_windows.entry(entity).or_insert(ExtractedWindow {
+        let extracted_window = extracted_windows.entry(entity).or_insert(ExtractedWindow {
             entity,
             handle: handle.clone(),
             physical_width: new_width,
@@ -227,8 +253,11 @@ pub fn prepare_windows(
                 CompositeAlphaMode::PostMultiplied => wgpu::CompositeAlphaMode::PostMultiplied,
                 CompositeAlphaMode::Inherit => wgpu::CompositeAlphaMode::Inherit,
             },
-            // TODO: Use an sRGB view format here on platforms that don't support sRGB surfaces. (afaik only WebGPU)
-            view_formats: vec![],
+            view_formats: if !surface_data.format.is_srgb() {
+                vec![surface_data.format.add_srgb_suffix()]
+            } else {
+                vec![]
+            },
         };
 
         // This is an ugly hack to work around drivers that don't support MSAA.

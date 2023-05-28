@@ -25,7 +25,7 @@ fn main() {
 
     app.add_plugins(DefaultPlugins.set(WindowPlugin {
         primary_window: Some(Window {
-            present_mode: PresentMode::Immediate,
+            present_mode: PresentMode::AutoNoVsync,
             ..default()
         }),
         ..default()
@@ -87,7 +87,7 @@ fn setup(mut commands: Commands, font: Res<UiFont>) {
     commands
         .spawn(NodeBundle {
             style: Style {
-                size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
+                width: Val::Percent(100.),
                 ..default()
             },
             ..default()
@@ -124,7 +124,8 @@ fn spawn_button(
     let mut builder = commands.spawn((
         ButtonBundle {
             style: Style {
-                size: Size::new(Val::Percent(width), Val::Percent(width)),
+                width: Val::Percent(width),
+                height: Val::Percent(width),
                 bottom: Val::Percent(100.0 / total * i as f32),
                 left: Val::Percent(100.0 / total * j as f32),
                 align_items: AlignItems::Center,
