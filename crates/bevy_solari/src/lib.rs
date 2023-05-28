@@ -24,7 +24,7 @@ use bevy_ecs::{system::Resource, world::FromWorld};
 use bevy_reflect::TypeUuid;
 use bevy_render::{
     main_graph::node::CAMERA_DRIVER,
-    render_graph::{RenderGraph, RenderGraphApp},
+    render_graph::{RenderGraph, RenderGraphApp, ViewNodeRunner},
     render_resource::Shader,
     renderer::RenderDevice,
     settings::WgpuFeatures,
@@ -46,7 +46,7 @@ const SOLARI_UTILS_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 4717171717171755);
 
 impl Plugin for SolariPlugin {
-    fn build(&self, app: &mut App) {
+    fn finish(&self, app: &mut App) {
         let required_features = WgpuFeatures::RAY_TRACING_ACCELERATION_STRUCTURE
             | WgpuFeatures::RAY_QUERY
             | WgpuFeatures::TEXTURE_BINDING_ARRAY
@@ -80,11 +80,13 @@ impl Plugin for SolariPlugin {
             .add_render_sub_graph(SOLARI_GRAPH)
             .add_render_graph_node::<SolariNode>(SOLARI_GRAPH, SOLARI_NODE)
             .add_render_graph_node::<SolariPathTracerNode>(SOLARI_GRAPH, SOLARI_PATH_TRACER_NODE)
-            .add_render_graph_node::<TonemappingNode>(SOLARI_GRAPH, TONEMAPPING)
-            .add_render_graph_node::<UpscalingNode>(SOLARI_GRAPH, UPSCALING)
+            .add_render_graph_node::<ViewNodeRunner<TonemappingNode>>(SOLARI_GRAPH, TONEMAPPING)
+            .add_render_graph_node::<ViewNodeRunner<UpscalingNode>>(SOLARI_GRAPH, UPSCALING)
             .add_render_graph_edges(
                 SOLARI_GRAPH,
                 &[SOLARI_NODE, SOLARI_PATH_TRACER_NODE, TONEMAPPING, UPSCALING],
             );
     }
+
+    fn build(&self, _: &mut App) {}
 }

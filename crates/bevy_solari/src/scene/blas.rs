@@ -1,4 +1,4 @@
-use bevy_asset::Handle;
+use bevy_asset::{Handle, HandleId};
 use bevy_ecs::system::{Query, Res, ResMut, Resource};
 use bevy_render::{
     mesh::GpuBufferInfo,
@@ -14,12 +14,12 @@ use std::ops::Deref;
 
 #[derive(Resource, Default)]
 pub struct BlasStorage {
-    storage: HashMap<Handle<Mesh>, Blas>,
+    storage: HashMap<HandleId, Blas>,
 }
 
 impl BlasStorage {
     pub fn get(&self, mesh: &Handle<Mesh>) -> Option<&Blas> {
-        self.storage.get(mesh)
+        self.storage.get(&mesh.id())
     }
 }
 
@@ -39,7 +39,7 @@ pub fn prepare_blas(
         .iter()
         .filter_map(|mesh| render_meshes.get(mesh).map(|gpu_mesh| (mesh, gpu_mesh)))
         .filter(|(mesh, gpu_mesh)| {
-            !blas_storage.storage.contains_key(mesh)
+            !blas_storage.storage.contains_key(&mesh.id())
                 && gpu_mesh.primitive_topology == PrimitiveTopology::TriangleList
         })
         .collect::<Vec<_>>();
@@ -48,12 +48,12 @@ pub fn prepare_blas(
     let blas_resources = meshes
         .iter()
         .map(|(mesh, gpu_mesh)| {
-            let (index_buffer, index_count, index_format, index_buffer_offset, vertex_count) =
+            let (index_buffer, index_count, index_format, index_buffer_offset) =
                 map_buffer_info(&gpu_mesh.buffer_info);
 
             let blas_size = BlasTriangleGeometrySizeDescriptor {
                 vertex_format: Mesh::ATTRIBUTE_POSITION.format,
-                vertex_count,
+                vertex_count: gpu_mesh.vertex_count,
                 index_format,
                 index_count,
                 flags: AccelerationStructureGeometryFlags::OPAQUE,
@@ -69,7 +69,7 @@ pub fn prepare_blas(
                     desc: vec![blas_size.clone()],
                 },
             );
-            blas_storage.storage.insert(mesh.clone_weak(), blas);
+            blas_storage.storage.insert(mesh.id(), blas);
 
             (
                 mesh.clone_weak(),
@@ -116,21 +116,13 @@ fn map_buffer_info(
     Option<u32>,
     Option<IndexFormat>,
     Option<u64>,
-    u32,
 ) {
     match buffer_info {
         GpuBufferInfo::Indexed {
             buffer,
             count,
             index_format,
-            vertex_count,
-        } => (
-            Some(buffer),
-            Some(*count),
-            Some(*index_format),
-            Some(0),
-            *vertex_count,
-        ),
-        GpuBufferInfo::NonIndexed { vertex_count } => (None, None, None, None, *vertex_count),
+        } => (Some(buffer), Some(*count), Some(*index_format), Some(0)),
+        GpuBufferInfo::NonIndexed => (None, None, None, None),
     }
 }

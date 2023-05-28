@@ -8,18 +8,20 @@ use bevy::{
 };
 
 fn main() {
-    let mut app = App::new();
-    app.add_plugins(DefaultPlugins);
-
-    if app.world.contains_resource::<SolariSupported>() {
-        app.add_systems(Startup, setup)
-            .add_systems(Update, swap_modes)
-            .add_systems(Update, add_solari_materials);
-    } else {
-        app.add_systems(Startup, solari_not_supported);
-    }
-
-    app.run();
+    App::new()
+        .add_plugins(DefaultPlugins)
+        .add_systems(
+            Startup,
+            (
+                solari_not_supported.run_if(not(resource_exists::<SolariSupported>())),
+                setup.run_if(resource_exists::<SolariSupported>()),
+            ),
+        )
+        .add_systems(
+            Update,
+            (swap_modes, add_solari_materials).run_if(resource_exists::<SolariSupported>()),
+        )
+        .run();
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
