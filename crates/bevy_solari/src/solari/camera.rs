@@ -57,7 +57,7 @@ impl Default for SolariCamera3dBundle {
             projection: Default::default(),
             transform: Default::default(),
             global_transform: Default::default(),
-            tonemapping: Tonemapping::TonyMcMapface,
+            tonemapping: Default::default(),
             color_grading: Default::default(),
         }
     }
