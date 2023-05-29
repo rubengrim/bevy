@@ -2,10 +2,9 @@ use super::{
     resources::SolariBindGroupLayout, world_cache::resources::SolariWorldCacheResources,
     SOLARI_SHADE_VIEW_TARGET,
 };
-use crate::{scene::bind_group_layout::SolariSceneResources, SolariSettings};
+use crate::{scene::bind_group_layout::SolariSceneResources, SolariDebugView, SolariSettings};
 use bevy_ecs::{
     prelude::{Component, Entity},
-    query::With,
     system::{Commands, Query, Res, ResMut, Resource},
     world::{FromWorld, World},
 };
@@ -36,12 +35,37 @@ impl FromWorld for SolariShadeViewTargetPipeline {
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
-pub struct SolariShadeViewTargetPipelineKey {}
+pub struct SolariShadeViewTargetPipelineKey {
+    debug_view: Option<SolariDebugView>,
+}
 
 impl SpecializedComputePipeline for SolariShadeViewTargetPipeline {
     type Key = SolariShadeViewTargetPipelineKey;
 
-    fn specialize(&self, _key: Self::Key) -> ComputePipelineDescriptor {
+    fn specialize(&self, key: Self::Key) -> ComputePipelineDescriptor {
+        let mut shader_defs = vec![ShaderDefVal::UInt("WORLD_CACHE_BIND_GROUP".into(), 2)];
+        match key.debug_view {
+            Some(SolariDebugView::Depth) => shader_defs.push("DEBUG_VIEW_DEPTH".into()),
+            Some(SolariDebugView::WorldNormals) => {
+                shader_defs.push("DEBUG_VIEW_WORLD_NORMALS".into())
+            }
+            Some(SolariDebugView::MotionVectors) => {
+                shader_defs.push("DEBUG_VIEW_MOTION_VECTORS".into())
+            }
+            Some(SolariDebugView::BaseColors) => shader_defs.push("DEBUG_VIEW_BASE_COLORS".into()),
+            Some(SolariDebugView::Irradiance) => shader_defs.push("DEBUG_VIEW_IRRADIANCE".into()),
+            Some(SolariDebugView::ScreenProbesUnfiltered) => {
+                shader_defs.push("DEBUG_VIEW_SCREEN_PROBES_UNFILTERED".into())
+            }
+            Some(SolariDebugView::ScreenProbesFiltered) => {
+                shader_defs.push("DEBUG_VIEW_SCREEN_PROBES_FILTERED".into())
+            }
+            Some(SolariDebugView::WorldCacheIrradiance) => {
+                shader_defs.push("DEBUG_VIEW_WORLD_CACHE_IRRADIANCE".into())
+            }
+            None => {}
+        }
+
         ComputePipelineDescriptor {
             label: Some("solari_shade_view_target_pipeline".into()),
             layout: vec![
@@ -51,7 +75,7 @@ impl SpecializedComputePipeline for SolariShadeViewTargetPipeline {
             ],
             push_constant_ranges: vec![],
             shader: SOLARI_SHADE_VIEW_TARGET.typed(),
-            shader_defs: vec![ShaderDefVal::UInt("WORLD_CACHE_BIND_GROUP".into(), 2)],
+            shader_defs,
             entry_point: "shade_view_target".into(),
         }
     }
@@ -61,17 +85,19 @@ impl SpecializedComputePipeline for SolariShadeViewTargetPipeline {
 pub struct SolariShadeViewTargetPipelineId(pub CachedComputePipelineId);
 
 pub fn prepare_shade_view_target_pipelines(
-    views: Query<Entity, With<SolariSettings>>,
+    views: Query<(Entity, &SolariSettings)>,
     mut commands: Commands,
     pipeline_cache: Res<PipelineCache>,
     mut pipelines: ResMut<SpecializedComputePipelines<SolariShadeViewTargetPipeline>>,
     pipeline: Res<SolariShadeViewTargetPipeline>,
 ) {
-    for entity in &views {
+    for (entity, solari_settings) in &views {
         let pipeline_id = pipelines.specialize(
             &pipeline_cache,
             &pipeline,
-            SolariShadeViewTargetPipelineKey {},
+            SolariShadeViewTargetPipelineKey {
+                debug_view: solari_settings.debug_view,
+            },
         );
 
         commands

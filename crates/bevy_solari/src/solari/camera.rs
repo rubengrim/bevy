@@ -17,7 +17,21 @@ use bevy_render::{
 use bevy_transform::prelude::{GlobalTransform, Transform};
 
 #[derive(Component, ExtractComponent, Clone, Default)]
-pub struct SolariSettings {}
+pub struct SolariSettings {
+    pub debug_view: Option<SolariDebugView>,
+}
+
+#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+pub enum SolariDebugView {
+    Depth,
+    WorldNormals,
+    MotionVectors,
+    BaseColors,
+    Irradiance,
+    ScreenProbesUnfiltered,
+    ScreenProbesFiltered,
+    WorldCacheIrradiance,
+}
 
 #[derive(Bundle)]
 pub struct SolariCamera3dBundle {

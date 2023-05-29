@@ -3,7 +3,8 @@
 use bevy::{
     prelude::*,
     solari::{
-        SolariCamera3dBundle, SolariMaterial, SolariPathTracer, SolariSettings, SolariSupported,
+        SolariCamera3dBundle, SolariDebugView, SolariMaterial, SolariPathTracer, SolariSettings,
+        SolariSupported,
     },
 };
 
@@ -19,7 +20,7 @@ fn main() {
         )
         .add_systems(
             Update,
-            (swap_modes, add_solari_materials).run_if(resource_exists::<SolariSupported>()),
+            (update, add_solari_materials).run_if(resource_exists::<SolariSupported>()),
         )
         .run();
 }
@@ -29,6 +30,23 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         scene: asset_server.load("models/cornell_box.glb#Scene0"),
         ..default()
     });
+
+    commands.spawn(
+        TextBundle::from_section(
+            "",
+            TextStyle {
+                font_size: 16.0,
+                color: Color::WHITE,
+                ..default()
+            },
+        )
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            top: Val::Px(8.0),
+            left: Val::Px(8.0),
+            ..default()
+        }),
+    );
 
     commands.spawn(SolariCamera3dBundle {
         transform: Transform::from_matrix(Mat4 {
@@ -60,13 +78,100 @@ fn solari_not_supported(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
 }
 
-fn swap_modes(
+fn update(
     mut commands: Commands,
+    mut ui: Query<&mut Text>,
+    mut camera: Query<(Entity, Option<&mut SolariSettings>), With<Camera>>,
     keys: Res<Input<KeyCode>>,
-    camera: Query<(Entity, Option<&SolariSettings>), With<Camera>>,
 ) {
+    let (camera, mut real_time) = camera.single_mut();
+    let ui = &mut ui.single_mut().sections[0].value;
+
+    ui.clear();
+    if real_time.is_some() {
+        ui.push_str("(Space) Realtime\n");
+    } else {
+        ui.push_str("(Space) Path tracer\n");
+    }
+
+    if let Some(solari_settings) = real_time.as_mut() {
+        if keys.just_pressed(KeyCode::Key1) {
+            solari_settings.debug_view = None;
+        }
+        if keys.just_pressed(KeyCode::Key2) {
+            solari_settings.debug_view = Some(SolariDebugView::Depth);
+        }
+        if keys.just_pressed(KeyCode::Key3) {
+            solari_settings.debug_view = Some(SolariDebugView::WorldNormals);
+        }
+        if keys.just_pressed(KeyCode::Key4) {
+            solari_settings.debug_view = Some(SolariDebugView::MotionVectors);
+        }
+        if keys.just_pressed(KeyCode::Key5) {
+            solari_settings.debug_view = Some(SolariDebugView::BaseColors);
+        }
+        if keys.just_pressed(KeyCode::Key6) {
+            solari_settings.debug_view = Some(SolariDebugView::Irradiance);
+        }
+        if keys.just_pressed(KeyCode::Key7) {
+            solari_settings.debug_view = Some(SolariDebugView::ScreenProbesUnfiltered);
+        }
+        if keys.just_pressed(KeyCode::Key8) {
+            solari_settings.debug_view = Some(SolariDebugView::ScreenProbesFiltered);
+        }
+        if keys.just_pressed(KeyCode::Key9) {
+            solari_settings.debug_view = Some(SolariDebugView::WorldCacheIrradiance);
+        }
+
+        ui.push_str("\nDebug view:\n");
+        if solari_settings.debug_view == None {
+            ui.push_str("*1* None\n");
+        } else {
+            ui.push_str(" 1  None\n");
+        }
+        if solari_settings.debug_view == Some(SolariDebugView::Depth) {
+            ui.push_str("*2* Depth\n");
+        } else {
+            ui.push_str(" 2  Depth\n");
+        }
+        if solari_settings.debug_view == Some(SolariDebugView::WorldNormals) {
+            ui.push_str("*3* WorldNormals\n");
+        } else {
+            ui.push_str(" 3  WorldNormals\n");
+        }
+        if solari_settings.debug_view == Some(SolariDebugView::MotionVectors) {
+            ui.push_str("*4* MotionVectors\n");
+        } else {
+            ui.push_str(" 4  MotionVectors\n");
+        }
+        if solari_settings.debug_view == Some(SolariDebugView::BaseColors) {
+            ui.push_str("*5* BaseColors\n");
+        } else {
+            ui.push_str(" 5  BaseColors\n");
+        }
+        if solari_settings.debug_view == Some(SolariDebugView::Irradiance) {
+            ui.push_str("*6* Irradiance\n");
+        } else {
+            ui.push_str(" 6  Irradiance\n");
+        }
+        if solari_settings.debug_view == Some(SolariDebugView::ScreenProbesUnfiltered) {
+            ui.push_str("*7* ScreenProbesUnfiltered\n");
+        } else {
+            ui.push_str(" 7  ScreenProbesUnfiltered\n");
+        }
+        if solari_settings.debug_view == Some(SolariDebugView::ScreenProbesFiltered) {
+            ui.push_str("*8* ScreenProbesFiltered\n");
+        } else {
+            ui.push_str(" 8  ScreenProbesFiltered\n");
+        }
+        if solari_settings.debug_view == Some(SolariDebugView::WorldCacheIrradiance) {
+            ui.push_str("*9* WorldCacheIrradiance\n");
+        } else {
+            ui.push_str(" 9  WorldCacheIrradiance\n");
+        }
+    }
+
     if keys.just_pressed(KeyCode::Space) {
-        let (camera, real_time) = camera.get_single().unwrap();
         if real_time.is_some() {
             commands
                 .entity(camera)

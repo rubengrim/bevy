@@ -1,6 +1,8 @@
 #import bevy_solari::scene_bindings
 #import bevy_solari::view_bindings
 #import bevy_solari::utils
+#import bevy_solari::world_cache::bindings
+#import bevy_solari::world_cache::utils
 
 // TODO: Validate neighbor probe exists
 // TODO: Additional weights based on plane distance and maybe gaussian
@@ -74,7 +76,8 @@ fn shade_view_target(
     let pixel_id = vec2<f32>(global_id.xy) + rand_vec2(&rng); // TODO: Cancel jitter if outside pixel plane
 
     let g_buffer_pixel = textureLoad(g_buffer, global_id.xy);
-    if decode_g_buffer_depth(g_buffer_pixel) < 0.0 {
+    let pixel_depth = decode_g_buffer_depth(g_buffer_pixel);
+    if pixel_depth < 0.0 {
         textureStore(view_target, global_id.xy, vec4(0.0, 0.0, 0.0, 1.0));
         return;
     }
@@ -94,6 +97,35 @@ fn shade_view_target(
     interpolate_probe(&irradiance, &weight, pixel_id, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(1i, -1i), probe_thread_id);
     irradiance /= weight;
 
-    let final_color = material.emission + (material.base_color * irradiance);
+    var final_color = material.emission + (material.base_color * irradiance);
+
+#ifdef DEBUG_VIEW_DEPTH
+    final_color = vec3(pixel_depth * pixel_depth / 1000.0);
+#endif
+#ifdef DEBUG_VIEW_WORLD_NORMALS
+    final_color = abs(pixel_world_normal);
+#endif
+#ifdef DEBUG_VIEW_MOTION_VECTORS
+    let t_buffer_pixel = textureLoad(t_buffer, global_id.xy);
+    final_color = vec3(abs(t_buffer_pixel.rg), 0.0);
+#endif
+#ifdef DEBUG_VIEW_BASE_COLORS
+    final_color = material.base_color;
+#endif
+#ifdef DEBUG_VIEW_IRRADIANCE
+    final_color = irradiance;
+#endif
+#ifdef DEBUG_VIEW_SCREEN_PROBES_UNFILTERED
+    final_color = textureLoad(screen_probes_unfiltered, global_id.xy).rgb;
+#endif
+#ifdef DEBUG_VIEW_SCREEN_PROBES_FILTERED
+    final_color = textureLoad(screen_probes_filtered, global_id.xy).rgb;
+#endif
+#ifdef DEBUG_VIEW_WORLD_CACHE_IRRADIANCE
+    let pixel_world_position = depth_to_world_position(pixel_depth, pixel_id / view.viewport.zw);
+    let world_cache_key = compute_key(pixel_world_position, pixel_world_normal);
+    final_color = world_cache_irradiance[world_cache_key].rgb;
+#endif
+
     textureStore(view_target, global_id.xy, vec4(final_color, 1.0));
 }
