@@ -182,6 +182,7 @@ pub fn extract_uinodes(
             uinode_query.get(*entity)
         {
             // Skip invisible and completely transparent nodes
+            // TODO: Is it ok to use in_hierachy() only here?
             if !visibility.is_visible_in_hierarchy() || color.0.a() == 0.0 {
                 continue;
             }
@@ -302,6 +303,7 @@ pub fn extract_text_uinodes(
             uinode_query.get(*entity)
         {
             // Skip if not visible or if size is set to zero (e.g. when a parent is set to `Display::None`)
+            // TODO: Is it ok to use in_hierachy() only here?
             if !visibility.is_visible_in_hierarchy()
                 || uinode.size().x == 0.
                 || uinode.size().y == 0.
