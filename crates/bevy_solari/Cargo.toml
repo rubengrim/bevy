@@ -22,4 +22,5 @@ bevy_math = { path = "../bevy_math", version = "0.11.0-dev" }
 bevy_reflect = { path = "../bevy_reflect", version = "0.11.0-dev", features = ["bevy"] }
 bevy_render = { path = "../bevy_render", version = "0.11.0-dev" }
 bevy_transform = { path = "../bevy_transform", version = "0.11.0-dev" }
+bevy_ui = { path = "../bevy_ui", version = "0.11.0-dev" }
 bevy_utils = { path = "../bevy_utils", version = "0.11.0-dev" }

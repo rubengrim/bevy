@@ -25,8 +25,8 @@ pub struct UiPassNode {
     default_camera_view_query: QueryState<&'static DefaultCameraView>,
 }
 
-impl UiPassNode {
-    pub fn new(world: &mut World) -> Self {
+impl FromWorld for UiPassNode {
+    fn from_world(world: &mut World) -> Self {
         Self {
             ui_view_query: world.query_filtered(),
             default_camera_view_query: world.query(),

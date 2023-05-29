@@ -138,7 +138,7 @@ pub fn build_ui_render(app: &mut App) {
 }
 
 fn get_ui_graph(render_app: &mut App) -> RenderGraph {
-    let ui_pass_node = UiPassNode::new(&mut render_app.world);
+    let ui_pass_node = UiPassNode::from_world(&mut render_app.world);
     let mut ui_graph = RenderGraph::default();
     ui_graph.add_node(draw_ui_graph::node::UI_PASS, ui_pass_node);
     ui_graph
@@ -182,7 +182,7 @@ pub fn extract_uinodes(
             uinode_query.get(*entity)
         {
             // Skip invisible and completely transparent nodes
-            if !visibility.is_visible() || color.0.a() == 0.0 {
+            if !visibility.is_visible_in_hierarchy() || color.0.a() == 0.0 {
                 continue;
             }
 
@@ -302,7 +302,10 @@ pub fn extract_text_uinodes(
             uinode_query.get(*entity)
         {
             // Skip if not visible or if size is set to zero (e.g. when a parent is set to `Display::None`)
-            if !visibility.is_visible() || uinode.size().x == 0. || uinode.size().y == 0. {
+            if !visibility.is_visible_in_hierarchy()
+                || uinode.size().x == 0.
+                || uinode.size().y == 0.
+            {
                 continue;
             }
             let transform = global_transform.compute_matrix()

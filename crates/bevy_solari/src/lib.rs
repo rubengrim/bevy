@@ -28,8 +28,9 @@ use bevy_render::{
     render_resource::Shader,
     renderer::RenderDevice,
     settings::WgpuFeatures,
-    RenderApp,
+    ExtractSchedule, RenderApp,
 };
+use bevy_ui::{draw_ui_graph::node::UI_PASS, extract_default_ui_camera_view, UiPassNode};
 
 #[derive(Resource)]
 pub struct SolariSupported;
@@ -55,7 +56,6 @@ impl Plugin for SolariPlugin {
             | WgpuFeatures::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING
             | WgpuFeatures::PARTIALLY_BOUND_BINDING_ARRAY
             | WgpuFeatures::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES;
-
         match app.world.get_resource::<RenderDevice>() {
             Some(render_device) if render_device.features().contains(required_features) => {}
             _ => return,
@@ -70,6 +70,14 @@ impl Plugin for SolariPlugin {
 
         let render_app = &mut app.sub_app_mut(RenderApp);
 
+        render_app.add_systems(
+            ExtractSchedule,
+            (
+                extract_default_ui_camera_view::<SolariSettings>,
+                extract_default_ui_camera_view::<SolariPathTracer>,
+            ),
+        );
+
         let render_graph = &mut render_app.world.resource_mut::<RenderGraph>();
         render_graph.add_node(SOLARI_WORLD_CACHE_NODE, SolariWorldCacheNode);
         render_graph.add_node_edge(SOLARI_WORLD_CACHE_NODE, CAMERA_DRIVER);
@@ -82,10 +90,17 @@ impl Plugin for SolariPlugin {
                 SOLARI_PATH_TRACER_NODE,
             )
             .add_render_graph_node::<ViewNodeRunner<TonemappingNode>>(SOLARI_GRAPH, TONEMAPPING)
+            .add_render_graph_node::<UiPassNode>(SOLARI_GRAPH, UI_PASS)
             .add_render_graph_node::<ViewNodeRunner<UpscalingNode>>(SOLARI_GRAPH, UPSCALING)
             .add_render_graph_edges(
                 SOLARI_GRAPH,
-                &[SOLARI_NODE, SOLARI_PATH_TRACER_NODE, TONEMAPPING, UPSCALING],
+                &[
+                    SOLARI_NODE,
+                    SOLARI_PATH_TRACER_NODE,
+                    TONEMAPPING,
+                    UI_PASS,
+                    UPSCALING,
+                ],
             );
     }
 
