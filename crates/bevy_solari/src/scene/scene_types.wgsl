@@ -1,10 +1,5 @@
 #define_import_path bevy_solari::scene_types
 
-struct SolariMeshMaterial {
-    mesh_index: u32,
-    material_index: u32,
-}
-
 struct SolariIndexBuffer {
     buffer: array<u32>,
 }
@@ -72,10 +67,12 @@ struct SolariRayHit {
 }
 
 fn map_ray_hit(ray_hit: RayIntersection) -> SolariRayHit {
-    let mesh_material = mesh_materials[ray_hit.instance_custom_index];
-    let index_buffer = &index_buffers[mesh_material.mesh_index].buffer;
-    let vertex_buffer = &vertex_buffers[mesh_material.mesh_index].buffer;
-    let material = materials[mesh_material.material_index];
+    let mesh_index = ray_hit.instance_custom_index >> 16u;
+    let material_index = ray_hit.instance_custom_index & 0xFFFFu;
+
+    let index_buffer = &index_buffers[mesh_index].buffer;
+    let vertex_buffer = &vertex_buffers[mesh_index].buffer;
+    let material = materials[material_index];
 
     let indices_i = (ray_hit.primitive_index * 3u) + vec3(0u, 1u, 2u);
     let indices = vec3((*index_buffer)[indices_i.x], (*index_buffer)[indices_i.y], (*index_buffer)[indices_i.z]);

@@ -1,7 +1,4 @@
-use super::{
-    material::{GpuSolariMaterial, MeshMaterial},
-    scene::PreviousGlobalTransform,
-};
+use super::{material::GpuSolariMaterial, scene::PreviousGlobalTransform};
 use bevy_ecs::{
     system::Resource,
     world::{FromWorld, World},
@@ -41,20 +38,9 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
             ty: BindingType::AccelerationStructure,
             count: None,
         },
-        // MeshMaterial buffer
-        BindGroupLayoutEntry {
-            binding: 1,
-            visibility: ShaderStages::COMPUTE,
-            ty: BindingType::Buffer {
-                ty: BufferBindingType::Storage { read_only: true },
-                has_dynamic_offset: false,
-                min_binding_size: Some(MeshMaterial::min_size()),
-            },
-            count: None,
-        },
         // Index buffers
         BindGroupLayoutEntry {
-            binding: 2,
+            binding: 1,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Buffer {
                 ty: BufferBindingType::Storage { read_only: true },
@@ -65,7 +51,7 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
         },
         // Vertex buffers
         BindGroupLayoutEntry {
-            binding: 3,
+            binding: 2,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Buffer {
                 ty: BufferBindingType::Storage { read_only: true },
@@ -76,7 +62,7 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
         },
         // Previous transform buffer
         BindGroupLayoutEntry {
-            binding: 4,
+            binding: 3,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Buffer {
                 ty: BufferBindingType::Storage { read_only: true },
@@ -87,7 +73,7 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
         },
         // Material buffer
         BindGroupLayoutEntry {
-            binding: 5,
+            binding: 4,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Buffer {
                 ty: BufferBindingType::Storage { read_only: true },
@@ -98,7 +84,7 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
         },
         // Texture maps
         BindGroupLayoutEntry {
-            binding: 6,
+            binding: 5,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Texture {
                 sample_type: TextureSampleType::Float { filterable: true },
@@ -109,14 +95,14 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
         },
         // Texture sampler
         BindGroupLayoutEntry {
-            binding: 7,
+            binding: 6,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Sampler(SamplerBindingType::Filtering),
             count: None,
         },
         // Globals
         BindGroupLayoutEntry {
-            binding: 8,
+            binding: 7,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Buffer {
                 ty: BufferBindingType::Uniform,

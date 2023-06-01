@@ -1,8 +1,8 @@
 use super::{
     bind_group_layout::SolariSceneResources,
     blas::BlasStorage,
-    material::{GpuSolariMaterial, MeshMaterial, SolariMaterial},
-    misc::{new_storage_buffer, tlas_transform, IndexedVec},
+    material::{GpuSolariMaterial, SolariMaterial},
+    misc::{new_storage_buffer, pack_object_indices, tlas_transform, IndexedVec},
     scene::PreviousGlobalTransform,
 };
 use bevy_asset::Handle;
@@ -42,7 +42,6 @@ pub fn queue_scene_bind_group(
 ) {
     // Create CPU buffers for scene resources
     // TODO: Reuse memory each frame
-    let mut mesh_materials = Vec::new();
     let mut index_buffers = IndexedVec::new();
     let mut vertex_buffers = Vec::new();
     let mut previous_transforms = Vec::new();
@@ -104,15 +103,13 @@ pub fn queue_scene_bind_group(
     {
         if let Some(blas) = blas_storage.get(mesh_handle) {
             previous_transforms.push(previous_transform);
-            mesh_materials.push(MeshMaterial {
-                mesh_index: get_mesh_index(mesh_handle),
-                material_index: get_material_index(material_handle, material),
-            });
+            let mesh_index = get_mesh_index(mesh_handle);
+            let material_index = get_material_index(material_handle, material);
 
             *tlas.get_mut_single(i).unwrap() = Some(TlasInstance::new(
                 blas,
                 tlas_transform(transform),
-                i as u32,
+                pack_object_indices(mesh_index, material_index),
                 0xFF,
             ));
         }
@@ -127,12 +124,6 @@ pub fn queue_scene_bind_group(
 
     // Upload buffers to the GPU
     // TODO: Reuse GPU buffers each frame
-    let mesh_materials_buffer = new_storage_buffer(
-        mesh_materials,
-        "solari_mesh_materials_buffer",
-        &render_device,
-        &render_queue,
-    );
     let previous_transform_buffer = new_storage_buffer(
         previous_transforms,
         "solari_previous_transform_buffer",
@@ -165,34 +156,30 @@ pub fn queue_scene_bind_group(
             },
             BindGroupEntry {
                 binding: 1,
-                resource: mesh_materials_buffer.binding().unwrap(),
-            },
-            BindGroupEntry {
-                binding: 2,
                 resource: BindingResource::BufferArray(index_buffers.vec.as_slice()),
             },
             BindGroupEntry {
-                binding: 3,
+                binding: 2,
                 resource: BindingResource::BufferArray(vertex_buffers.as_slice()),
             },
             BindGroupEntry {
-                binding: 4,
+                binding: 3,
                 resource: previous_transform_buffer.binding().unwrap(),
             },
             BindGroupEntry {
-                binding: 5,
+                binding: 4,
                 resource: materials_buffer.binding().unwrap(),
             },
             BindGroupEntry {
-                binding: 6,
+                binding: 5,
                 resource: BindingResource::TextureViewArray(texture_maps.vec.as_slice()),
             },
             BindGroupEntry {
-                binding: 7,
+                binding: 6,
                 resource: BindingResource::Sampler(&scene_resources.sampler),
             },
             BindGroupEntry {
-                binding: 8,
+                binding: 7,
                 resource: globals_buffer.buffer.binding().unwrap(), // TODO
             },
         ],

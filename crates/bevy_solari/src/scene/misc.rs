@@ -4,14 +4,24 @@ use bevy_render::{
 };
 use bevy_transform::prelude::GlobalTransform;
 use bevy_utils::HashMap;
-use std::hash::Hash;
+use std::{fmt::Debug, hash::Hash};
 
-pub struct IndexedVec<T, I: Hash + Eq + Clone> {
+pub struct IndexedVec<T, I, N>
+where
+    I: Hash + Eq + Clone,
+    N: TryFrom<usize> + Copy,
+    <N as TryFrom<usize>>::Error: Debug,
+{
     pub vec: Vec<T>,
-    pub index: HashMap<I, u32>,
+    pub index: HashMap<I, N>,
 }
 
-impl<T, I: Hash + Eq + Clone> IndexedVec<T, I> {
+impl<T, I, N> IndexedVec<T, I, N>
+where
+    I: Hash + Eq + Clone,
+    N: TryFrom<usize> + Copy,
+    <N as TryFrom<usize>>::Error: Debug,
+{
     pub fn new() -> Self {
         Self {
             vec: Vec::new(),
@@ -19,13 +29,18 @@ impl<T, I: Hash + Eq + Clone> IndexedVec<T, I> {
         }
     }
 
-    pub fn get_index<F: FnOnce(I) -> T>(&mut self, index_key: I, create_value: F) -> u32 {
+    pub fn get_index<F: FnOnce(I) -> T>(&mut self, index_key: I, create_value: F) -> N {
         *self.index.entry(index_key.clone()).or_insert_with(|| {
-            let i = self.vec.len() as u32;
+            // TODO: Validate we haven't gone over 2^16/32 items (-1 for textures)
+            let i = self.vec.len().try_into().unwrap();
             self.vec.push(create_value(index_key));
             i
         })
     }
+}
+
+pub fn pack_object_indices(mesh_index: u16, material_index: u16) -> u32 {
+    ((mesh_index as u32) << 16) | (material_index as u32)
 }
 
 pub fn new_storage_buffer<T: ShaderSize + WriteInto>(

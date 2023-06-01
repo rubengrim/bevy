@@ -31,9 +31,3 @@ pub struct GpuSolariMaterial {
     pub base_color_map_index: u32,
     pub emission: Vec3,
 }
-
-#[derive(ShaderType)]
-pub struct MeshMaterial {
-    pub mesh_index: u32,
-    pub material_index: u32,
-}
