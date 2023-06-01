@@ -14,12 +14,6 @@ struct WorldCacheCellData {
     normal: vec3<f32>,
 }
 
-struct DispatchIndirect {
-    x: u32,
-    y: u32,
-    z: u32,
-}
-
 @group(#WORLD_CACHE_BIND_GROUP) @binding(0) var<storage, read_write> world_cache_checksums: array<atomic<u32>, WORLD_CACHE_SIZE>;
 
 @group(#WORLD_CACHE_BIND_GROUP) @binding(1)
@@ -38,5 +32,5 @@ var<storage, read_write> world_cache_life: array<atomic<u32>, WORLD_CACHE_SIZE>;
 @group(#WORLD_CACHE_BIND_GROUP) @binding(8) var<storage, read_write> world_cache_active_cells_count: u32;
 
 #ifndef EXCLUDE_WORLD_CACHE_ACTIVE_CELLS_DISPATCH
-@group(#WORLD_CACHE_BIND_GROUP) @binding(9) var<storage, read_write> world_cache_active_cells_dispatch: DispatchIndirect;
+@group(#WORLD_CACHE_BIND_GROUP) @binding(9) var<storage, read_write> world_cache_active_cells_dispatch: vec3<u32>;
 #endif

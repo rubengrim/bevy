@@ -70,6 +70,6 @@ fn compact_world_cache_write_active_cells(
 
     if thread_index == 1023u && workgroup_id.x == 1023u {
         world_cache_active_cells_count = compacted_index + 1u;
-        world_cache_active_cells_dispatch = DispatchIndirect((world_cache_active_cells_count + 1023u) / 1024u, 1u, 1u);
+        world_cache_active_cells_dispatch = vec3((world_cache_active_cells_count + 1023u) / 1024u, 1u, 1u);
     }
 }
