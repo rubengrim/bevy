@@ -6,21 +6,21 @@ use bevy_transform::prelude::GlobalTransform;
 use bevy_utils::HashMap;
 use std::{fmt::Debug, hash::Hash};
 
-pub struct IndexedVec<T, I, N>
+pub struct IndexedVec<T, K, I>
 where
-    I: Hash + Eq + Clone,
-    N: TryFrom<usize> + Copy,
-    <N as TryFrom<usize>>::Error: Debug,
+    K: Hash + Eq + Clone,
+    I: TryFrom<usize> + Copy,
+    <I as TryFrom<usize>>::Error: Debug,
 {
     pub vec: Vec<T>,
-    pub index: HashMap<I, N>,
+    pub index: HashMap<K, I>,
 }
 
-impl<T, I, N> IndexedVec<T, I, N>
+impl<T, K, I> IndexedVec<T, K, I>
 where
-    I: Hash + Eq + Clone,
-    N: TryFrom<usize> + Copy,
-    <N as TryFrom<usize>>::Error: Debug,
+    K: Hash + Eq + Clone,
+    I: TryFrom<usize> + Copy,
+    <I as TryFrom<usize>>::Error: Debug,
 {
     pub fn new() -> Self {
         Self {
@@ -29,7 +29,7 @@ where
         }
     }
 
-    pub fn get_index<F: FnOnce(I) -> T>(&mut self, index_key: I, create_value: F) -> N {
+    pub fn get_index<F: FnOnce(K) -> T>(&mut self, index_key: K, create_value: F) -> I {
         *self.index.entry(index_key.clone()).or_insert_with(|| {
             // TODO: Validate we haven't gone over 2^16/32 items (-1 for textures)
             let i = self.vec.len().try_into().unwrap();
