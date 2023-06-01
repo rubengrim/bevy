@@ -11,5 +11,5 @@
 @group(0) @binding(5) var texture_maps: binding_array<texture_2d<f32>>;
 @group(0) @binding(6) var texture_sampler: sampler;
 @group(0) @binding(7) var<storage> emissive_object_mesh_material_indices: array<u32>;
-@group(0) @binding(7) var<storage> emissive_object_transforms: array<mat4x4<f32>>;
+@group(0) @binding(8) var<storage> emissive_object_transforms: array<mat4x4<f32>>;
 @group(0) @binding(9) var<uniform> globals: Globals;
