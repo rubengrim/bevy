@@ -3,6 +3,7 @@ use bevy_ecs::{
     system::Resource,
     world::{FromWorld, World},
 };
+use bevy_math::Mat4;
 use bevy_render::{globals::GlobalsUniform, render_resource::*, renderer::RenderDevice};
 use bevy_utils::default;
 use std::num::NonZeroU32;
@@ -100,9 +101,31 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
             ty: BindingType::Sampler(SamplerBindingType::Filtering),
             count: None,
         },
-        // Globals
+        // Emissive object mesh material indices buffer
         BindGroupLayoutEntry {
             binding: 7,
+            visibility: ShaderStages::COMPUTE,
+            ty: BindingType::Buffer {
+                ty: BufferBindingType::Storage { read_only: true },
+                has_dynamic_offset: false,
+                min_binding_size: Some(u32::min_size()),
+            },
+            count: None,
+        },
+        // Emissive object transforms buffer
+        BindGroupLayoutEntry {
+            binding: 8,
+            visibility: ShaderStages::COMPUTE,
+            ty: BindingType::Buffer {
+                ty: BufferBindingType::Storage { read_only: true },
+                has_dynamic_offset: false,
+                min_binding_size: Some(Mat4::min_size()),
+            },
+            count: None,
+        },
+        // Globals
+        BindGroupLayoutEntry {
+            binding: 9,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Buffer {
                 ty: BufferBindingType::Uniform,

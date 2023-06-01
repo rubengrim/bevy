@@ -1,8 +1,8 @@
+use bevy_math::Mat4;
 use bevy_render::{
     render_resource::{encase::private::WriteInto, ShaderSize, StorageBuffer},
     renderer::{RenderDevice, RenderQueue},
 };
-use bevy_transform::prelude::GlobalTransform;
 use bevy_utils::HashMap;
 use std::{fmt::Debug, hash::Hash};
 
@@ -56,8 +56,8 @@ pub fn new_storage_buffer<T: ShaderSize + WriteInto>(
     buffer
 }
 
-pub fn tlas_transform(transform: &GlobalTransform) -> [f32; 12] {
-    transform.compute_matrix().transpose().to_cols_array()[..12]
+pub fn tlas_transform(transform: &Mat4) -> [f32; 12] {
+    transform.transpose().to_cols_array()[..12]
         .try_into()
         .unwrap()
 }
