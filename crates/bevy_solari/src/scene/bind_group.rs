@@ -44,6 +44,8 @@ pub fn queue_scene_bind_group(
     // TODO: Reuse memory each frame
     let mut index_buffers = IndexedVec::new();
     let mut vertex_buffers = Vec::new();
+    let mut triangle_counts = Vec::new();
+    let mut inverse_transpose_transforms = Vec::new();
     let mut previous_transforms = Vec::new();
     let mut materials = IndexedVec::new();
     let mut texture_maps = IndexedVec::new();
@@ -56,7 +58,10 @@ pub fn queue_scene_bind_group(
             let gpu_mesh = mesh_assets.get(mesh_handle).unwrap();
             vertex_buffers.push(gpu_mesh.vertex_buffer.as_entire_buffer_binding());
             match &gpu_mesh.buffer_info {
-                GpuBufferInfo::Indexed { buffer, .. } => buffer.as_entire_buffer_binding(),
+                GpuBufferInfo::Indexed { buffer, count, .. } => {
+                    triangle_counts.push(count / 3);
+                    buffer.as_entire_buffer_binding()
+                }
                 _ => unreachable!(), // TODO: Handle non-indexed meshes
             }
         })
@@ -109,7 +114,9 @@ pub fn queue_scene_bind_group(
             let instance_custom_index = pack_object_indices(mesh_index, material_index);
 
             let transform = transform.compute_matrix();
+            inverse_transpose_transforms.push(transform.inverse().transpose());
             previous_transforms.push(previous_transform);
+
             if material.emission.is_some() {
                 emissive_object_mesh_material_indices.push(instance_custom_index);
                 emissive_object_transforms.push(transform);
@@ -133,6 +140,18 @@ pub fn queue_scene_bind_group(
 
     // Upload buffers to the GPU
     // TODO: Reuse GPU buffers each frame
+    let triangle_counts_buffer = new_storage_buffer(
+        triangle_counts,
+        "solari_triangle_counts_buffer",
+        &render_device,
+        &render_queue,
+    );
+    let inverse_transpose_transforms_buffer = new_storage_buffer(
+        inverse_transpose_transforms,
+        "solari_inverse_transpose_transforms_buffer",
+        &render_device,
+        &render_queue,
+    );
     let previous_transform_buffer = new_storage_buffer(
         previous_transforms,
         "solari_previous_transform_buffer",
@@ -186,32 +205,40 @@ pub fn queue_scene_bind_group(
                 },
                 BindGroupEntry {
                     binding: 3,
-                    resource: previous_transform_buffer.binding().unwrap(),
+                    resource: triangle_counts_buffer.binding().unwrap(),
                 },
                 BindGroupEntry {
                     binding: 4,
-                    resource: materials_buffer.binding().unwrap(),
+                    resource: inverse_transpose_transforms_buffer.binding().unwrap(),
                 },
                 BindGroupEntry {
                     binding: 5,
-                    resource: BindingResource::TextureViewArray(texture_maps.vec.as_slice()),
+                    resource: previous_transform_buffer.binding().unwrap(),
                 },
                 BindGroupEntry {
                     binding: 6,
-                    resource: BindingResource::Sampler(&scene_resources.sampler),
+                    resource: materials_buffer.binding().unwrap(),
                 },
                 BindGroupEntry {
                     binding: 7,
+                    resource: BindingResource::TextureViewArray(texture_maps.vec.as_slice()),
+                },
+                BindGroupEntry {
+                    binding: 8,
+                    resource: BindingResource::Sampler(&scene_resources.sampler),
+                },
+                BindGroupEntry {
+                    binding: 9,
                     resource: emissive_object_mesh_material_indices_buffer
                         .binding()
                         .unwrap(),
                 },
                 BindGroupEntry {
-                    binding: 8,
+                    binding: 10,
                     resource: emissive_object_transforms_buffer.binding().unwrap(),
                 },
                 BindGroupEntry {
-                    binding: 9,
+                    binding: 11,
                     resource: globals_buffer.buffer.binding().unwrap(), // TODO
                 },
             ],
