@@ -49,7 +49,6 @@ pub fn queue_scene_bind_group(
     let mut texture_maps = IndexedVec::new();
     let mut emissive_object_mesh_material_indices = Vec::new();
     let mut emissive_object_transforms = Vec::new();
-    let mut emissive_object_inverse_transpose_transforms = Vec::new();
     let mut emissive_object_triangle_counts = Vec::new();
     let objects = objects.iter().collect::<Vec<_>>();
 
@@ -116,7 +115,6 @@ pub fn queue_scene_bind_group(
             if material.emission.is_some() {
                 emissive_object_mesh_material_indices.push(instance_custom_index);
                 emissive_object_transforms.push(transform);
-                emissive_object_inverse_transpose_transforms.push(transform.inverse().transpose());
                 emissive_object_triangle_counts.push(
                     match mesh_assets.get(mesh_handle).unwrap().buffer_info {
                         GpuBufferInfo::Indexed { count, .. } => count / 3,
@@ -164,12 +162,6 @@ pub fn queue_scene_bind_group(
     let emissive_object_transforms_buffer = new_storage_buffer(
         emissive_object_transforms,
         "solari_emissive_object_transforms_buffer",
-        &render_device,
-        &render_queue,
-    );
-    let emissive_object_inverse_transpose_transforms_buffer = new_storage_buffer(
-        emissive_object_inverse_transpose_transforms,
-        "solari_emissive_object_inverse_transpose_transforms_buffer",
         &render_device,
         &render_queue,
     );
@@ -234,16 +226,10 @@ pub fn queue_scene_bind_group(
                 },
                 BindGroupEntry {
                     binding: 9,
-                    resource: emissive_object_inverse_transpose_transforms_buffer
-                        .binding()
-                        .unwrap(),
-                },
-                BindGroupEntry {
-                    binding: 10,
                     resource: emissive_object_triangle_counts_buffer.binding().unwrap(),
                 },
                 BindGroupEntry {
-                    binding: 11,
+                    binding: 10,
                     resource: globals_buffer.buffer.binding().unwrap(), // TODO
                 },
             ],

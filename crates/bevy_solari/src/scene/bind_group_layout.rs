@@ -123,20 +123,9 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
             },
             count: None,
         },
-        // Emissive object inverse transpose transforms buffer
-        BindGroupLayoutEntry {
-            binding: 9,
-            visibility: ShaderStages::COMPUTE,
-            ty: BindingType::Buffer {
-                ty: BufferBindingType::Storage { read_only: true },
-                has_dynamic_offset: false,
-                min_binding_size: Some(Mat4::min_size()),
-            },
-            count: None,
-        },
         // Emissive object triangle counts buffer
         BindGroupLayoutEntry {
-            binding: 10,
+            binding: 9,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Buffer {
                 ty: BufferBindingType::Storage { read_only: true },
@@ -147,7 +136,7 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
         },
         // Globals
         BindGroupLayoutEntry {
-            binding: 11,
+            binding: 10,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Buffer {
                 ty: BufferBindingType::Uniform,

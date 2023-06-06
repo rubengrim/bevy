@@ -12,6 +12,5 @@
 @group(0) @binding(6) var texture_sampler: sampler;
 @group(0) @binding(7) var<storage> emissive_object_mesh_material_indices: array<u32>;
 @group(0) @binding(8) var<storage> emissive_object_transforms: array<mat4x4<f32>>;
-@group(0) @binding(9) var<storage> emissive_object_inverse_transpose_transforms: array<mat4x4<f32>>;
-@group(0) @binding(10) var<storage> emissive_object_triangle_counts: array<u32>;
-@group(0) @binding(11) var<uniform> globals: Globals;
+@group(0) @binding(9) var<storage> emissive_object_triangle_counts: array<u32>;
+@group(0) @binding(10) var<uniform> globals: Globals;
