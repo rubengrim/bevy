@@ -22,7 +22,7 @@ fn trace_ray(ray_origin: vec3<f32>, ray_direction: vec3<f32>, ray_t_min: f32) ->
     return rayQueryGetCommittedIntersection(&rq);
 }
 
-fn trace_shadow_ray(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>, origin_base_color: vec3<f32>, state: ptr<function, u32>) -> vec3<f32> {
+fn sample_direct_lighting(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>, origin_base_color: vec3<f32>, state: ptr<function, u32>) -> vec3<f32> {
     let light_count = arrayLength(&emissive_object_indices);
     let light_i = rand_range_u(light_count, state);
     let light_object_i = emissive_object_indices[light_i];
@@ -43,8 +43,6 @@ fn trace_shadow_ray(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>, origi
     let barycentrics = vec3(r, 1.0 - r.x - r.y);
     let local_position = mat3x3(vertices[0].local_position, vertices[1].local_position, vertices[2].local_position) * barycentrics;
     let world_position = (light_transform * vec4(local_position, 1.0)).xyz;
-    let local_normal = mat3x3(vertices[0].local_normal, vertices[1].local_normal, vertices[2].local_normal) * barycentrics;
-    let world_normal = normalize((vec4(local_normal, 0.0) * light_transform).xyz);
     let light_distance = distance(ray_origin, world_position);
 
     let ray_flags = RAY_FLAG_TERMINATE_ON_FIRST_HIT;
@@ -59,10 +57,13 @@ fn trace_shadow_ray(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>, origi
     let ray_hit = rayQueryGetCommittedIntersection(&rq);
 
     if ray_hit.kind != RAY_QUERY_INTERSECTION_NONE && ray_hit.instance_custom_index == light_object_i {
+        let local_normal = mat3x3(vertices[0].local_normal, vertices[1].local_normal, vertices[2].local_normal) * barycentrics;
+        let world_normal = normalize((local_normal * ray_hit.object_to_world).xyz);
+
         let brdf = origin_base_color / PI;
         let le = material.emission;
         let cos_theta_origin = dot(ray_direction, origin_world_normal);
-        let cos_theta_light = dot(ray_direction, world_normal); // TODO: Not correct
+        let cos_theta_light = saturate(dot(-ray_direction, world_normal));
         let light_distance_squared = light_distance * light_distance;
         let light = brdf * le * cos_theta_origin * (cos_theta_light / light_distance_squared);
 
