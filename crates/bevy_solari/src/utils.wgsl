@@ -23,13 +23,14 @@ fn trace_ray(ray_origin: vec3<f32>, ray_direction: vec3<f32>, ray_t_min: f32) ->
 }
 
 fn trace_shadow_ray(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>, origin_base_color: vec3<f32>, state: ptr<function, u32>) -> vec3<f32> {
-    let light_count = arrayLength(&emissive_object_mesh_material_indices);
+    let light_count = arrayLength(&emissive_object_indices);
     let light_i = rand_range_u(light_count, state);
-    let light_indices = emissive_object_mesh_material_indices[light_i];
+    let light_object_i = emissive_object_indices[light_i];
+    let light_mm_indices = mesh_material_indices[light_object_i];
     let light_transform = emissive_object_transforms[light_i];
     let light_triangle_count = emissive_object_triangle_counts[light_i];
-    let mesh_index = light_indices >> 16u;
-    let material_index = light_indices & 0xFFFFu;
+    let mesh_index = light_mm_indices >> 16u;
+    let material_index = light_mm_indices & 0xFFFFu;
     let index_buffer = &index_buffers[mesh_index].buffer;
     let vertex_buffer = &vertex_buffers[mesh_index].buffer;
     let material = materials[material_index];
@@ -57,11 +58,11 @@ fn trace_shadow_ray(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>, origi
     rayQueryProceed(&rq);
     let ray_hit = rayQueryGetCommittedIntersection(&rq);
 
-    if ray_hit.kind != RAY_QUERY_INTERSECTION_NONE {
+    if ray_hit.kind != RAY_QUERY_INTERSECTION_NONE && ray_hit.instance_custom_index == light_object_i {
         let brdf = origin_base_color / PI;
         let le = material.emission;
         let cos_theta_origin = dot(ray_direction, origin_world_normal);
-        let cos_theta_light = dot(ray_direction, world_normal);
+        let cos_theta_light = dot(ray_direction, world_normal); // TODO: Not correct
         let light_distance_squared = light_distance * light_distance;
         let light = brdf * le * cos_theta_origin * (cos_theta_light / light_distance_squared);
 

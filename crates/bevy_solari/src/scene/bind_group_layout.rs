@@ -39,18 +39,18 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
             ty: BindingType::AccelerationStructure,
             count: None,
         },
-        // Index buffers
+        // Mesh material indices buffer
         BindGroupLayoutEntry {
             binding: 1,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Buffer {
                 ty: BufferBindingType::Storage { read_only: true },
                 has_dynamic_offset: false,
-                min_binding_size: None, // TODO
+                min_binding_size: Some(u32::min_size()),
             },
-            count: Some(unsafe { NonZeroU32::new_unchecked(50_000) }),
+            count: None,
         },
-        // Vertex buffers
+        // Index buffers
         BindGroupLayoutEntry {
             binding: 2,
             visibility: ShaderStages::COMPUTE,
@@ -61,9 +61,20 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
             },
             count: Some(unsafe { NonZeroU32::new_unchecked(50_000) }),
         },
-        // Previous transform buffer
+        // Vertex buffers
         BindGroupLayoutEntry {
             binding: 3,
+            visibility: ShaderStages::COMPUTE,
+            ty: BindingType::Buffer {
+                ty: BufferBindingType::Storage { read_only: true },
+                has_dynamic_offset: false,
+                min_binding_size: None, // TODO
+            },
+            count: Some(unsafe { NonZeroU32::new_unchecked(50_000) }),
+        },
+        // Previous transform buffer
+        BindGroupLayoutEntry {
+            binding: 4,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Buffer {
                 ty: BufferBindingType::Storage { read_only: true },
@@ -74,7 +85,7 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
         },
         // Material buffer
         BindGroupLayoutEntry {
-            binding: 4,
+            binding: 5,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Buffer {
                 ty: BufferBindingType::Storage { read_only: true },
@@ -85,7 +96,7 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
         },
         // Texture maps
         BindGroupLayoutEntry {
-            binding: 5,
+            binding: 6,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Texture {
                 sample_type: TextureSampleType::Float { filterable: true },
@@ -96,14 +107,14 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
         },
         // Texture sampler
         BindGroupLayoutEntry {
-            binding: 6,
+            binding: 7,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Sampler(SamplerBindingType::Filtering),
             count: None,
         },
         // Emissive object mesh material indices buffer
         BindGroupLayoutEntry {
-            binding: 7,
+            binding: 8,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Buffer {
                 ty: BufferBindingType::Storage { read_only: true },
@@ -114,7 +125,7 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
         },
         // Emissive object transforms buffer
         BindGroupLayoutEntry {
-            binding: 8,
+            binding: 9,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Buffer {
                 ty: BufferBindingType::Storage { read_only: true },
@@ -125,7 +136,7 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
         },
         // Emissive object triangle counts buffer
         BindGroupLayoutEntry {
-            binding: 9,
+            binding: 10,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Buffer {
                 ty: BufferBindingType::Storage { read_only: true },
@@ -136,7 +147,7 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
         },
         // Globals
         BindGroupLayoutEntry {
-            binding: 10,
+            binding: 11,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Buffer {
                 ty: BufferBindingType::Uniform,

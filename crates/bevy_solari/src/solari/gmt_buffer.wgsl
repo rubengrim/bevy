@@ -23,7 +23,8 @@ fn gmt_buffer(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let ray_hit = trace_ray(view.world_position, primary_ray_direction, 0.0);
 
     if ray_hit.kind != RAY_QUERY_INTERSECTION_NONE {
-        let mesh_index = ray_hit.instance_custom_index >> 16u;
+        let mm_indices = mesh_material_indices[ray_hit.instance_custom_index];
+        let mesh_index = mm_indices >> 16u;
         let index_buffer = &index_buffers[mesh_index].buffer;
         let vertex_buffer = &vertex_buffers[mesh_index].buffer;
         let indices_i = (ray_hit.primitive_index * 3u) + vec3(0u, 1u, 2u);
@@ -34,7 +35,7 @@ fn gmt_buffer(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
         ray_distance = ray_hit.t;
         world_normal = normalize((local_normal * ray_hit.object_to_world).xyz);
-        material_index = ray_hit.instance_custom_index & 0xFFFFu;
+        material_index = mm_indices & 0xFFFFu;
         texture_coordinates = mat3x2(vertices[0].uv, vertices[1].uv, vertices[2].uv) * barycentrics;
 
         var current_clip_position = ((vec2<f32>(global_id.xy) + 0.5) / view.viewport.zw) * 2.0 - 1.0;

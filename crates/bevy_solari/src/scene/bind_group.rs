@@ -42,12 +42,13 @@ pub fn queue_scene_bind_group(
 ) {
     // Create CPU buffers for scene resources
     // TODO: Reuse memory each frame
+    let mut mesh_material_indices = Vec::new();
     let mut index_buffers = IndexedVec::new();
     let mut vertex_buffers = Vec::new();
     let mut previous_transforms = Vec::new();
     let mut materials = IndexedVec::new();
     let mut texture_maps = IndexedVec::new();
-    let mut emissive_object_mesh_material_indices = Vec::new();
+    let mut emissive_object_indices = Vec::new();
     let mut emissive_object_transforms = Vec::new();
     let mut emissive_object_triangle_counts = Vec::new();
     let objects = objects.iter().collect::<Vec<_>>();
@@ -107,13 +108,13 @@ pub fn queue_scene_bind_group(
         if let Some(blas) = blas_storage.get(mesh_handle) {
             let mesh_index = get_mesh_index(mesh_handle);
             let material_index = get_material_index(material_handle, material);
-            let instance_custom_index = pack_object_indices(mesh_index, material_index);
+            mesh_material_indices.push(pack_object_indices(mesh_index, material_index));
 
             let transform = transform.compute_matrix();
             previous_transforms.push(previous_transform);
 
             if material.emission.is_some() {
-                emissive_object_mesh_material_indices.push(instance_custom_index);
+                emissive_object_indices.push(i as u32);
                 emissive_object_transforms.push(transform);
                 emissive_object_triangle_counts.push(
                     match mesh_assets.get(mesh_handle).unwrap().buffer_info {
@@ -126,7 +127,7 @@ pub fn queue_scene_bind_group(
             *tlas.get_mut_single(i).unwrap() = Some(TlasInstance::new(
                 blas,
                 tlas_transform(&transform),
-                instance_custom_index,
+                i as u32,
                 0xFF,
             ));
         }
@@ -141,6 +142,12 @@ pub fn queue_scene_bind_group(
 
     // Upload buffers to the GPU
     // TODO: Reuse GPU buffers each frame
+    let mesh_material_indices_buffer = new_storage_buffer(
+        mesh_material_indices,
+        "solari_mesh_material_indices_buffer",
+        &render_device,
+        &render_queue,
+    );
     let previous_transform_buffer = new_storage_buffer(
         previous_transforms,
         "solari_previous_transform_buffer",
@@ -153,9 +160,9 @@ pub fn queue_scene_bind_group(
         &render_device,
         &render_queue,
     );
-    let emissive_object_mesh_material_indices_buffer = new_storage_buffer(
-        emissive_object_mesh_material_indices,
-        "solari_emissive_object_mesh_material_indices_buffer",
+    let emissive_object_indices_buffer = new_storage_buffer(
+        emissive_object_indices,
+        "solari_emissive_object_indices_buffer",
         &render_device,
         &render_queue,
     );
@@ -181,58 +188,58 @@ pub fn queue_scene_bind_group(
     }
 
     // Create scene bind group
-    scene_bind_group.0 = Some(
-        render_device.create_bind_group(&BindGroupDescriptor {
-            label: Some("solari_scene_bind_group"),
-            layout: &scene_resources.bind_group_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: BindingResource::AccelerationStructure(tlas.tlas()),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: BindingResource::BufferArray(index_buffers.vec.as_slice()),
-                },
-                BindGroupEntry {
-                    binding: 2,
-                    resource: BindingResource::BufferArray(vertex_buffers.as_slice()),
-                },
-                BindGroupEntry {
-                    binding: 3,
-                    resource: previous_transform_buffer.binding().unwrap(),
-                },
-                BindGroupEntry {
-                    binding: 4,
-                    resource: materials_buffer.binding().unwrap(),
-                },
-                BindGroupEntry {
-                    binding: 5,
-                    resource: BindingResource::TextureViewArray(texture_maps.vec.as_slice()),
-                },
-                BindGroupEntry {
-                    binding: 6,
-                    resource: BindingResource::Sampler(&scene_resources.sampler),
-                },
-                BindGroupEntry {
-                    binding: 7,
-                    resource: emissive_object_mesh_material_indices_buffer
-                        .binding()
-                        .unwrap(),
-                },
-                BindGroupEntry {
-                    binding: 8,
-                    resource: emissive_object_transforms_buffer.binding().unwrap(),
-                },
-                BindGroupEntry {
-                    binding: 9,
-                    resource: emissive_object_triangle_counts_buffer.binding().unwrap(),
-                },
-                BindGroupEntry {
-                    binding: 10,
-                    resource: globals_buffer.buffer.binding().unwrap(), // TODO
-                },
-            ],
-        }),
-    );
+    scene_bind_group.0 = Some(render_device.create_bind_group(&BindGroupDescriptor {
+        label: Some("solari_scene_bind_group"),
+        layout: &scene_resources.bind_group_layout,
+        entries: &[
+            BindGroupEntry {
+                binding: 0,
+                resource: BindingResource::AccelerationStructure(tlas.tlas()),
+            },
+            BindGroupEntry {
+                binding: 1,
+                resource: mesh_material_indices_buffer.binding().unwrap(),
+            },
+            BindGroupEntry {
+                binding: 2,
+                resource: BindingResource::BufferArray(index_buffers.vec.as_slice()),
+            },
+            BindGroupEntry {
+                binding: 3,
+                resource: BindingResource::BufferArray(vertex_buffers.as_slice()),
+            },
+            BindGroupEntry {
+                binding: 4,
+                resource: previous_transform_buffer.binding().unwrap(),
+            },
+            BindGroupEntry {
+                binding: 5,
+                resource: materials_buffer.binding().unwrap(),
+            },
+            BindGroupEntry {
+                binding: 6,
+                resource: BindingResource::TextureViewArray(texture_maps.vec.as_slice()),
+            },
+            BindGroupEntry {
+                binding: 7,
+                resource: BindingResource::Sampler(&scene_resources.sampler),
+            },
+            BindGroupEntry {
+                binding: 8,
+                resource: emissive_object_indices_buffer.binding().unwrap(),
+            },
+            BindGroupEntry {
+                binding: 9,
+                resource: emissive_object_transforms_buffer.binding().unwrap(),
+            },
+            BindGroupEntry {
+                binding: 10,
+                resource: emissive_object_triangle_counts_buffer.binding().unwrap(),
+            },
+            BindGroupEntry {
+                binding: 11,
+                resource: globals_buffer.buffer.binding().unwrap(), // TODO
+            },
+        ],
+    }));
 }

@@ -67,8 +67,9 @@ struct SolariRayHit {
 }
 
 fn map_ray_hit(ray_hit: RayIntersection) -> SolariRayHit {
-    let mesh_index = ray_hit.instance_custom_index >> 16u;
-    let material_index = ray_hit.instance_custom_index & 0xFFFFu;
+    let mm_indices = mesh_material_indices[ray_hit.instance_custom_index];
+    let mesh_index = mm_indices >> 16u;
+    let material_index = mm_indices & 0xFFFFu;
 
     let index_buffer = &index_buffers[mesh_index].buffer;
     let vertex_buffer = &vertex_buffers[mesh_index].buffer;
