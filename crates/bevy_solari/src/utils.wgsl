@@ -48,7 +48,7 @@ fn sample_direct_lighting(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>,
     let ray_flags = RAY_FLAG_TERMINATE_ON_FIRST_HIT;
     let ray_cull_mask = 0xFFu;
     let ray_t_min = 0.001;
-    let ray_t_max = light_distance + 0.001;
+    let ray_t_max = light_distance - 0.001;
     let ray_direction = (world_position - ray_origin) / light_distance;
     let ray = RayDesc(ray_flags, ray_cull_mask, ray_t_min, ray_t_max, ray_origin, ray_direction);
     var rq: ray_query;
@@ -56,7 +56,7 @@ fn sample_direct_lighting(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>,
     rayQueryProceed(&rq);
     let ray_hit = rayQueryGetCommittedIntersection(&rq);
 
-    if ray_hit.kind != RAY_QUERY_INTERSECTION_NONE && ray_hit.instance_custom_index == light_object_i {
+    if ray_hit.kind == RAY_QUERY_INTERSECTION_NONE {
         let local_normal = mat3x3(vertices[0].local_normal, vertices[1].local_normal, vertices[2].local_normal) * barycentrics;
         let world_normal = normalize(mat3x3<f32>(light_transform[0].xyz, light_transform[1].xyz, light_transform[2].xyz) * local_normal);
 
@@ -71,8 +71,8 @@ fn sample_direct_lighting(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>,
         let triangle_edge1 = vertices[0].local_position - vertices[2].local_position;
         let triangle_area = length(cross(triangle_edge0, triangle_edge1)) / 2.0;
 
-        let probability = f32(light_count) * f32(light_triangle_count) * triangle_area;
-        return light / probability;
+        let weight = f32(light_count) * f32(light_triangle_count) * triangle_area;
+        return light * weight;
     } else {
         return vec3(0.0);
     }
