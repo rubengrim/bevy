@@ -83,8 +83,9 @@ fn map_ray_hit(ray_hit: RayIntersection) -> SolariRayHit {
     let local_position = mat3x3(vertices[0].local_position, vertices[1].local_position, vertices[2].local_position) * barycentrics;
     let world_position = (ray_hit.object_to_world * vec4(local_position, 1.0)).xyz;
     let uv = mat3x2(vertices[0].uv, vertices[1].uv, vertices[2].uv) * barycentrics;
+    let transform = transforms[ray_hit.instance_custom_index];
     let local_normal = mat3x3(vertices[0].local_normal, vertices[1].local_normal, vertices[2].local_normal) * barycentrics;
-    let world_normal = normalize((local_normal * ray_hit.object_to_world).xyz);
+    let world_normal = normalize(mat3x3<f32>(transform[0].xyz, transform[1].xyz, transform[2].xyz) * local_normal);
 
     let sampled_material = sample_material(material, uv);
 

@@ -31,10 +31,11 @@ fn gmt_buffer(@builtin(global_invocation_id) global_id: vec3<u32>) {
         let indices = vec3((*index_buffer)[indices_i.x], (*index_buffer)[indices_i.y], (*index_buffer)[indices_i.z]);
         let vertices = array<SolariVertex, 3>(unpack_vertex((*vertex_buffer)[indices.x]), unpack_vertex((*vertex_buffer)[indices.y]), unpack_vertex((*vertex_buffer)[indices.z]));
         let barycentrics = vec3(1.0 - ray_hit.barycentrics.x - ray_hit.barycentrics.y, ray_hit.barycentrics);
+        let transform = transforms[ray_hit.instance_custom_index];
         let local_normal = mat3x3(vertices[0].local_normal, vertices[1].local_normal, vertices[2].local_normal) * barycentrics;
 
         ray_distance = ray_hit.t;
-        world_normal = normalize((local_normal * ray_hit.object_to_world).xyz);
+        world_normal = normalize(mat3x3<f32>(transform[0].xyz, transform[1].xyz, transform[2].xyz) * local_normal);
         material_index = mm_indices & 0xFFFFu;
         texture_coordinates = mat3x2(vertices[0].uv, vertices[1].uv, vertices[2].uv) * barycentrics;
 

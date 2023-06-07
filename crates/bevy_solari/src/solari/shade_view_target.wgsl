@@ -103,7 +103,7 @@ fn shade_view_target(
     final_color = vec3(pixel_depth * pixel_depth / 1000.0);
 #endif
 #ifdef DEBUG_VIEW_WORLD_NORMALS
-    final_color = abs(pixel_world_normal);
+    final_color = pixel_world_normal * 0.5 + 0.5;
 #endif
 #ifdef DEBUG_VIEW_MOTION_VECTORS
     let t_buffer_pixel = textureLoad(t_buffer, global_id.xy);

@@ -45,11 +45,11 @@ pub fn queue_scene_bind_group(
     let mut mesh_material_indices = Vec::new();
     let mut index_buffers = IndexedVec::new();
     let mut vertex_buffers = Vec::new();
+    let mut transforms = Vec::new();
     let mut previous_transforms = Vec::new();
     let mut materials = IndexedVec::new();
     let mut texture_maps = IndexedVec::new();
     let mut emissive_object_indices = Vec::new();
-    let mut emissive_object_transforms = Vec::new();
     let mut emissive_object_triangle_counts = Vec::new();
     let objects = objects.iter().collect::<Vec<_>>();
 
@@ -111,11 +111,11 @@ pub fn queue_scene_bind_group(
             mesh_material_indices.push(pack_object_indices(mesh_index, material_index));
 
             let transform = transform.compute_matrix();
+            transforms.push(transform);
             previous_transforms.push(previous_transform);
 
             if material.emission.is_some() {
                 emissive_object_indices.push(i as u32);
-                emissive_object_transforms.push(transform);
                 emissive_object_triangle_counts.push(
                     match mesh_assets.get(mesh_handle).unwrap().buffer_info {
                         GpuBufferInfo::Indexed { count, .. } => count / 3,
@@ -148,9 +148,15 @@ pub fn queue_scene_bind_group(
         &render_device,
         &render_queue,
     );
-    let previous_transform_buffer = new_storage_buffer(
+    let transforms_buffer = new_storage_buffer(
+        transforms,
+        "solari_transforms_buffer",
+        &render_device,
+        &render_queue,
+    );
+    let previous_transforms_buffer = new_storage_buffer(
         previous_transforms,
-        "solari_previous_transform_buffer",
+        "solari_previous_transforms_buffer",
         &render_device,
         &render_queue,
     );
@@ -163,12 +169,6 @@ pub fn queue_scene_bind_group(
     let emissive_object_indices_buffer = new_storage_buffer(
         emissive_object_indices,
         "solari_emissive_object_indices_buffer",
-        &render_device,
-        &render_queue,
-    );
-    let emissive_object_transforms_buffer = new_storage_buffer(
-        emissive_object_transforms,
-        "solari_emissive_object_transforms_buffer",
         &render_device,
         &render_queue,
     );
@@ -210,27 +210,27 @@ pub fn queue_scene_bind_group(
             },
             BindGroupEntry {
                 binding: 4,
-                resource: previous_transform_buffer.binding().unwrap(),
+                resource: transforms_buffer.binding().unwrap(),
             },
             BindGroupEntry {
                 binding: 5,
-                resource: materials_buffer.binding().unwrap(),
+                resource: previous_transforms_buffer.binding().unwrap(),
             },
             BindGroupEntry {
                 binding: 6,
-                resource: BindingResource::TextureViewArray(texture_maps.vec.as_slice()),
+                resource: materials_buffer.binding().unwrap(),
             },
             BindGroupEntry {
                 binding: 7,
-                resource: BindingResource::Sampler(&scene_resources.sampler),
+                resource: BindingResource::TextureViewArray(texture_maps.vec.as_slice()),
             },
             BindGroupEntry {
                 binding: 8,
-                resource: emissive_object_indices_buffer.binding().unwrap(),
+                resource: BindingResource::Sampler(&scene_resources.sampler),
             },
             BindGroupEntry {
                 binding: 9,
-                resource: emissive_object_transforms_buffer.binding().unwrap(),
+                resource: emissive_object_indices_buffer.binding().unwrap(),
             },
             BindGroupEntry {
                 binding: 10,

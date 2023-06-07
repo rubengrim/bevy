@@ -72,9 +72,20 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
             },
             count: Some(unsafe { NonZeroU32::new_unchecked(50_000) }),
         },
-        // Previous transform buffer
+        // Transforms buffer
         BindGroupLayoutEntry {
             binding: 4,
+            visibility: ShaderStages::COMPUTE,
+            ty: BindingType::Buffer {
+                ty: BufferBindingType::Storage { read_only: true },
+                has_dynamic_offset: false,
+                min_binding_size: Some(Mat4::min_size()),
+            },
+            count: None,
+        },
+        // Previous transforms buffer
+        BindGroupLayoutEntry {
+            binding: 5,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Buffer {
                 ty: BufferBindingType::Storage { read_only: true },
@@ -85,7 +96,7 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
         },
         // Material buffer
         BindGroupLayoutEntry {
-            binding: 5,
+            binding: 6,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Buffer {
                 ty: BufferBindingType::Storage { read_only: true },
@@ -96,7 +107,7 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
         },
         // Texture maps
         BindGroupLayoutEntry {
-            binding: 6,
+            binding: 7,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Texture {
                 sample_type: TextureSampleType::Float { filterable: true },
@@ -107,30 +118,19 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
         },
         // Texture sampler
         BindGroupLayoutEntry {
-            binding: 7,
+            binding: 8,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Sampler(SamplerBindingType::Filtering),
             count: None,
         },
         // Emissive object mesh material indices buffer
         BindGroupLayoutEntry {
-            binding: 8,
-            visibility: ShaderStages::COMPUTE,
-            ty: BindingType::Buffer {
-                ty: BufferBindingType::Storage { read_only: true },
-                has_dynamic_offset: false,
-                min_binding_size: Some(u32::min_size()),
-            },
-            count: None,
-        },
-        // Emissive object transforms buffer
-        BindGroupLayoutEntry {
             binding: 9,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Buffer {
                 ty: BufferBindingType::Storage { read_only: true },
                 has_dynamic_offset: false,
-                min_binding_size: Some(Mat4::min_size()),
+                min_binding_size: Some(u32::min_size()),
             },
             count: None,
         },

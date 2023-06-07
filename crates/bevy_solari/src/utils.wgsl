@@ -26,9 +26,9 @@ fn sample_direct_lighting(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>,
     let light_count = arrayLength(&emissive_object_indices);
     let light_i = rand_range_u(light_count, state);
     let light_object_i = emissive_object_indices[light_i];
-    let light_mm_indices = mesh_material_indices[light_object_i];
-    let light_transform = emissive_object_transforms[light_i];
     let light_triangle_count = emissive_object_triangle_counts[light_i];
+    let light_mm_indices = mesh_material_indices[light_object_i];
+    let light_transform = transforms[light_object_i];
     let mesh_index = light_mm_indices >> 16u;
     let material_index = light_mm_indices & 0xFFFFu;
     let index_buffer = &index_buffers[mesh_index].buffer;
@@ -58,7 +58,7 @@ fn sample_direct_lighting(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>,
 
     if ray_hit.kind != RAY_QUERY_INTERSECTION_NONE && ray_hit.instance_custom_index == light_object_i {
         let local_normal = mat3x3(vertices[0].local_normal, vertices[1].local_normal, vertices[2].local_normal) * barycentrics;
-        let world_normal = normalize((local_normal * ray_hit.object_to_world).xyz);
+        let world_normal = normalize(mat3x3<f32>(light_transform[0].xyz, light_transform[1].xyz, light_transform[2].xyz) * local_normal);
 
         let brdf = origin_base_color / PI;
         let le = material.emission;
