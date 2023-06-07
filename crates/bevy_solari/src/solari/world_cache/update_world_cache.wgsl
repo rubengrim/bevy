@@ -17,9 +17,9 @@ fn world_cache_sample_irradiance(@builtin(global_invocation_id) active_cell_id: 
         let ray_hit = trace_ray(cell_data.position, ray_direction, 0.001);
         if ray_hit.kind != RAY_QUERY_INTERSECTION_NONE {
             let ray_hit = map_ray_hit(ray_hit);
-            let material = ray_hit.material;
-            let irradiance = query_world_cache(ray_hit.world_position, ray_hit.world_normal);
-            color = material.emission + (material.base_color * irradiance);
+            let direct_light = sample_direct_lighting(ray_hit.world_position, ray_hit.world_normal, ray_hit.material.base_color, &rng);
+            let indirect_light = query_world_cache(ray_hit.world_position, ray_hit.world_normal);
+            color = direct_light + (ray_hit.material.base_color * indirect_light);
         }
 
         world_cache_active_cells_new_irradiance[active_cell_id.x] = color;
@@ -34,7 +34,7 @@ fn world_cache_blend_new_samples(@builtin(global_invocation_id) active_cell_id: 
         let old_irradiance = world_cache_irradiance[cell_index];
         let new_irradiance = world_cache_active_cells_new_irradiance[active_cell_id.x];
 
-        var alpha = 0.05;
+        var alpha = 0.025;
         if old_irradiance.a == 0.0 {
             alpha = 1.0;
         }
