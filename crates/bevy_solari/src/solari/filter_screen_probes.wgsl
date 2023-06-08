@@ -29,6 +29,7 @@ fn filter_screen_probes(
     let bm = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(0i, -8i)).rgb * 2.0;
     let br = textureLoad(screen_probes_unfiltered, vec2<i32>(global_id.xy) + vec2(8i, -8i)).rgb;
     let filtered = (tl + tm + tr + ml + mm + mr + bl + bm + br) / 16.0;
+    // TODO: Remove unnecessary texture write + texture allocation #ifndef DEBUG_VIEW_SCREEN_PROBES_FILTERED
     textureStore(screen_probes_filtered, global_id.xy, vec4(filtered, 1.0));
 
     let octahedral_pixel_center = vec2<f32>(local_id.xy) + rand_vec2(&rng);
