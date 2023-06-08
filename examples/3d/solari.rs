@@ -95,79 +95,87 @@ fn update(
     }
 
     if let Some(solari_settings) = real_time.as_mut() {
-        if keys.just_pressed(KeyCode::Key1) {
+        if keys.just_pressed(KeyCode::Key0) {
             solari_settings.debug_view = None;
         }
-        if keys.just_pressed(KeyCode::Key2) {
+        if keys.just_pressed(KeyCode::Key1) {
             solari_settings.debug_view = Some(SolariDebugView::Depth);
         }
-        if keys.just_pressed(KeyCode::Key3) {
+        if keys.just_pressed(KeyCode::Key2) {
             solari_settings.debug_view = Some(SolariDebugView::WorldNormals);
         }
-        if keys.just_pressed(KeyCode::Key4) {
+        if keys.just_pressed(KeyCode::Key3) {
             solari_settings.debug_view = Some(SolariDebugView::MotionVectors);
         }
-        if keys.just_pressed(KeyCode::Key5) {
+        if keys.just_pressed(KeyCode::Key4) {
             solari_settings.debug_view = Some(SolariDebugView::BaseColors);
         }
-        if keys.just_pressed(KeyCode::Key6) {
-            solari_settings.debug_view = Some(SolariDebugView::Irradiance);
+        if keys.just_pressed(KeyCode::Key5) {
+            solari_settings.debug_view = Some(SolariDebugView::WorldCacheIrradiance);
         }
-        if keys.just_pressed(KeyCode::Key7) {
+        if keys.just_pressed(KeyCode::Key6) {
             solari_settings.debug_view = Some(SolariDebugView::ScreenProbesUnfiltered);
         }
-        if keys.just_pressed(KeyCode::Key8) {
+        if keys.just_pressed(KeyCode::Key7) {
             solari_settings.debug_view = Some(SolariDebugView::ScreenProbesFiltered);
         }
+        if keys.just_pressed(KeyCode::Key8) {
+            solari_settings.debug_view = Some(SolariDebugView::DirectLight);
+        }
         if keys.just_pressed(KeyCode::Key9) {
-            solari_settings.debug_view = Some(SolariDebugView::WorldCacheIrradiance);
+            solari_settings.debug_view = Some(SolariDebugView::IndirectLight);
         }
 
         ui.push_str("\nDebug view:\n");
         if solari_settings.debug_view == None {
-            ui.push_str("*1* None\n");
+            ui.push_str("*0* None\n");
         } else {
-            ui.push_str(" 1  None\n");
+            ui.push_str(" 0  None\n");
         }
         if solari_settings.debug_view == Some(SolariDebugView::Depth) {
-            ui.push_str("*2* Depth\n");
+            ui.push_str("*1* Depth\n");
         } else {
-            ui.push_str(" 2  Depth\n");
+            ui.push_str(" 1  Depth\n");
         }
         if solari_settings.debug_view == Some(SolariDebugView::WorldNormals) {
-            ui.push_str("*3* WorldNormals\n");
+            ui.push_str("*2* WorldNormals\n");
         } else {
-            ui.push_str(" 3  WorldNormals\n");
+            ui.push_str(" 2  WorldNormals\n");
         }
         if solari_settings.debug_view == Some(SolariDebugView::MotionVectors) {
-            ui.push_str("*4* MotionVectors\n");
+            ui.push_str("*3* MotionVectors\n");
         } else {
-            ui.push_str(" 4  MotionVectors\n");
+            ui.push_str(" 3  MotionVectors\n");
         }
         if solari_settings.debug_view == Some(SolariDebugView::BaseColors) {
-            ui.push_str("*5* BaseColors\n");
+            ui.push_str("*4* BaseColors\n");
         } else {
-            ui.push_str(" 5  BaseColors\n");
-        }
-        if solari_settings.debug_view == Some(SolariDebugView::Irradiance) {
-            ui.push_str("*6* Irradiance\n");
-        } else {
-            ui.push_str(" 6  Irradiance\n");
-        }
-        if solari_settings.debug_view == Some(SolariDebugView::ScreenProbesUnfiltered) {
-            ui.push_str("*7* ScreenProbesUnfiltered\n");
-        } else {
-            ui.push_str(" 7  ScreenProbesUnfiltered\n");
-        }
-        if solari_settings.debug_view == Some(SolariDebugView::ScreenProbesFiltered) {
-            ui.push_str("*8* ScreenProbesFiltered\n");
-        } else {
-            ui.push_str(" 8  ScreenProbesFiltered\n");
+            ui.push_str(" 4  BaseColors\n");
         }
         if solari_settings.debug_view == Some(SolariDebugView::WorldCacheIrradiance) {
-            ui.push_str("*9* WorldCacheIrradiance\n");
+            ui.push_str("*5* WorldCacheIrradiance\n");
         } else {
-            ui.push_str(" 9  WorldCacheIrradiance\n");
+            ui.push_str(" 5  WorldCacheIrradiance\n");
+        }
+        if solari_settings.debug_view == Some(SolariDebugView::ScreenProbesUnfiltered) {
+            ui.push_str("*6* ScreenProbesUnfiltered\n");
+        } else {
+            ui.push_str(" 6  ScreenProbesUnfiltered\n");
+        }
+        if solari_settings.debug_view == Some(SolariDebugView::ScreenProbesFiltered) {
+            ui.push_str("*7* ScreenProbesFiltered\n");
+        } else {
+            ui.push_str(" 7  ScreenProbesFiltered\n");
+        }
+        if solari_settings.debug_view == Some(SolariDebugView::DirectLight) {
+            ui.push_str("*8* DirectLight\n");
+        } else {
+            ui.push_str(" 8  DirectLight\n");
+        }
+        if solari_settings.debug_view == Some(SolariDebugView::IndirectLight) {
+            ui.push_str("*9* IndirectLight\n");
+        } else {
+            ui.push_str(" 9  IndirectLight\n");
         }
     }
 

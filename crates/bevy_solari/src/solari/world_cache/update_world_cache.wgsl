@@ -11,18 +11,19 @@ fn world_cache_sample_irradiance(@builtin(global_invocation_id) active_cell_id: 
 
         let frame_index = globals.frame_count * 5782582u;
         var rng = cell_index + frame_index;
-        let ray_direction = sample_cosine_hemisphere(cell_data.normal, &rng);
 
-        var color = vec3(0.0);
+        var irradiance = vec3(0.0);
+
+        irradiance += sample_direct_lighting(cell_data.position, cell_data.normal, &rng);
+
+        let ray_direction = sample_cosine_hemisphere(cell_data.normal, &rng);
         let ray_hit = trace_ray(cell_data.position, ray_direction, 0.001);
         if ray_hit.kind != RAY_QUERY_INTERSECTION_NONE {
             let ray_hit = map_ray_hit(ray_hit);
-            let direct_light = sample_direct_lighting(ray_hit.world_position, ray_hit.world_normal, ray_hit.material.base_color, &rng);
-            let indirect_light = query_world_cache(ray_hit.world_position, ray_hit.world_normal);
-            color = direct_light + (ray_hit.material.base_color * indirect_light);
+            irradiance += ray_hit.material.base_color * query_world_cache(ray_hit.world_position, ray_hit.world_normal) ;
         }
 
-        world_cache_active_cells_new_irradiance[active_cell_id.x] = color;
+        world_cache_active_cells_new_irradiance[active_cell_id.x] = irradiance;
     }
 }
 

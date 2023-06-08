@@ -1,0 +1,7 @@
+* Switch pixel jitter from per-pixel random to per-frame halton
+* Temporal reprojection for probes / spatiotemporal denoiser for irradiance
+* Final TAA pass
+* Normal map support
+* Reservoir sampling for the world cache update method (direct only, direct + indirect?)
+* ReSTIR for per-pixel direct light sampling
+* Cleanup, remaining TODOs, performance profiling, etc

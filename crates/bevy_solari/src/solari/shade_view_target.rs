@@ -53,15 +53,20 @@ impl SpecializedComputePipeline for SolariShadeViewTargetPipeline {
                 shader_defs.push("DEBUG_VIEW_MOTION_VECTORS".into())
             }
             Some(SolariDebugView::BaseColors) => shader_defs.push("DEBUG_VIEW_BASE_COLORS".into()),
-            Some(SolariDebugView::Irradiance) => shader_defs.push("DEBUG_VIEW_IRRADIANCE".into()),
+            Some(SolariDebugView::WorldCacheIrradiance) => {
+                shader_defs.push("DEBUG_VIEW_WORLD_CACHE_IRRADIANCE".into())
+            }
             Some(SolariDebugView::ScreenProbesUnfiltered) => {
                 shader_defs.push("DEBUG_VIEW_SCREEN_PROBES_UNFILTERED".into())
             }
             Some(SolariDebugView::ScreenProbesFiltered) => {
                 shader_defs.push("DEBUG_VIEW_SCREEN_PROBES_FILTERED".into())
             }
-            Some(SolariDebugView::WorldCacheIrradiance) => {
-                shader_defs.push("DEBUG_VIEW_WORLD_CACHE_IRRADIANCE".into())
+            Some(SolariDebugView::DirectLight) => {
+                shader_defs.push("DEBUG_VIEW_DIRECT_LIGHT".into())
+            }
+            Some(SolariDebugView::IndirectLight) => {
+                shader_defs.push("DEBUG_VIEW_INDIRECT_LIGHT".into())
             }
             None => {}
         }

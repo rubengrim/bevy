@@ -22,7 +22,7 @@ fn trace_ray(ray_origin: vec3<f32>, ray_direction: vec3<f32>, ray_t_min: f32) ->
     return rayQueryGetCommittedIntersection(&rq);
 }
 
-fn sample_direct_lighting(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>, origin_base_color: vec3<f32>, state: ptr<function, u32>) -> vec3<f32> {
+fn sample_direct_lighting(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>, state: ptr<function, u32>) -> vec3<f32> {
     let light_count = arrayLength(&emissive_object_indices);
     let light_i = rand_range_u(light_count, state);
     let light_object_i = emissive_object_indices[light_i];
@@ -47,8 +47,8 @@ fn sample_direct_lighting(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>,
 
     let ray_flags = RAY_FLAG_TERMINATE_ON_FIRST_HIT;
     let ray_cull_mask = 0xFFu;
-    let ray_t_min = 0.001;
-    let ray_t_max = light_distance - 0.001;
+    let ray_t_min = 0.01;
+    let ray_t_max = light_distance - 0.01;
     let ray_direction = (world_position - ray_origin) / light_distance;
     let ray = RayDesc(ray_flags, ray_cull_mask, ray_t_min, ray_t_max, ray_origin, ray_direction);
     var rq: ray_query;
@@ -60,12 +60,10 @@ fn sample_direct_lighting(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>,
         let local_normal = mat3x3(vertices[0].local_normal, vertices[1].local_normal, vertices[2].local_normal) * barycentrics;
         let world_normal = normalize(mat3x3<f32>(light_transform[0].xyz, light_transform[1].xyz, light_transform[2].xyz) * local_normal);
 
-        let brdf = origin_base_color / PI;
-        let le = material.emission;
         let cos_theta_origin = dot(ray_direction, origin_world_normal);
         let cos_theta_light = saturate(dot(-ray_direction, world_normal));
         let light_distance_squared = light_distance * light_distance;
-        let light = brdf * le * cos_theta_origin * (cos_theta_light / light_distance_squared);
+        let light = material.emission * cos_theta_origin * (cos_theta_light / light_distance_squared);
 
         let triangle_edge0 = vertices[0].local_position - vertices[1].local_position;
         let triangle_edge1 = vertices[0].local_position - vertices[2].local_position;

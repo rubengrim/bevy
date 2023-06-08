@@ -27,10 +27,11 @@ pub enum SolariDebugView {
     WorldNormals,
     MotionVectors,
     BaseColors,
-    Irradiance,
+    WorldCacheIrradiance,
     ScreenProbesUnfiltered,
     ScreenProbesFiltered,
-    WorldCacheIrradiance,
+    DirectLight,
+    IndirectLight,
 }
 
 #[derive(Bundle)]
