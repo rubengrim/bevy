@@ -84,7 +84,7 @@ fn shade_view_target(
     let pixel_world_normal = decode_g_buffer_world_normal(g_buffer_pixel);
     let material = decode_m_buffer(textureLoad(m_buffer, global_id.xy));
 
-    let direct_light = (material.base_color / PI) * sample_direct_lighting(pixel_world_position, pixel_world_normal, &rng);
+    let direct_light = sample_direct_lighting(pixel_world_position, pixel_world_normal, &rng);
 
     var indirect_light = vec3(0.0);
     var weight = 0.0;
@@ -98,10 +98,11 @@ fn shade_view_target(
     interpolate_probe(&indirect_light, &weight, pixel_id_jittered, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(-1i, -1i), probe_thread_id);
     interpolate_probe(&indirect_light, &weight, pixel_id_jittered, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(0i, -1i), probe_thread_id);
     interpolate_probe(&indirect_light, &weight, pixel_id_jittered, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(1i, -1i), probe_thread_id);
-    indirect_light *= material.base_color;
     indirect_light /= weight;
 
-    var final_color = material.emission + direct_light + indirect_light;
+    var final_color = material.emission;
+    final_color += direct_light * (material.base_color / PI);
+    final_color += indirect_light * material.base_color;
 
 #ifdef DEBUG_VIEW_DEPTH
     final_color = vec3(pixel_depth * pixel_depth / 1000.0);
