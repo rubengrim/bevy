@@ -15,9 +15,17 @@ fn wrap_key(key: u32) -> u32 {
     return key & (WORLD_CACHE_SIZE - 1u);
 }
 
+fn quantize_position(world_position: vec3<f32>) -> vec3<f32> {
+    return floor((world_position + 0.01) * 6.0);
+}
+
+fn quantize_normal(world_normal: vec3<f32>) -> vec3<f32> {
+    return round(world_normal * 0.7);
+}
+
 fn compute_key(world_position: vec3<f32>, world_normal: vec3<f32>) -> u32 {
-    let world_position_quantized = bitcast<vec3<u32>>(floor((world_position + 0.01) * 8.0));
-    let world_normal_quantized = bitcast<vec3<u32>>(floor(world_normal + 0.01));
+    let world_position_quantized = bitcast<vec3<u32>>(quantize_position(world_position));
+    let world_normal_quantized = bitcast<vec3<u32>>(quantize_normal(world_normal));
     var key = pcg_hash(world_position_quantized.x);
     key = pcg_hash(key + world_position_quantized.y);
     key = pcg_hash(key + world_position_quantized.z);
@@ -28,8 +36,8 @@ fn compute_key(world_position: vec3<f32>, world_normal: vec3<f32>) -> u32 {
 }
 
 fn compute_checksum(world_position: vec3<f32>, world_normal: vec3<f32>) -> u32 {
-    let world_position_quantized = bitcast<vec3<u32>>(floor((world_position + 0.01) * 8.0));
-    let world_normal_quantized = bitcast<vec3<u32>>(floor(world_normal + 0.01));
+    let world_position_quantized = bitcast<vec3<u32>>(quantize_position(world_position));
+    let world_normal_quantized = bitcast<vec3<u32>>(quantize_normal(world_normal));
     var key = iqint_hash(world_position_quantized.x);
     key = iqint_hash(key + world_position_quantized.y);
     key = iqint_hash(key + world_position_quantized.z);
