@@ -43,7 +43,7 @@ const SOLARI_UPDATE_SCREEN_PROBES_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 7717171717171755);
 const SOLARI_FILTER_SCREEN_PROBES_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 8717171717171755);
-const SOLARI_SHADE_VIEW_TARGET: HandleUntyped =
+const SOLARI_SHADE_VIEW_TARGET_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 9717171717171755);
 
 impl Plugin for SolariRealtimePlugin {
@@ -74,7 +74,7 @@ impl Plugin for SolariRealtimePlugin {
         );
         load_internal_asset!(
             app,
-            SOLARI_SHADE_VIEW_TARGET,
+            SOLARI_SHADE_VIEW_TARGET_SHADER,
             "shade_view_target.wgsl",
             Shader::from_wgsl
         );

@@ -1,6 +1,6 @@
 use super::{
     resources::SolariBindGroupLayout, world_cache::resources::SolariWorldCacheResources,
-    SOLARI_SHADE_VIEW_TARGET,
+    SOLARI_SHADE_VIEW_TARGET_SHADER,
 };
 use crate::{scene::bind_group_layout::SolariSceneResources, SolariDebugView, SolariSettings};
 use bevy_ecs::{
@@ -79,7 +79,7 @@ impl SpecializedComputePipeline for SolariShadeViewTargetPipeline {
                 self.world_cache_bind_group_layout.clone(),
             ],
             push_constant_ranges: vec![],
-            shader: SOLARI_SHADE_VIEW_TARGET.typed(),
+            shader: SOLARI_SHADE_VIEW_TARGET_SHADER.typed(),
             shader_defs,
             entry_point: "shade_view_target".into(),
         }
