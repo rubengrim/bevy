@@ -83,6 +83,7 @@ pub fn queue_scene_bind_group(
         materials.get_index(material_handle, |_| GpuSolariMaterial {
             base_color: material.base_color.as_linear_rgba_f32().into(),
             base_color_map_index: get_texture_map_index(&material.base_color_map),
+            normal_map_index: get_texture_map_index(&material.normal_map),
             emission: [emission[0], emission[1], emission[2]].into(),
         })
     };
@@ -102,6 +103,7 @@ pub fn queue_scene_bind_group(
 
     // Fill TLAS and scene buffers
     // TODO: Parallelize loop
+    // TODO: `i` may be wrong if blas is not ready and skipped
     for (i, (mesh_handle, material_handle, material, transform, previous_transform)) in
         objects.into_iter().enumerate()
     {
@@ -127,7 +129,7 @@ pub fn queue_scene_bind_group(
             *tlas.get_mut_single(i).unwrap() = Some(TlasInstance::new(
                 blas,
                 tlas_transform(&transform),
-                i as u32,
+                i as u32, // TODO: Max 24 bits?
                 0xFF,
             ));
         }

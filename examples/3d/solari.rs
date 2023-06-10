@@ -211,6 +211,7 @@ fn add_solari_materials(
             let solari_material = solari_materials.add(SolariMaterial {
                 base_color: material.base_color,
                 base_color_map: material.base_color_texture.clone(),
+                normal_map: material.normal_map_texture.clone(),
                 emission: if material.emissive == Color::rgba_linear(0.0, 0.0, 0.0, 1.0) {
                     None
                 } else {

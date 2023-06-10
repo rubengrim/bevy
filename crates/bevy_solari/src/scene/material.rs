@@ -14,6 +14,7 @@ use bevy_transform::prelude::{GlobalTransform, Transform};
 pub struct SolariMaterial {
     pub base_color: Color,
     pub base_color_map: Option<Handle<Image>>,
+    pub normal_map: Option<Handle<Image>>,
     pub emission: Option<Color>,
 }
 
@@ -29,5 +30,6 @@ pub struct SolariMaterialMeshBundle {
 pub struct GpuSolariMaterial {
     pub base_color: Vec4,
     pub base_color_map_index: u32,
+    pub normal_map_index: u32,
     pub emission: Vec3,
 }

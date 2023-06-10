@@ -57,8 +57,18 @@ fn sample_direct_lighting(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>,
     let ray_hit = rayQueryGetCommittedIntersection(&rq);
 
     if ray_hit.kind == RAY_QUERY_INTERSECTION_NONE {
+        let uv = mat3x2(vertices[0].uv, vertices[1].uv, vertices[2].uv) * barycentrics;
+        let local_tangent = mat3x3(vertices[0].local_tangent.xyz, vertices[1].local_tangent.xyz, vertices[2].local_tangent.xyz) * barycentrics;
+        let world_tangent = normalize(mat3x3(light_transform[0].xyz, light_transform[1].xyz, light_transform[2].xyz) * local_tangent);
         let local_normal = mat3x3(vertices[0].local_normal, vertices[1].local_normal, vertices[2].local_normal) * barycentrics;
-        let world_normal = normalize(mat3x3<f32>(light_transform[0].xyz, light_transform[1].xyz, light_transform[2].xyz) * local_normal);
+        var world_normal = normalize(mat3x3(light_transform[0].xyz, light_transform[1].xyz, light_transform[2].xyz) * local_normal);
+        if material.normal_map_index != TEXTURE_MAP_NONE {
+            let N = world_normal;
+            let T = world_tangent;
+            let B = vertices[0].local_tangent.w * cross(N, T);
+            let Nt = textureSampleLevel(texture_maps[material.normal_map_index], texture_sampler, uv, 0.0).rgb;
+            world_normal = normalize(Nt.x * T + Nt.y * B + Nt.z * N);
+        }
 
         let cos_theta_origin = dot(ray_direction, origin_world_normal);
         let cos_theta_light = saturate(dot(-ray_direction, world_normal));

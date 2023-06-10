@@ -8,21 +8,23 @@ struct SolariVertexBuffer {
     buffer: array<SolariPackedVertex>,
 }
 
-// The size of a vertex is 32 bytes of data
+// The size of a vertex is 48 bytes of data
 //
 // The size of the SolariVertex struct when used in an
 // array is padded to 64 bytes due to WGSL alignment rules
 //
-// This struct is properly 32 bytes
+// This struct is properly 48 bytes
 struct SolariPackedVertex {
     b0: vec4<f32>,
     b1: vec4<f32>,
+    local_tangent: vec4<f32>,
 }
 
 fn unpack_vertex(packed: SolariPackedVertex) -> SolariVertex {
     var vertex: SolariVertex;
     vertex.local_position = packed.b0.xyz;
     vertex.local_normal = vec3(packed.b0.w, packed.b1.xy);
+    vertex.local_tangent = packed.local_tangent;
     vertex.uv = packed.b1.zw;
     return vertex;
 }
@@ -30,6 +32,7 @@ fn unpack_vertex(packed: SolariPackedVertex) -> SolariVertex {
 struct SolariVertex {
     local_position: vec3<f32>,
     local_normal: vec3<f32>,
+    local_tangent: vec4<f32>,
     uv: vec2<f32>,
 }
 
@@ -38,6 +41,7 @@ const TEXTURE_MAP_NONE = 0xffffffffu;
 struct SolariMaterial {
     base_color: vec4<f32>,
     base_color_map_index: u32,
+    normal_map_index: u32,
     emission: vec3<f32>,
 }
 
@@ -82,10 +86,23 @@ fn map_ray_hit(ray_hit: RayIntersection) -> SolariRayHit {
 
     let local_position = mat3x3(vertices[0].local_position, vertices[1].local_position, vertices[2].local_position) * barycentrics;
     let world_position = (ray_hit.object_to_world * vec4(local_position, 1.0)).xyz;
+
     let uv = mat3x2(vertices[0].uv, vertices[1].uv, vertices[2].uv) * barycentrics;
+
     let transform = transforms[ray_hit.instance_custom_index];
+
+    let local_tangent = mat3x3(vertices[0].local_tangent.xyz, vertices[1].local_tangent.xyz, vertices[2].local_tangent.xyz) * barycentrics;
+    let world_tangent = normalize(mat3x3(transform[0].xyz, transform[1].xyz, transform[2].xyz) * local_tangent);
+
     let local_normal = mat3x3(vertices[0].local_normal, vertices[1].local_normal, vertices[2].local_normal) * barycentrics;
-    let world_normal = normalize(mat3x3<f32>(transform[0].xyz, transform[1].xyz, transform[2].xyz) * local_normal);
+    var world_normal = normalize(mat3x3(transform[0].xyz, transform[1].xyz, transform[2].xyz) * local_normal);
+    if material.normal_map_index != TEXTURE_MAP_NONE {
+        let N = world_normal;
+        let T = world_tangent;
+        let B = vertices[0].local_tangent.w * cross(N, T);
+        let Nt = textureSampleLevel(texture_maps[material.normal_map_index], texture_sampler, uv, 0.0).rgb;
+        world_normal = normalize(Nt.x * T + Nt.y * B + Nt.z * N);
+    }
 
     let sampled_material = sample_material(material, uv);
 
