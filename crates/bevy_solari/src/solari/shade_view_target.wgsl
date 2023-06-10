@@ -135,4 +135,6 @@ fn shade_view_target(
 #endif
 
     textureStore(view_target, global_id.xy, vec4(final_color, 1.0));
+    // TODO: Enable TAA
+    // textureStore(view_target_other, global_id.xy, vec4(final_color, 1.0));
 }

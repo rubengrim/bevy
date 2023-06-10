@@ -1,7 +1,8 @@
+* Normal map support
+* Figure out screen probe flickering problem (depth imprecision?)
 * Switch pixel jitter from per-pixel random to per-frame halton
 * Temporal reprojection for probes / spatiotemporal denoiser for irradiance
-* Final TAA pass
-* Normal map support
+
 * Reservoir sampling for the world cache update method (direct only, direct + indirect?)
 * Try adaptive blend rate for world cache (https://github.com/Apress/ray-tracing-gems/blob/master/Ch_25_Hybrid_Rendering_for_Real-Time_Ray_Tracing/MultiscaleMeanEstimator.hlsl)
 * ReSTIR for per-pixel direct light sampling

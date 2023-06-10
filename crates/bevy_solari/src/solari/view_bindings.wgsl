@@ -20,4 +20,7 @@ struct SphericalHarmonicsPacked {
 @group(1) @binding(5) var screen_probes_unfiltered: texture_storage_2d<rgba32float, read_write>;
 @group(1) @binding(6) var screen_probes_filtered: texture_storage_2d<rgba32float, read_write>;
 @group(1) @binding(7) var<storage, read_write> screen_probe_spherical_harmonics: array<SphericalHarmonicsPacked>;
-@group(1) @binding(8) var view_target: texture_storage_2d<rgba16float, write>;
+@group(1) @binding(8) var taa_history: texture_2d<f32>;
+@group(1) @binding(9) var taa_history_output: texture_storage_2d<rgba16float, write>;
+@group(1) @binding(10) var view_target_other: texture_storage_2d<rgba16float, read_write>;
+@group(1) @binding(11) var view_target: texture_storage_2d<rgba16float, write>;

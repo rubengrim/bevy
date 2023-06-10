@@ -1,4 +1,5 @@
 use super::camera::{PreviousViewProjection, PreviousViewProjectionUniforms, SolariSettings};
+use bevy_core::FrameCount;
 use bevy_ecs::{
     prelude::{Component, Entity},
     query::With,
@@ -22,10 +23,13 @@ pub struct SolariResources {
     screen_probes_unfiltered: CachedTexture,
     screen_probes_filtered: CachedTexture,
     screen_probe_spherical_harmonics: CachedBuffer,
+    taa_history_previous: CachedTexture,
+    taa_history_current: CachedTexture,
 }
 
 pub fn prepare_resources(
     views: Query<(Entity, &ExtractedCamera), With<SolariSettings>>,
+    frame_count: Res<FrameCount>,
     mut commands: Commands,
     mut texture_cache: ResMut<TextureCache>,
     mut buffer_cache: ResMut<BufferCache>,
@@ -118,6 +122,40 @@ pub fn prepare_resources(
                 mapped_at_creation: false,
             };
 
+            let taa_history_1 = TextureDescriptor {
+                label: Some("solari_taa_history_1"),
+                size: Extent3d {
+                    depth_or_array_layers: 1,
+                    width: viewport.x,
+                    height: viewport.y,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: TextureDimension::D2,
+                format: TextureFormat::Rgba16Float,
+                usage: TextureUsages::TEXTURE_BINDING | TextureUsages::STORAGE_BINDING,
+                view_formats: &[],
+            };
+            let taa_history_2 = TextureDescriptor {
+                label: Some("solari_taa_history_2"),
+                size: Extent3d {
+                    depth_or_array_layers: 1,
+                    width: viewport.x,
+                    height: viewport.y,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: TextureDimension::D2,
+                format: TextureFormat::Rgba16Float,
+                usage: TextureUsages::TEXTURE_BINDING | TextureUsages::STORAGE_BINDING,
+                view_formats: &[],
+            };
+            let (taa_history_previous, taa_history_current) = if frame_count.0 % 2 == 0 {
+                (taa_history_1, taa_history_2)
+            } else {
+                (taa_history_2, taa_history_1)
+            };
+
             commands.entity(entity).insert(SolariResources {
                 g_buffer: texture_cache.get(&render_device, g_buffer),
                 m_buffer: texture_cache.get(&render_device, m_buffer),
@@ -127,6 +165,8 @@ pub fn prepare_resources(
                 screen_probes_filtered: texture_cache.get(&render_device, screen_probes_filtered),
                 screen_probe_spherical_harmonics: buffer_cache
                     .get(&render_device, screen_probe_spherical_harmonics),
+                taa_history_previous: texture_cache.get(&render_device, taa_history_previous),
+                taa_history_current: texture_cache.get(&render_device, taa_history_current),
             });
         }
     }
@@ -226,9 +266,42 @@ impl FromWorld for SolariBindGroupLayout {
                 },
                 count: None,
             },
-            // View target
+            // TAA history (previous)
             BindGroupLayoutEntry {
                 binding: 8,
+                visibility: ShaderStages::COMPUTE,
+                ty: BindingType::Texture {
+                    sample_type: TextureSampleType::Float { filterable: true },
+                    view_dimension: TextureViewDimension::D2,
+                    multisampled: false,
+                },
+                count: None,
+            },
+            // TAA history (current)
+            BindGroupLayoutEntry {
+                binding: 9,
+                visibility: ShaderStages::COMPUTE,
+                ty: BindingType::StorageTexture {
+                    access: StorageTextureAccess::WriteOnly,
+                    format: TextureFormat::Rgba16Float,
+                    view_dimension: TextureViewDimension::D2,
+                },
+                count: None,
+            },
+            // View target (other)
+            BindGroupLayoutEntry {
+                binding: 10,
+                visibility: ShaderStages::COMPUTE,
+                ty: BindingType::StorageTexture {
+                    access: StorageTextureAccess::ReadWrite,
+                    format: TextureFormat::Rgba16Float,
+                    view_dimension: TextureViewDimension::D2,
+                },
+                count: None,
+            },
+            // View target (current)
+            BindGroupLayoutEntry {
+                binding: 11,
                 visibility: ShaderStages::COMPUTE,
                 ty: BindingType::StorageTexture {
                     access: StorageTextureAccess::WriteOnly,
@@ -306,6 +379,22 @@ pub fn queue_bind_groups(
                 },
                 BindGroupEntry {
                     binding: 8,
+                    resource: BindingResource::TextureView(
+                        &solari_resources.taa_history_previous.default_view,
+                    ),
+                },
+                BindGroupEntry {
+                    binding: 9,
+                    resource: BindingResource::TextureView(
+                        &solari_resources.taa_history_current.default_view,
+                    ),
+                },
+                BindGroupEntry {
+                    binding: 10,
+                    resource: BindingResource::TextureView(view_target.main_texture_other()),
+                },
+                BindGroupEntry {
+                    binding: 11,
                     resource: BindingResource::TextureView(view_target.main_texture()),
                 },
             ];

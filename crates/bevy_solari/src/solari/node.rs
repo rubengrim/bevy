@@ -2,7 +2,7 @@ use super::{
     camera::PreviousViewProjectionUniformOffset,
     filter_screen_probes::SolariFilterScreenProbesPipelineId,
     gmt_buffer::SolariGmtBufferPipelineId, resources::SolariBindGroup,
-    shade_view_target::SolariShadeViewTargetPipelineId,
+    shade_view_target::SolariShadeViewTargetPipelineId, taa::SolariTaaPipelineId,
     update_screen_probes::SolariUpdateScreenProbesPipelineId,
     world_cache::resources::SolariWorldCacheResources,
 };
@@ -26,6 +26,7 @@ impl ViewNode for SolariNode {
         &'static SolariUpdateScreenProbesPipelineId,
         &'static SolariFilterScreenProbesPipelineId,
         &'static SolariShadeViewTargetPipelineId,
+        &'static SolariTaaPipelineId,
         &'static ViewUniformOffset,
         &'static PreviousViewProjectionUniformOffset,
         &'static ExtractedCamera,
@@ -41,6 +42,7 @@ impl ViewNode for SolariNode {
             update_screen_probes_pipeline_id,
             filter_screen_probes_pipeline_id,
             shade_view_target_pipeline_id,
+            taa_pipeline_id,
             view_uniform_offset,
             previous_view_projection_uniform_offset,
             camera,
@@ -63,12 +65,14 @@ impl ViewNode for SolariNode {
             Some(update_screen_probes_pipeline),
             Some(filter_screen_probes_pipeline),
             Some(shade_view_target_pipeline),
+            Some(taa_pipeline),
             Some(viewport),
         ) = (
             pipeline_cache.get_compute_pipeline(gmt_buffer_pipeline_id.0),
             pipeline_cache.get_compute_pipeline(update_screen_probes_pipeline_id.0),
             pipeline_cache.get_compute_pipeline(filter_screen_probes_pipeline_id.0),
             pipeline_cache.get_compute_pipeline(shade_view_target_pipeline_id.0),
+            pipeline_cache.get_compute_pipeline(taa_pipeline_id.0),
             camera.physical_viewport_size,
         ) else {
             return Ok(());
@@ -101,6 +105,10 @@ impl ViewNode for SolariNode {
 
             solari_pass.set_pipeline(shade_view_target_pipeline);
             solari_pass.dispatch_workgroups(width, height, 1);
+
+            solari_pass.set_pipeline(taa_pipeline);
+            // TODO: Enable TAA
+            // solari_pass.dispatch_workgroups(width, height, 1);
         }
 
         Ok(())

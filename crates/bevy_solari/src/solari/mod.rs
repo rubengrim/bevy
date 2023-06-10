@@ -4,6 +4,7 @@ mod gmt_buffer;
 pub mod node;
 mod resources;
 mod shade_view_target;
+mod taa;
 mod update_screen_probes;
 pub mod world_cache;
 
@@ -18,6 +19,7 @@ use self::{
     gmt_buffer::{prepare_gmt_buffer_pipelines, SolariGmtBufferPipeline},
     resources::{prepare_resources, queue_bind_groups, SolariBindGroupLayout},
     shade_view_target::{prepare_shade_view_target_pipelines, SolariShadeViewTargetPipeline},
+    taa::{prepare_taa_pipelines, SolariTaaPipeline},
     update_screen_probes::{
         prepare_update_screen_probe_pipelines, SolariUpdateScreenProbesPipeline,
     },
@@ -45,6 +47,8 @@ const SOLARI_FILTER_SCREEN_PROBES_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 8717171717171755);
 const SOLARI_SHADE_VIEW_TARGET_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 9717171717171755);
+const SOLARI_TAA_SHADER: HandleUntyped =
+    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 1617171717171755);
 
 impl Plugin for SolariRealtimePlugin {
     fn build(&self, app: &mut App) {
@@ -78,6 +82,7 @@ impl Plugin for SolariRealtimePlugin {
             "shade_view_target.wgsl",
             Shader::from_wgsl
         );
+        load_internal_asset!(app, SOLARI_TAA_SHADER, "taa.wgsl", Shader::from_wgsl);
 
         app.add_plugin(SolariWorldCachePlugin)
             .add_plugin(ExtractComponentPlugin::<SolariSettings>::default())
@@ -91,10 +96,12 @@ impl Plugin for SolariRealtimePlugin {
             .init_resource::<SolariUpdateScreenProbesPipeline>()
             .init_resource::<SolariFilterScreenProbesPipeline>()
             .init_resource::<SolariShadeViewTargetPipeline>()
+            .init_resource::<SolariTaaPipeline>()
             .init_resource::<SpecializedComputePipelines<SolariGmtBufferPipeline>>()
             .init_resource::<SpecializedComputePipelines<SolariUpdateScreenProbesPipeline>>()
             .init_resource::<SpecializedComputePipelines<SolariFilterScreenProbesPipeline>>()
             .init_resource::<SpecializedComputePipelines<SolariShadeViewTargetPipeline>>()
+            .init_resource::<SpecializedComputePipelines<SolariTaaPipeline>>()
             .add_systems(
                 Render,
                 (
@@ -104,6 +111,7 @@ impl Plugin for SolariRealtimePlugin {
                     prepare_update_screen_probe_pipelines,
                     prepare_filter_screen_probe_pipelines,
                     prepare_shade_view_target_pipelines,
+                    prepare_taa_pipelines,
                 )
                     .in_set(RenderSet::Prepare),
             )
