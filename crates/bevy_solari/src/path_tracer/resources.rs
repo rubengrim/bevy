@@ -110,7 +110,7 @@ pub fn create_view_bind_group(
                 },
                 BindGroupEntry {
                     binding: 2,
-                    resource: BindingResource::TextureView(view_target.main_texture()),
+                    resource: BindingResource::TextureView(view_target.main_texture_view()),
                 },
             ],
         })

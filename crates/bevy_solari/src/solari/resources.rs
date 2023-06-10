@@ -391,11 +391,11 @@ pub fn queue_bind_groups(
                 },
                 BindGroupEntry {
                     binding: 10,
-                    resource: BindingResource::TextureView(view_target.main_texture_other()),
+                    resource: BindingResource::TextureView(view_target.main_texture_other_view()),
                 },
                 BindGroupEntry {
                     binding: 11,
-                    resource: BindingResource::TextureView(view_target.main_texture()),
+                    resource: BindingResource::TextureView(view_target.main_texture_view()),
                 },
             ];
 
