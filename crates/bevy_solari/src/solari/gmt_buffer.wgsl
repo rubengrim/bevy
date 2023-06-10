@@ -37,11 +37,11 @@ fn gmt_buffer(@builtin(global_invocation_id) global_id: vec3<u32>) {
         let world_position = (ray_hit.object_to_world * vec4(local_position, 1.0)).xyz;
         let uv = mat3x2(vertices[0].uv, vertices[1].uv, vertices[2].uv) * barycentrics;
         let transform = transforms[ray_hit.instance_custom_index];
-        let local_tangent = mat3x3(vertices[0].local_tangent.xyz, vertices[1].local_tangent.xyz, vertices[2].local_tangent.xyz) * barycentrics;
-        let world_tangent = normalize(mat3x3(transform[0].xyz, transform[1].xyz, transform[2].xyz) * local_tangent);
         let local_normal = mat3x3(vertices[0].local_normal, vertices[1].local_normal, vertices[2].local_normal) * barycentrics;
         world_normal = normalize(mat3x3(transform[0].xyz, transform[1].xyz, transform[2].xyz) * local_normal);
         if material.normal_map_index != TEXTURE_MAP_NONE {
+            let local_tangent = mat3x3(vertices[0].local_tangent.xyz, vertices[1].local_tangent.xyz, vertices[2].local_tangent.xyz) * barycentrics;
+            let world_tangent = normalize(mat3x3(transform[0].xyz, transform[1].xyz, transform[2].xyz) * local_tangent);
             let N = world_normal;
             let T = world_tangent;
             let B = vertices[0].local_tangent.w * cross(N, T);

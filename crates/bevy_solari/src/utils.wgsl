@@ -58,11 +58,11 @@ fn sample_direct_lighting(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>,
 
     if ray_hit.kind == RAY_QUERY_INTERSECTION_NONE {
         let uv = mat3x2(vertices[0].uv, vertices[1].uv, vertices[2].uv) * barycentrics;
-        let local_tangent = mat3x3(vertices[0].local_tangent.xyz, vertices[1].local_tangent.xyz, vertices[2].local_tangent.xyz) * barycentrics;
-        let world_tangent = normalize(mat3x3(light_transform[0].xyz, light_transform[1].xyz, light_transform[2].xyz) * local_tangent);
         let local_normal = mat3x3(vertices[0].local_normal, vertices[1].local_normal, vertices[2].local_normal) * barycentrics;
         var world_normal = normalize(mat3x3(light_transform[0].xyz, light_transform[1].xyz, light_transform[2].xyz) * local_normal);
         if material.normal_map_index != TEXTURE_MAP_NONE {
+            let local_tangent = mat3x3(vertices[0].local_tangent.xyz, vertices[1].local_tangent.xyz, vertices[2].local_tangent.xyz) * barycentrics;
+            let world_tangent = normalize(mat3x3(light_transform[0].xyz, light_transform[1].xyz, light_transform[2].xyz) * local_tangent);
             let N = world_normal;
             let T = world_tangent;
             let B = vertices[0].local_tangent.w * cross(N, T);
