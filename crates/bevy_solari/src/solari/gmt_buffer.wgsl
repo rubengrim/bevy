@@ -35,7 +35,7 @@ fn gmt_buffer(@builtin(global_invocation_id) global_id: vec3<u32>) {
         let barycentrics = vec3(1.0 - ray_hit.barycentrics.x - ray_hit.barycentrics.y, ray_hit.barycentrics);
         let local_position = mat3x3(vertices[0].local_position, vertices[1].local_position, vertices[2].local_position) * barycentrics;
         let world_position = (ray_hit.object_to_world * vec4(local_position, 1.0)).xyz;
-        let uv = mat3x2(vertices[0].uv, vertices[1].uv, vertices[2].uv) * barycentrics;
+        uv = mat3x2(vertices[0].uv, vertices[1].uv, vertices[2].uv) * barycentrics;
         let transform = transforms[ray_hit.instance_custom_index];
         let local_normal = mat3x3(vertices[0].local_normal, vertices[1].local_normal, vertices[2].local_normal) * barycentrics;
         world_normal = normalize(mat3x3(transform[0].xyz, transform[1].xyz, transform[2].xyz) * local_normal);
