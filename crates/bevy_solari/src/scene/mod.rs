@@ -10,9 +10,11 @@ use self::{
     bind_group_layout::SolariSceneResources,
     blas::{prepare_blas, BlasStorage},
     material::SolariMaterial,
-    scene::{extract_scene, update_mesh_previous_global_transforms},
+    scene::{
+        ensure_necessary_vertex_attributes, extract_scene, update_mesh_previous_global_transforms,
+    },
 };
-use bevy_app::{App, Plugin, PreUpdate};
+use bevy_app::{App, Plugin, PreUpdate, Update};
 use bevy_asset::{load_internal_asset, AddAsset, HandleUntyped};
 use bevy_ecs::schedule::IntoSystemConfigs;
 use bevy_reflect::TypeUuid;
@@ -43,7 +45,8 @@ impl Plugin for SolariScenePlugin {
         );
 
         app.add_asset::<SolariMaterial>()
-            .add_systems(PreUpdate, update_mesh_previous_global_transforms);
+            .add_systems(PreUpdate, update_mesh_previous_global_transforms)
+            .add_systems(Update, ensure_necessary_vertex_attributes);
 
         app.sub_app_mut(RenderApp)
             .init_resource::<BlasStorage>()

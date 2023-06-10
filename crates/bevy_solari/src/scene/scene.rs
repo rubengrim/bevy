@@ -1,9 +1,9 @@
 use crate::SolariMaterial;
-use bevy_asset::{Assets, Handle};
+use bevy_asset::{AssetEvent, Assets, Handle};
 use bevy_ecs::{
-    prelude::{Component, Entity},
+    prelude::{Component, Entity, EventReader},
     query::With,
-    system::{Commands, Query, Res},
+    system::{Commands, Query, Res, ResMut},
 };
 use bevy_math::Mat4;
 use bevy_render::{prelude::Mesh, render_resource::ShaderType, Extract};
@@ -58,5 +58,31 @@ pub fn update_mesh_previous_global_transforms(
         commands.entity(entity).insert(PreviousGlobalTransform {
             t: transform.compute_matrix(),
         });
+    }
+}
+
+pub fn ensure_necessary_vertex_attributes(
+    mut mesh_events: EventReader<AssetEvent<Mesh>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+) {
+    for event in mesh_events.iter() {
+        let handle = match event {
+            AssetEvent::Created { handle } => handle,
+            _ => continue,
+        };
+
+        if let Some(mesh) = meshes.get_mut(handle) {
+            if !mesh.contains_attribute(Mesh::ATTRIBUTE_TANGENT) {
+                let _ = mesh.generate_tangents();
+            }
+
+            if !mesh.contains_attribute(Mesh::ATTRIBUTE_UV_0) {
+                mesh.insert_attribute(
+                    Mesh::ATTRIBUTE_UV_0,
+                    // TODO: Avoid this allocation
+                    vec![[0.0, 0.0]],
+                );
+            }
+        }
     }
 }
