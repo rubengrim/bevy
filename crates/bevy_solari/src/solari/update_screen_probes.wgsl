@@ -21,11 +21,8 @@ fn update_screen_probes(
 
     let probe_thread_index = u32(floor(rand_f(&rng2) * 63.0));
     if local_index == probe_thread_index {
-        let probe_thread_x = probe_thread_index % 8u;
-        let probe_thread_y = (probe_thread_index - probe_thread_x) / 8u;
         probe_g_pixel = textureLoad(g_buffer, global_id.xy); // TODO: may not exist
-        let probe_pixel_id = vec2<f32>(global_id.xy - local_id.xy + vec2(probe_thread_x, probe_thread_y)) + rand_vec2(&rng3);
-        probe_pixel_uv = probe_pixel_id / view.viewport.zw;
+        probe_pixel_uv = (vec2<f32>(global_id.xy) + rand_vec2(&rng3)) / view.viewport.zw;
     }
     workgroupBarrier();
     let probe_depth = decode_g_buffer_depth(probe_g_pixel);
@@ -44,20 +41,6 @@ fn update_screen_probes(
         let ray_hit = map_ray_hit(ray_hit);
         color = ray_hit.material.base_color * query_world_cache(ray_hit.world_position, ray_hit.world_normal);
     }
-
-    // var blended_radiance = color;
-    // let previous_pixel = textureLoad(screen_probes_unfiltered, global_id.xy);
-    // if previous_pixel.a == 1.0 {
-    //     let current_radiance = color;
-    //     let previous_radiance = previous_pixel.rgb;
-    //     let l1 = dot(current_radiance, vec3(1.0 / 3.0));
-    //     let l2 = dot(previous_radiance, vec3(1.0 / 3.0));
-    //     var a = max(l1 - l2 - min(l1, l2), 0.0) / max(max(l1, l2), 1e-4);
-    //     a = clamp(a, 0.0, 0.95);
-    //     a *= a;
-    //     blended_radiance = mix(current_radiance, previous_radiance, a);
-    // }
-    // textureStore(screen_probes_unfiltered, global_id.xy, vec4(blended_radiance, 1.0));
 
     textureStore(screen_probes_unfiltered, global_id.xy, vec4(color, 1.0));
 }
