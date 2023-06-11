@@ -6,7 +6,11 @@ use bevy_ecs::{
     system::{Commands, Query, Res, ResMut},
 };
 use bevy_math::Mat4;
-use bevy_render::{prelude::Mesh, render_resource::ShaderType, Extract};
+use bevy_render::{
+    prelude::Mesh,
+    render_resource::{PrimitiveTopology, ShaderType},
+    Extract,
+};
 use bevy_transform::prelude::GlobalTransform;
 
 pub fn extract_scene(
@@ -73,6 +77,10 @@ pub fn ensure_necessary_vertex_attributes(
         };
 
         if let Some(mesh) = meshes.get_mut(handle) {
+            if mesh.primitive_topology() != PrimitiveTopology::TriangleList {
+                continue;
+            }
+
             if !mesh.contains_attribute(Mesh::ATTRIBUTE_TANGENT) {
                 let _ = mesh.generate_tangents();
             }
