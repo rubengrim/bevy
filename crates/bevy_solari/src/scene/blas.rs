@@ -33,15 +33,27 @@ pub fn prepare_blas(
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
 ) {
-    // Get GpuMeshes and filter to TriangleList meshes without an existing BLAS
-    // TODO: Validate vertex attributes
-    // TODO: Validate U32 indices
+    // Get GpuMeshes and filter to compatible meshes without an existing BLAS
     let meshes = meshes
         .iter()
         .filter_map(|mesh| render_meshes.get(mesh).map(|gpu_mesh| (mesh, gpu_mesh)))
         .filter(|(mesh, gpu_mesh)| {
             !blas_storage.storage.contains_key(&mesh.id())
                 && gpu_mesh.primitive_topology == PrimitiveTopology::TriangleList
+                && gpu_mesh.layout.attribute_ids()
+                    == &[
+                        Mesh::ATTRIBUTE_POSITION.id,
+                        Mesh::ATTRIBUTE_NORMAL.id,
+                        Mesh::ATTRIBUTE_UV_0.id,
+                        Mesh::ATTRIBUTE_TANGENT.id,
+                    ]
+                && matches!(
+                    gpu_mesh.buffer_info,
+                    GpuBufferInfo::Indexed {
+                        index_format: IndexFormat::Uint32,
+                        ..
+                    }
+                )
         })
         .collect::<Vec<_>>();
 
