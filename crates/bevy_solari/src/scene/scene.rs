@@ -65,6 +65,7 @@ pub fn ensure_necessary_vertex_attributes(
     mut mesh_events: EventReader<AssetEvent<Mesh>>,
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
+    // TODO: Parallelize loop
     for event in mesh_events.iter() {
         let handle = match event {
             AssetEvent::Created { handle } => handle,
@@ -81,6 +82,13 @@ pub fn ensure_necessary_vertex_attributes(
                     Mesh::ATTRIBUTE_UV_0,
                     // TODO: Avoid this allocation
                     vec![[0.0, 0.0]],
+                );
+            }
+            if !mesh.contains_attribute(Mesh::ATTRIBUTE_TANGENT) {
+                mesh.insert_attribute(
+                    Mesh::ATTRIBUTE_TANGENT,
+                    // TODO: Avoid this allocation
+                    vec![[0.0, 0.0, 0.0, 0.0]],
                 );
             }
         }
