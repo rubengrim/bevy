@@ -112,6 +112,7 @@ fn shade_view_target(
 #endif
 #ifdef DEBUG_VIEW_MOTION_VECTORS
     let t_buffer_pixel = textureLoad(t_buffer, global_id.xy);
+    // TODO: Better visualization
     final_color = vec3(abs(t_buffer_pixel.rg), 0.0);
 #endif
 #ifdef DEBUG_VIEW_BASE_COLORS
