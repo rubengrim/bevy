@@ -8,3 +8,4 @@
 * Add screenspace GI (SSAO/SSIL)
 * Cleanup, remaining TODOs, performance profiling, etc
     * Combine pipeline rust code into one module/struct/system
+    * Better depth encoding than world-space
