@@ -1,4 +1,3 @@
-* Figure out screen probe flickering problem (depth imprecision?)
 * Switch pixel jitter from per-pixel random to per-frame halton
 * Temporal reprojection for probes / spatiotemporal denoiser for irradiance
 
@@ -9,3 +8,4 @@
 * Cleanup, remaining TODOs, performance profiling, etc
     * Combine pipeline rust code into one module/struct/system
     * Better depth encoding than world-space
+    * "A Fast and Robust Method for Avoiding Self-Intersection"
