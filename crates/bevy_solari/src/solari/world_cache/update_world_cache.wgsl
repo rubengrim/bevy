@@ -35,7 +35,7 @@ fn world_cache_blend_new_samples(@builtin(global_invocation_id) active_cell_id: 
         let old_irradiance = world_cache_irradiance[cell_index];
         let new_irradiance = world_cache_active_cells_new_irradiance[active_cell_id.x];
 
-        var alpha = 0.025;
+        var alpha = 0.1;
         if old_irradiance.a == 0.0 {
             alpha = 1.0;
         }
