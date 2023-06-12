@@ -101,6 +101,7 @@ fn shade_view_target(
     var indirect_light = vec3(0.0);
     var indirect_light_no_rejections = vec3(0.0);
     var weight = 0.0;
+    // TODO: Spatiotemporal blue noise for jitter instead of rand_vec2()
     // TODO: Cancel jitter if outside pixel plane
     // TODO: Jitter size?
     let pixel_id_jittered = pixel_id + (rand_vec2(&rng) - 0.5);
