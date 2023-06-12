@@ -15,7 +15,6 @@ fn gmt_buffer(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var uv = vec2(-1.0);
     var motion_vector = vec2(0.0);
 
-
     let primary_ray_direction = pixel_to_ray_direction((vec2<f32>(global_id.xy) + 0.5) / view.viewport.zw);
     let ray_hit = trace_ray(view.world_position, primary_ray_direction, 0.0);
 
