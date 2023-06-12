@@ -8,6 +8,7 @@
 // TODO: Change screen space distance to depend on camera zoom
 fn interpolate_probe(
     irradiance_total: ptr<function, vec3<f32>>,
+    irradiance_no_rejections_total: ptr<function, vec3<f32>>,
     weight_total: ptr<function, f32>,
     pixel_id: vec2<f32>,
     pixel_world_position: vec3<f32>,
@@ -21,9 +22,6 @@ fn interpolate_probe(
     let probe_depth = decode_g_buffer_depth(textureLoad(g_buffer, probe_pixel_id));
     let probe_world_position = depth_to_world_position(probe_depth, probe_pixel_id_center / view.viewport.zw);
     let plane_dist = abs(dot(probe_world_position - pixel_world_position, pixel_world_normal));
-    if plane_dist > 0.03 {
-        return;
-    }
 
     let c1 = 0.429043;
     let c2 = 0.511664;
@@ -51,6 +49,11 @@ fn interpolate_probe(
     let L20 = sh.b5.yzw;
     let L22 = sh.b6;
     var irradiance = (c1 * L22 * xx_yy) + (c3 * L20 * zz) + (c4 * L00) - (c5 * L20) + (2.0 * c1 * ((L2_2 * xy) + (L21 * xz) + (L2_1 * yz))) + (2.0 * c2 * ((L11 * x) + (L1_1 * y) + (L10 * z)));
+
+    *irradiance_no_rejections_total += irradiance;
+    if plane_dist > 0.03 {
+        return;
+    }
 
     let screen_distance = distance(probe_pixel_id_center, pixel_id);
     let screen_distance_weight = smoothstep(22.0, 0.0, screen_distance);
@@ -96,20 +99,22 @@ fn shade_view_target(
     let direct_light = sample_direct_lighting(pixel_world_position, pixel_world_normal, &rng);
 
     var indirect_light = vec3(0.0);
+    var indirect_light_no_rejections = vec3(0.0);
     var weight = 0.0;
     // TODO: Cancel jitter if outside pixel plane
     // TODO: Jitter size?
     let pixel_id_jittered = pixel_id + (rand_vec2(&rng) - 0.5);
-    interpolate_probe(&indirect_light, &weight, pixel_id_jittered, pixel_world_position, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(-1i, 1i), probe_thread_id);
-    interpolate_probe(&indirect_light, &weight, pixel_id_jittered, pixel_world_position, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(0i, 1i), probe_thread_id);
-    interpolate_probe(&indirect_light, &weight, pixel_id_jittered, pixel_world_position, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(1i, 1i), probe_thread_id);
-    interpolate_probe(&indirect_light, &weight, pixel_id_jittered, pixel_world_position, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(-1i, 0i), probe_thread_id);
-    interpolate_probe(&indirect_light, &weight, pixel_id_jittered, pixel_world_position, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(0i, 0i), probe_thread_id);
-    interpolate_probe(&indirect_light, &weight, pixel_id_jittered, pixel_world_position, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(1i, 0i), probe_thread_id);
-    interpolate_probe(&indirect_light, &weight, pixel_id_jittered, pixel_world_position, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(-1i, -1i), probe_thread_id);
-    interpolate_probe(&indirect_light, &weight, pixel_id_jittered, pixel_world_position, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(0i, -1i), probe_thread_id);
-    interpolate_probe(&indirect_light, &weight, pixel_id_jittered, pixel_world_position, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(1i, -1i), probe_thread_id);
+    interpolate_probe(&indirect_light, &indirect_light_no_rejections, &weight, pixel_id_jittered, pixel_world_position, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(-1i, 1i), probe_thread_id);
+    interpolate_probe(&indirect_light, &indirect_light_no_rejections, &weight, pixel_id_jittered, pixel_world_position, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(0i, 1i), probe_thread_id);
+    interpolate_probe(&indirect_light, &indirect_light_no_rejections, &weight, pixel_id_jittered, pixel_world_position, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(1i, 1i), probe_thread_id);
+    interpolate_probe(&indirect_light, &indirect_light_no_rejections, &weight, pixel_id_jittered, pixel_world_position, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(-1i, 0i), probe_thread_id);
+    interpolate_probe(&indirect_light, &indirect_light_no_rejections, &weight, pixel_id_jittered, pixel_world_position, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(0i, 0i), probe_thread_id);
+    interpolate_probe(&indirect_light, &indirect_light_no_rejections, &weight, pixel_id_jittered, pixel_world_position, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(1i, 0i), probe_thread_id);
+    interpolate_probe(&indirect_light, &indirect_light_no_rejections, &weight, pixel_id_jittered, pixel_world_position, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(-1i, -1i), probe_thread_id);
+    interpolate_probe(&indirect_light, &indirect_light_no_rejections, &weight, pixel_id_jittered, pixel_world_position, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(0i, -1i), probe_thread_id);
+    interpolate_probe(&indirect_light, &indirect_light_no_rejections, &weight, pixel_id_jittered, pixel_world_position, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(1i, -1i), probe_thread_id);
     if weight == 0.0 {
+        indirect_light = indirect_light_no_rejections;
         weight = 9.0;
     }
     indirect_light /= weight;
