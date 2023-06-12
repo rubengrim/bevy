@@ -96,6 +96,7 @@ fn shade_view_target(
     let pixel_world_normal = decode_g_buffer_world_normal(g_buffer_pixel);
     let material = decode_m_buffer(textureLoad(m_buffer, global_id.xy));
 
+    // TODO: Use spatiotemporal blue noise
     let direct_light = sample_direct_lighting(pixel_world_position, pixel_world_normal, &rng);
 
     var indirect_light = vec3(0.0);
