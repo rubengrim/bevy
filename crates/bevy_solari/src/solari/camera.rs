@@ -1,13 +1,14 @@
 use crate::SOLARI_GRAPH;
+use bevy_core::FrameCount;
 use bevy_core_pipeline::tonemapping::Tonemapping;
 use bevy_ecs::{
     prelude::{Bundle, Component, Entity},
     query::With,
     system::{Commands, Query, Res, ResMut, Resource},
 };
-use bevy_math::Mat4;
+use bevy_math::{vec2, Mat4};
 use bevy_render::{
-    camera::CameraRenderGraph,
+    camera::{CameraRenderGraph, TemporalJitter},
     extract_component::ExtractComponent,
     prelude::{Camera, Projection},
     render_resource::{DynamicUniformBuffer, ShaderType},
@@ -44,6 +45,7 @@ pub struct SolariCamera3dBundle {
     pub global_transform: GlobalTransform,
     pub tonemapping: Tonemapping,
     pub color_grading: ColorGrading,
+    pub taa_jitter: TemporalJitter,
 }
 
 impl Default for SolariCamera3dBundle {
@@ -60,6 +62,7 @@ impl Default for SolariCamera3dBundle {
             global_transform: Default::default(),
             tonemapping: Default::default(),
             color_grading: Default::default(),
+            taa_jitter: TemporalJitter::default(),
         }
     }
 }
@@ -110,4 +113,27 @@ pub fn prepare_previous_view_projection_uniforms(
     view_uniforms
         .uniforms
         .write_buffer(&render_device, &render_queue);
+}
+
+pub fn prepare_taa_jitter(
+    mut views: Query<&mut TemporalJitter, With<SolariSettings>>,
+    frame_count: Res<FrameCount>,
+) {
+    // Halton sequence (2, 3) - 0.5, skipping i = 0
+    let halton_sequence = [
+        vec2(0.0, -0.16666666),
+        vec2(-0.25, 0.16666669),
+        vec2(0.25, -0.3888889),
+        vec2(-0.375, -0.055555552),
+        vec2(0.125, 0.2777778),
+        vec2(-0.125, -0.2777778),
+        vec2(0.375, 0.055555582),
+        vec2(-0.4375, 0.3888889),
+    ];
+
+    let offset = halton_sequence[frame_count.0 as usize % halton_sequence.len()];
+
+    for mut jitter in &mut views {
+        jitter.offset = offset;
+    }
 }

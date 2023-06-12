@@ -17,12 +17,11 @@ fn update_screen_probes(
     let frame_index = globals.frame_count * 5782582u;
     var rng = pixel_index + frame_index;
     var rng2 = frame_index;
-    var rng3 = frame_index;
 
     let probe_thread_index = u32(floor(rand_f(&rng2) * 63.0));
     if local_index == probe_thread_index {
         probe_g_pixel = textureLoad(g_buffer, global_id.xy); // TODO: may not exist
-        probe_pixel_uv = (vec2<f32>(global_id.xy) + rand_vec2(&rng3)) / view.viewport.zw;
+        probe_pixel_uv = (vec2<f32>(global_id.xy) + 0.5) / view.viewport.zw;
     }
     workgroupBarrier();
     let probe_depth = decode_g_buffer_depth(probe_g_pixel);

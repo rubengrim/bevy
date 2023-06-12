@@ -10,8 +10,9 @@ pub mod world_cache;
 
 use self::{
     camera::{
-        prepare_previous_view_projection_uniforms, update_previous_view_projections,
-        PreviousViewProjection, PreviousViewProjectionUniforms, SolariSettings,
+        prepare_previous_view_projection_uniforms, prepare_taa_jitter,
+        update_previous_view_projections, PreviousViewProjection, PreviousViewProjectionUniforms,
+        SolariSettings,
     },
     filter_screen_probes::{
         prepare_filter_screen_probe_pipelines, SolariFilterScreenProbesPipeline,
@@ -32,6 +33,7 @@ use bevy_reflect::TypeUuid;
 use bevy_render::{
     extract_component::ExtractComponentPlugin,
     render_resource::{Shader, SpecializedComputePipelines},
+    view::prepare_view_uniforms,
     Render, RenderApp, RenderSet,
 };
 
@@ -105,6 +107,7 @@ impl Plugin for SolariRealtimePlugin {
             .add_systems(
                 Render,
                 (
+                    prepare_taa_jitter.before(prepare_view_uniforms),
                     prepare_previous_view_projection_uniforms,
                     prepare_resources,
                     prepare_gmt_buffer_pipelines,

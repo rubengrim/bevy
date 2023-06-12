@@ -1,4 +1,3 @@
-* Switch pixel jitter from per-pixel random to per-frame halton
 * Temporal reprojection for probes / spatiotemporal denoiser for irradiance
 
 * Reservoir sampling for the world cache update method (direct only, direct + indirect?)
