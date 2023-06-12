@@ -1,7 +1,7 @@
-* Temporal reprojection for probes / spatiotemporal denoiser for irradiance
+* Ray guiding using last-frame's probes
+* Spatiotemporal denoiser for irradiance
 
 * Reservoir sampling for the world cache update method (direct only, direct + indirect?)
-* Try adaptive blend rate for world cache (https://github.com/Apress/ray-tracing-gems/blob/master/Ch_25_Hybrid_Rendering_for_Real-Time_Ray_Tracing/MultiscaleMeanEstimator.hlsl)
 * ReSTIR for per-pixel direct light sampling
 * Add screenspace GI (SSAO/SSIL)
 * Cleanup, remaining TODOs, performance profiling, etc
