@@ -1,6 +1,7 @@
 #define_import_path bevy_solari::utils
 
 const PI: f32 = 3.141592653589793;
+const MAX_DEPTH: f32 = 10000.0;
 
 #ifndef EXCLUDE_VIEW
 fn pixel_to_ray_direction(pixel_uv: vec2<f32>) -> vec3<f32> {
@@ -13,7 +14,7 @@ fn pixel_to_ray_direction(pixel_uv: vec2<f32>) -> vec3<f32> {
 fn trace_ray(ray_origin: vec3<f32>, ray_direction: vec3<f32>, ray_t_min: f32) -> RayIntersection {
     let ray_flags = RAY_FLAG_NONE;
     let ray_cull_mask = 0xFFu;
-    let ray_t_max = 10000.0;
+    let ray_t_max = MAX_DEPTH;
     let ray = RayDesc(ray_flags, ray_cull_mask, ray_t_min, ray_t_max, ray_origin, ray_direction);
 
     var rq: ray_query;
@@ -133,7 +134,9 @@ fn octahedral_decode(v: vec2<f32>) -> vec3<f32> {
 }
 
 fn encode_g_buffer(ray_distance: f32, world_normal: vec3<f32>) -> vec4<u32> {
-    let rg = bitcast<u32>(ray_distance);
+    let depth = 1.0 - (MAX_DEPTH / ray_distance);
+
+    let rg = bitcast<u32>(depth);
     let ab = pack2x16float(octahedral_encode(world_normal));
 
     let r = rg >> 16u;
@@ -155,7 +158,12 @@ fn encode_m_buffer(material_index: u32, texture_coordinates: vec2<f32>) -> vec4<
 }
 
 fn decode_g_buffer_depth(g_buffer_pixel: vec4<u32>) -> f32 {
-    return bitcast<f32>((g_buffer_pixel.r << 16u) | g_buffer_pixel.g);
+    let depth = bitcast<f32>((g_buffer_pixel.r << 16u) | g_buffer_pixel.g);
+    if depth == 0.0 {
+        return 1.0;
+    } else {
+        return -MAX_DEPTH / (depth - 1.0);
+    }
 }
 
 #ifndef EXCLUDE_VIEW
