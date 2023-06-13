@@ -73,9 +73,7 @@ fn sample_view_target(pixel_id: vec2<i32>) -> vec3<f32> {
 @compute @workgroup_size(8, 8, 1)
 fn taa(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let screen_size = vec2<u32>(view.viewport.zw);
-    if global_id.x >= screen_size.x || global_id.y >= screen_size.y {
-        return;
-    }
+    if any(global_id.xy >= screen_size) { return; }
     let pixel_id = vec2<i32>(global_id.xy);
 
     // Fetch the current sample

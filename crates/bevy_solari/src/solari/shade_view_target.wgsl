@@ -70,9 +70,7 @@ fn shade_view_target(
     @builtin(num_workgroups) workgroup_count: vec3<u32>,
 ) {
     let screen_size = vec2<u32>(view.viewport.zw);
-    if global_id.x >= screen_size.x || global_id.y >= screen_size.y {
-        return;
-    }
+    if any(global_id.xy >= screen_size) { return; }
 
     let probe_index = workgroup_id.x + workgroup_id.y * workgroup_count.x;
     let pixel_index = global_id.x + global_id.y * screen_size.x;

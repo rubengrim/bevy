@@ -5,9 +5,7 @@
 @compute @workgroup_size(8, 8, 1)
 fn gmt_buffer(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let screen_size = vec2<u32>(view.viewport.zw);
-    if global_id.x >= screen_size.x || global_id.y >= screen_size.y {
-        return;
-    }
+    if any(global_id.xy >= screen_size) { return; }
 
     var ray_distance = -1.0;
     var world_normal = vec3(-1.0);
