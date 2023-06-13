@@ -70,7 +70,7 @@ fn sample_direct_lighting(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>,
             world_normal = normalize(Nt.x * T + Nt.y * B + Nt.z * N);
         }
 
-        let cos_theta_origin = dot(ray_direction, origin_world_normal);
+        let cos_theta_origin = saturate(dot(ray_direction, origin_world_normal));
         let cos_theta_light = saturate(dot(-ray_direction, world_normal));
         let light_distance_squared = light_distance * light_distance;
         let light = material.emission * cos_theta_origin * (cos_theta_light / light_distance_squared);
