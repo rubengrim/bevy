@@ -41,7 +41,7 @@ pub fn prepare_resources(
     mut buffer_cache: ResMut<BufferCache>,
     render_device: Res<RenderDevice>,
 ) {
-    let texture = |label, format, usage, size: UVec2| TextureDescriptor {
+    let texture = |label, format, size: UVec2| TextureDescriptor {
         label: Some(label),
         size: Extent3d {
             width: size.x,
@@ -52,11 +52,25 @@ pub fn prepare_resources(
         sample_count: 1,
         dimension: TextureDimension::D2,
         format,
-        usage,
+        usage: TextureUsages::STORAGE_BINDING,
+
         view_formats: &[],
     };
-    let texture_double_buffered = |label_1, label_2, format, usage, size: UVec2| {
-        let shared = texture("", format, usage, size);
+    let texture_double_buffered = |label_1, label_2, format, size: UVec2| {
+        let shared = TextureDescriptor {
+            label: None,
+            size: Extent3d {
+                width: size.x,
+                height: size.y,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: TextureDimension::D2,
+            format,
+            usage: TextureUsages::TEXTURE_BINDING | TextureUsages::STORAGE_BINDING,
+            view_formats: &[],
+        };
         let t1 = TextureDescriptor {
             label: Some(label_1),
             ..shared
@@ -78,21 +92,10 @@ pub fn prepare_resources(
                 "solari_g_buffer_1",
                 "solari_g_buffer_2",
                 TextureFormat::Rgba16Uint,
-                TextureUsages::STORAGE_BINDING,
                 viewport,
             );
-            let m_buffer = texture(
-                "solari_m_buffer",
-                TextureFormat::Rgba16Uint,
-                TextureUsages::STORAGE_BINDING,
-                viewport,
-            );
-            let t_buffer = texture(
-                "solari_t_buffer",
-                TextureFormat::Rg16Float,
-                TextureUsages::STORAGE_BINDING,
-                viewport,
-            );
+            let m_buffer = texture("solari_m_buffer", TextureFormat::Rgba16Uint, viewport);
+            let t_buffer = texture("solari_t_buffer", TextureFormat::Rg16Float, viewport);
 
             let width8 = round_up_to_multiple_of_8(viewport.x);
             let height8 = round_up_to_multiple_of_8(viewport.y);
@@ -102,13 +105,11 @@ pub fn prepare_resources(
             let screen_probes_unfiltered = texture(
                 "solari_screen_probes_unfiltered",
                 TextureFormat::Rgba32Float,
-                TextureUsages::STORAGE_BINDING,
                 size8,
             );
             let screen_probes_filtered = texture(
                 "solari_screen_probes_filtered",
                 TextureFormat::Rgba32Float,
-                TextureUsages::STORAGE_BINDING,
                 size8,
             );
             let screen_probes_spherical_harmonics = BufferDescriptor {
@@ -121,7 +122,6 @@ pub fn prepare_resources(
             let indirect_diffuse = texture(
                 "solari_indirect_diffuse",
                 TextureFormat::Rgba16Float,
-                TextureUsages::STORAGE_BINDING,
                 viewport,
             );
             let (indirect_diffuse_denoiser_temporal_history, indirect_diffuse_denoised_temporal) =
@@ -129,13 +129,11 @@ pub fn prepare_resources(
                     "solari_indirect_diffuse_temporal_denoise_1",
                     "solari_indirect_diffuse_temporal_denoise_2",
                     TextureFormat::Rgba16Float,
-                    TextureUsages::STORAGE_BINDING,
                     viewport,
                 );
             let indirect_diffuse_denoised_spatiotemporal = texture(
                 "solari_indirect_diffuse_denoised_spatiotemporal",
                 TextureFormat::Rgba16Float,
-                TextureUsages::STORAGE_BINDING,
                 viewport,
             );
 
@@ -143,7 +141,6 @@ pub fn prepare_resources(
                 "solari_taa_history_1",
                 "solari_taa_history_2",
                 TextureFormat::Rgba16Float,
-                TextureUsages::TEXTURE_BINDING | TextureUsages::STORAGE_BINDING,
                 viewport,
             );
 
@@ -201,10 +198,10 @@ impl FromWorld for SolariBindGroupLayout {
                 min_binding_size: Some(PreviousViewProjection::min_size()),
             }),
             // G-buffer (previous)
-            entry(BindingType::StorageTexture {
-                access: StorageTextureAccess::ReadOnly,
-                format: TextureFormat::Rgba16Uint,
+            entry(BindingType::Texture {
+                sample_type: TextureSampleType::Uint,
                 view_dimension: TextureViewDimension::D2,
+                multisampled: false,
             }),
             // G-buffer
             entry(BindingType::StorageTexture {
@@ -249,10 +246,10 @@ impl FromWorld for SolariBindGroupLayout {
                 view_dimension: TextureViewDimension::D2,
             }),
             // Indirect diffuse denoiser temporal history
-            entry(BindingType::StorageTexture {
-                access: StorageTextureAccess::ReadOnly,
-                format: TextureFormat::Rgba16Float,
+            entry(BindingType::Texture {
+                sample_type: TextureSampleType::Float { filterable: false },
                 view_dimension: TextureViewDimension::D2,
+                multisampled: false,
             }),
             // Indirect diffuse denoised (temporal)
             entry(BindingType::StorageTexture {

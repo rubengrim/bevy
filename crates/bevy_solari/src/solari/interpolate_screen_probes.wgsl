@@ -19,7 +19,7 @@ fn interpolate_probe(
     let probe_pixel_id_center = vec2<f32>(probe_pixel_id) + 0.5;
     let probe_depth = decode_g_buffer_depth(textureLoad(g_buffer, probe_pixel_id));
     let probe_world_position = depth_to_world_position(probe_depth, probe_pixel_id_center / view.viewport.zw);
-    let plane_dist = abs(dot(probe_world_position - pixel_world_position, pixel_world_normal));
+    let plane_distance = abs(dot(probe_world_position - pixel_world_position, pixel_world_normal));
 
     let c1 = 0.429043;
     let c2 = 0.511664;
@@ -49,7 +49,7 @@ fn interpolate_probe(
     var irradiance = (c1 * L22 * xx_yy) + (c3 * L20 * zz) + (c4 * L00) - (c5 * L20) + (2.0 * c1 * ((L2_2 * xy) + (L21 * xz) + (L2_1 * yz))) + (2.0 * c2 * ((L11 * x) + (L1_1 * y) + (L10 * z)));
 
     *irradiance_no_rejections_total += irradiance;
-    if plane_dist > 0.03 {
+    if plane_distance > 0.03 {
         return;
     }
 
@@ -68,9 +68,7 @@ fn interpolate_screen_probes(
     @builtin(num_workgroups) workgroup_count: vec3<u32>,
 ) {
     let screen_size = vec2<u32>(view.viewport.zw);
-    if global_id.x >= screen_size.x || global_id.y >= screen_size.y {
-        return;
-    }
+    if any(global_id.xy >= screen_size) { return; }
 
     let probe_index = workgroup_id.x + workgroup_id.y * workgroup_count.x;
     let pixel_index = global_id.x + global_id.y * screen_size.x;
