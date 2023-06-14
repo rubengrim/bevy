@@ -119,7 +119,7 @@ fn filter_screen_probes(
         L2_2 = spherical_harmonics_coefficents[0][6] / 64.0;
         L20 = spherical_harmonics_coefficents[0][7] / 64.0;
         L22 = spherical_harmonics_coefficents[0][8] / 64.0;
-        screen_probe_spherical_harmonics[probe_index] = SphericalHarmonicsPacked(
+        screen_probes_spherical_harmonics[probe_index] = SphericalHarmonicsPacked(
             vec4(L00, L11.x),
             vec4(L11.yz, L10.xy),
             vec4(L10.z, L1_1),

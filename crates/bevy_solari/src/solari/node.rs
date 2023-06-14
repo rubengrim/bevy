@@ -1,10 +1,6 @@
 use super::{
-    camera::PreviousViewProjectionUniformOffset,
-    filter_screen_probes::SolariFilterScreenProbesPipelineId,
-    gmt_buffer::SolariGmtBufferPipelineId, resources::SolariBindGroup,
-    shade_view_target::SolariShadeViewTargetPipelineId, taa::SolariTaaPipelineId,
-    update_screen_probes::SolariUpdateScreenProbesPipelineId,
-    world_cache::resources::SolariWorldCacheResources,
+    camera::PreviousViewProjectionUniformOffset, pipelines::SolariPipelineIds,
+    resources::SolariBindGroup, world_cache::resources::SolariWorldCacheResources,
 };
 use crate::scene::bind_group::SolariSceneBindGroup;
 use bevy_ecs::{query::QueryItem, world::World};
@@ -22,11 +18,7 @@ pub struct SolariNode;
 impl ViewNode for SolariNode {
     type ViewQuery = (
         &'static SolariBindGroup,
-        &'static SolariGmtBufferPipelineId,
-        &'static SolariUpdateScreenProbesPipelineId,
-        &'static SolariFilterScreenProbesPipelineId,
-        &'static SolariShadeViewTargetPipelineId,
-        &'static SolariTaaPipelineId,
+        &'static SolariPipelineIds,
         &'static ViewUniformOffset,
         &'static PreviousViewProjectionUniformOffset,
         &'static ExtractedCamera,
@@ -38,11 +30,7 @@ impl ViewNode for SolariNode {
         render_context: &mut RenderContext,
         (
             bind_group,
-            gmt_buffer_pipeline_id,
-            update_screen_probes_pipeline_id,
-            filter_screen_probes_pipeline_id,
-            shade_view_target_pipeline_id,
-            taa_pipeline_id,
+            pipeline_ids,
             view_uniform_offset,
             previous_view_projection_uniform_offset,
             camera,
@@ -64,15 +52,21 @@ impl ViewNode for SolariNode {
             Some(gmt_buffer_pipeline),
             Some(update_screen_probes_pipeline),
             Some(filter_screen_probes_pipeline),
+            Some(intepolate_screen_probes_pipeline),
+            Some(denoise_indirect_diffuse_temporal_pipeline),
+            Some(denoise_indirect_diffuse_spatial_pipeline),
             Some(shade_view_target_pipeline),
             Some(taa_pipeline),
             Some(viewport),
         ) = (
-            pipeline_cache.get_compute_pipeline(gmt_buffer_pipeline_id.0),
-            pipeline_cache.get_compute_pipeline(update_screen_probes_pipeline_id.0),
-            pipeline_cache.get_compute_pipeline(filter_screen_probes_pipeline_id.0),
-            pipeline_cache.get_compute_pipeline(shade_view_target_pipeline_id.0),
-            pipeline_cache.get_compute_pipeline(taa_pipeline_id.0),
+            pipeline_cache.get_compute_pipeline(pipeline_ids.gmt_buffer),
+            pipeline_cache.get_compute_pipeline(pipeline_ids.update_screen_probes),
+            pipeline_cache.get_compute_pipeline(pipeline_ids.filter_screen_probes),
+            pipeline_cache.get_compute_pipeline(pipeline_ids.interpolate_screen_probes),
+            pipeline_cache.get_compute_pipeline(pipeline_ids.denoise_indirect_diffuse_temporal),
+            pipeline_cache.get_compute_pipeline(pipeline_ids.denoise_indirect_diffuse_spatial),
+            pipeline_cache.get_compute_pipeline(pipeline_ids.shade_view_target),
+            pipeline_cache.get_compute_pipeline(pipeline_ids.taa),
             camera.physical_viewport_size,
         ) else {
             return Ok(());
@@ -101,6 +95,15 @@ impl ViewNode for SolariNode {
             solari_pass.dispatch_workgroups(width, height, 1);
 
             solari_pass.set_pipeline(filter_screen_probes_pipeline);
+            solari_pass.dispatch_workgroups(width, height, 1);
+
+            solari_pass.set_pipeline(intepolate_screen_probes_pipeline);
+            solari_pass.dispatch_workgroups(width, height, 1);
+
+            solari_pass.set_pipeline(denoise_indirect_diffuse_temporal_pipeline);
+            solari_pass.dispatch_workgroups(width, height, 1);
+
+            solari_pass.set_pipeline(denoise_indirect_diffuse_spatial_pipeline);
             solari_pass.dispatch_workgroups(width, height, 1);
 
             solari_pass.set_pipeline(shade_view_target_pipeline);

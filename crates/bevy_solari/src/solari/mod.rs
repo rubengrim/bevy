@@ -1,11 +1,7 @@
 pub mod camera;
-mod filter_screen_probes;
-mod gmt_buffer;
 pub mod node;
+mod pipelines;
 mod resources;
-mod shade_view_target;
-mod taa;
-mod update_screen_probes;
 pub mod world_cache;
 
 use self::{
@@ -14,16 +10,8 @@ use self::{
         update_previous_view_projections, PreviousViewProjection, PreviousViewProjectionUniforms,
         SolariSettings,
     },
-    filter_screen_probes::{
-        prepare_filter_screen_probe_pipelines, SolariFilterScreenProbesPipeline,
-    },
-    gmt_buffer::{prepare_gmt_buffer_pipelines, SolariGmtBufferPipeline},
+    pipelines::{prepare_pipelines, SolariPipelines},
     resources::{prepare_resources, queue_bind_groups, SolariBindGroupLayout},
-    shade_view_target::{prepare_shade_view_target_pipelines, SolariShadeViewTargetPipeline},
-    taa::{prepare_taa_pipelines, SolariTaaPipeline},
-    update_screen_probes::{
-        prepare_update_screen_probe_pipelines, SolariUpdateScreenProbesPipeline,
-    },
     world_cache::SolariWorldCachePlugin,
 };
 use bevy_app::{App, Plugin, PreUpdate};
@@ -47,10 +35,14 @@ const SOLARI_UPDATE_SCREEN_PROBES_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 7717171717171755);
 const SOLARI_FILTER_SCREEN_PROBES_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 8717171717171755);
-const SOLARI_SHADE_VIEW_TARGET_SHADER: HandleUntyped =
+const SOLARI_INTEPOLATE_SCREEN_PROBES_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 9717171717171755);
-const SOLARI_TAA_SHADER: HandleUntyped =
+const SOLARI_DENOISE_INDIRECT_DIFFUSE_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 1617171717171755);
+const SOLARI_SHADE_VIEW_TARGET_SHADER: HandleUntyped =
+    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 1617171717171756);
+const SOLARI_TAA_SHADER: HandleUntyped =
+    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 1617171717171757);
 
 impl Plugin for SolariRealtimePlugin {
     fn build(&self, app: &mut App) {
@@ -80,6 +72,18 @@ impl Plugin for SolariRealtimePlugin {
         );
         load_internal_asset!(
             app,
+            SOLARI_INTEPOLATE_SCREEN_PROBES_SHADER,
+            "interpolate_screen_probes.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            SOLARI_DENOISE_INDIRECT_DIFFUSE_SHADER,
+            "denoise_indirect_diffuse.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
             SOLARI_SHADE_VIEW_TARGET_SHADER,
             "shade_view_target.wgsl",
             Shader::from_wgsl
@@ -94,27 +98,15 @@ impl Plugin for SolariRealtimePlugin {
         app.sub_app_mut(RenderApp)
             .init_resource::<PreviousViewProjectionUniforms>()
             .init_resource::<SolariBindGroupLayout>()
-            .init_resource::<SolariGmtBufferPipeline>()
-            .init_resource::<SolariUpdateScreenProbesPipeline>()
-            .init_resource::<SolariFilterScreenProbesPipeline>()
-            .init_resource::<SolariShadeViewTargetPipeline>()
-            .init_resource::<SolariTaaPipeline>()
-            .init_resource::<SpecializedComputePipelines<SolariGmtBufferPipeline>>()
-            .init_resource::<SpecializedComputePipelines<SolariUpdateScreenProbesPipeline>>()
-            .init_resource::<SpecializedComputePipelines<SolariFilterScreenProbesPipeline>>()
-            .init_resource::<SpecializedComputePipelines<SolariShadeViewTargetPipeline>>()
-            .init_resource::<SpecializedComputePipelines<SolariTaaPipeline>>()
+            .init_resource::<SolariPipelines>()
+            .init_resource::<SpecializedComputePipelines<SolariPipelines>>()
             .add_systems(
                 Render,
                 (
                     prepare_taa_jitter.before(prepare_view_uniforms),
                     prepare_previous_view_projection_uniforms,
                     prepare_resources,
-                    prepare_gmt_buffer_pipelines,
-                    prepare_update_screen_probe_pipelines,
-                    prepare_filter_screen_probe_pipelines,
-                    prepare_shade_view_target_pipelines,
-                    prepare_taa_pipelines,
+                    prepare_pipelines,
                 )
                     .in_set(RenderSet::Prepare),
             )
