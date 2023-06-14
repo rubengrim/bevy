@@ -48,12 +48,3 @@ fn denoise_indirect_diffuse_spatial(@builtin(global_invocation_id) global_id: ve
 
     textureStore(indirect_diffuse_denoised_spatiotemporal, global_id.xy, irradiance);
 }
-
-// Temporal component:
-//     Reproject UV
-//     Detect disoclussion based on plane distance in a 2x2 area using custom bilinear filtering
-//     alpha = 1.0 if no pixels in 2x2 pass disoclussion test, otherwise alpha = 1 / N + 1, up to 32
-
-// After temporal, spatial:
-//     Use edge-stopping function: plane distance, luma
-//     Blur with radius dependent on accumulated history samples
