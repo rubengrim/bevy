@@ -1,5 +1,5 @@
 use super::{
-    resources::SolariBindGroupLayout, world_cache::resources::SolariWorldCacheResources, *,
+    view_resources::SolariBindGroupLayout, world_cache::resources::SolariWorldCacheResources, *,
 };
 use crate::{scene::bind_group_layout::SolariSceneResources, SolariDebugView, SolariSettings};
 use bevy_ecs::{

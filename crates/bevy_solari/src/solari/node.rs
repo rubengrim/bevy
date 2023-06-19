@@ -1,6 +1,6 @@
 use super::{
     camera::PreviousViewProjectionUniformOffset, pipelines::SolariPipelineIds,
-    resources::SolariBindGroup, world_cache::resources::SolariWorldCacheResources,
+    view_resources::SolariBindGroup, world_cache::resources::SolariWorldCacheResources,
 };
 use crate::scene::bind_group::SolariSceneBindGroup;
 use bevy_ecs::{query::QueryItem, world::World};

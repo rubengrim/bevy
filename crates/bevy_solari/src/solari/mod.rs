@@ -1,7 +1,7 @@
 pub mod camera;
 pub mod node;
 mod pipelines;
-mod resources;
+mod view_resources;
 pub mod world_cache;
 
 use self::{
@@ -11,7 +11,7 @@ use self::{
         SolariSettings,
     },
     pipelines::{prepare_pipelines, SolariPipelines},
-    resources::{prepare_resources, queue_bind_groups, SolariBindGroupLayout},
+    view_resources::{prepare_resources, queue_bind_groups, SolariBindGroupLayout},
     world_cache::SolariWorldCachePlugin,
 };
 use bevy_app::{App, Plugin, PreUpdate};
