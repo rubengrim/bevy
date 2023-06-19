@@ -120,7 +120,7 @@ fn taa(@builtin(global_invocation_id) global_id: vec3<u32>) {
     // Technically we should renormalize the weights since we're skipping the corners, but it's basically the same result
     let uv = (vec2<f32>(pixel_id) + 0.5) / view.viewport.zw;
     let texel_size = 1.0 / view.viewport.zw;
-    let history_uv = uv - closest_motion_vector;
+    let history_uv = uv + closest_motion_vector;
     let sample_position = history_uv * view.viewport.zw;
     let texel_center = floor(sample_position - 0.5) + 0.5;
     let f = sample_position - texel_center;

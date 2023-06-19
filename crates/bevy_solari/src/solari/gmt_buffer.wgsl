@@ -52,7 +52,7 @@ fn gmt_buffer(@builtin(global_invocation_id) global_id: vec3<u32>) {
         let previous_world_position = previous_transforms[ray_hit.instance_custom_index] * vec4(current_local_position, 1.0);
         let previous_clip_position_t = previous_view_proj * previous_world_position;
         let previous_clip_position = previous_clip_position_t.xy / previous_clip_position_t.w;
-        motion_vector = (current_clip_position - previous_clip_position) * vec2(0.5, -0.5);
+        motion_vector = (previous_clip_position - current_clip_position) * vec2(0.5, -0.5);
     }
 
     textureStore(g_buffer, global_id.xy, encode_g_buffer(ray_distance, world_normal));
