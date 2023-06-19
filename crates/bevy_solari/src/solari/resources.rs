@@ -365,3 +365,11 @@ pub fn queue_bind_groups(
 fn round_up_to_multiple_of_8(x: u32) -> u32 {
     (x + 7) & !7
 }
+
+fn t(texture: &CachedTexture) -> BindingResource<'_> {
+    BindingResource::TextureView(&texture.default_view)
+}
+
+fn b(buffer: &CachedBuffer) -> BindingResource<'_> {
+    buffer.buffer.as_entire_binding()
+}
