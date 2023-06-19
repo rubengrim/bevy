@@ -314,102 +314,39 @@ pub fn queue_bind_groups(
         previous_view_proj_uniforms.uniforms.binding(),
     ) {
         for (entity, solari_resources, view_target) in &views {
+            let mut entry_i = 0;
+            let mut entry = |resource| {
+                entry_i += 1;
+                BindGroupEntry {
+                    binding: entry_i - 1,
+                    resource,
+                }
+            };
+
             let entries = &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: view_uniforms.clone(),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: previous_view_proj_uniforms.clone(),
-                },
-                BindGroupEntry {
-                    binding: 2,
-                    resource: BindingResource::TextureView(
-                        &solari_resources.g_buffer_previous.default_view,
-                    ),
-                },
-                BindGroupEntry {
-                    binding: 3,
-                    resource: BindingResource::TextureView(&solari_resources.g_buffer.default_view),
-                },
-                BindGroupEntry {
-                    binding: 4,
-                    resource: BindingResource::TextureView(&solari_resources.m_buffer.default_view),
-                },
-                BindGroupEntry {
-                    binding: 5,
-                    resource: BindingResource::TextureView(&solari_resources.t_buffer.default_view),
-                },
-                BindGroupEntry {
-                    binding: 6,
-                    resource: BindingResource::TextureView(
-                        &solari_resources.screen_probes_unfiltered.default_view,
-                    ),
-                },
-                BindGroupEntry {
-                    binding: 7,
-                    resource: BindingResource::TextureView(
-                        &solari_resources.screen_probes_filtered.default_view,
-                    ),
-                },
-                BindGroupEntry {
-                    binding: 8,
-                    resource: solari_resources
-                        .screen_probes_spherical_harmonics
-                        .buffer
-                        .as_entire_binding(),
-                },
-                BindGroupEntry {
-                    binding: 9,
-                    resource: BindingResource::TextureView(
-                        &solari_resources.indirect_diffuse.default_view,
-                    ),
-                },
-                BindGroupEntry {
-                    binding: 10,
-                    resource: BindingResource::TextureView(
-                        &solari_resources
-                            .indirect_diffuse_denoiser_temporal_history
-                            .default_view,
-                    ),
-                },
-                BindGroupEntry {
-                    binding: 11,
-                    resource: BindingResource::TextureView(
-                        &solari_resources
-                            .indirect_diffuse_denoised_temporal
-                            .default_view,
-                    ),
-                },
-                BindGroupEntry {
-                    binding: 12,
-                    resource: BindingResource::TextureView(
-                        &solari_resources
-                            .indirect_diffuse_denoised_spatiotemporal
-                            .default_view,
-                    ),
-                },
-                BindGroupEntry {
-                    binding: 13,
-                    resource: BindingResource::TextureView(
-                        &solari_resources.taa_history_previous.default_view,
-                    ),
-                },
-                BindGroupEntry {
-                    binding: 14,
-                    resource: BindingResource::TextureView(
-                        &solari_resources.taa_history_current.default_view,
-                    ),
-                },
-                BindGroupEntry {
-                    binding: 15,
-                    resource: BindingResource::TextureView(view_target.main_texture_other_view()),
-                },
-                BindGroupEntry {
-                    binding: 16,
-                    resource: BindingResource::TextureView(view_target.main_texture_view()),
-                },
+                entry(view_uniforms.clone()),
+                entry(previous_view_proj_uniforms.clone()),
+                entry(t(&solari_resources.g_buffer_previous)),
+                entry(t(&solari_resources.g_buffer)),
+                entry(t(&solari_resources.m_buffer)),
+                entry(t(&solari_resources.t_buffer)),
+                entry(t(&solari_resources.screen_probes_unfiltered)),
+                entry(t(&solari_resources.screen_probes_filtered)),
+                entry(b(&solari_resources.screen_probes_spherical_harmonics)),
+                entry(t(&solari_resources.indirect_diffuse)),
+                entry(t(
+                    &solari_resources.indirect_diffuse_denoiser_temporal_history
+                )),
+                entry(t(&solari_resources.indirect_diffuse_denoised_temporal)),
+                entry(t(&solari_resources.indirect_diffuse_denoised_spatiotemporal)),
+                entry(t(&solari_resources.taa_history_previous)),
+                entry(t(&solari_resources.taa_history_current)),
+                entry(BindingResource::TextureView(
+                    view_target.main_texture_other_view(),
+                )),
+                entry(BindingResource::TextureView(
+                    view_target.main_texture_view(),
+                )),
             ];
 
             commands
