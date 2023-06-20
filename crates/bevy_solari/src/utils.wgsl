@@ -80,7 +80,7 @@ fn sample_direct_lighting(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>,
         let triangle_edge1 = vertices[0].local_position - vertices[2].local_position;
         let triangle_area = length(cross(triangle_edge0, triangle_edge1)) / 2.0;
 
-        let weight = f32(light_count) * f32(light_triangle_count) * triangle_area;
+        let weight = f32(light_count * light_triangle_count) * triangle_area;
         return light * weight;
     } else {
         return vec3(0.0);
