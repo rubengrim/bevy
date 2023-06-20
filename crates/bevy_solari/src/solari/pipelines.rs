@@ -41,6 +41,9 @@ pub enum SolariPipelinesKey {
     InterpolateScreenProbes,
     DenoiseIndirectDiffuseTemporal,
     DenoiseIndirectDiffuseSpatial,
+    SampleDirectDiffuse,
+    DenoiseDirectDiffuseTemporal,
+    DenoiseDirectDiffuseSpatial,
     ShadeViewTarget { debug_view: Option<SolariDebugView> },
     Taa,
 }
@@ -49,43 +52,41 @@ impl SpecializedComputePipeline for SolariPipelines {
     type Key = SolariPipelinesKey;
 
     fn specialize(&self, key: Self::Key) -> ComputePipelineDescriptor {
-        let (entry_point, label, shader) = match key {
-            SolariPipelinesKey::GmtBuffer => (
-                "gmt_buffer",
-                "solari_gmt_buffer_pipeline",
-                SOLARI_GMT_BUFFER_SHADER,
-            ),
-            SolariPipelinesKey::UpdateScreenProbes => (
-                "update_screen_probes",
-                "solari_update_screen_probes_pipeline",
-                SOLARI_UPDATE_SCREEN_PROBES_SHADER,
-            ),
-            SolariPipelinesKey::FilterScreenProbes => (
-                "filter_screen_probes",
-                "solari_filter_screen_probes_pipeline",
-                SOLARI_FILTER_SCREEN_PROBES_SHADER,
-            ),
+        let (entry_point, shader) = match key {
+            SolariPipelinesKey::GmtBuffer => ("gmt_buffer", SOLARI_GMT_BUFFER_SHADER),
+            SolariPipelinesKey::UpdateScreenProbes => {
+                ("update_screen_probes", SOLARI_UPDATE_SCREEN_PROBES_SHADER)
+            }
+            SolariPipelinesKey::FilterScreenProbes => {
+                ("filter_screen_probes", SOLARI_FILTER_SCREEN_PROBES_SHADER)
+            }
             SolariPipelinesKey::InterpolateScreenProbes => (
                 "interpolate_screen_probes",
-                "solari_interpolate_screen_probes_pipeline",
                 SOLARI_INTEPOLATE_SCREEN_PROBES_SHADER,
             ),
             SolariPipelinesKey::DenoiseIndirectDiffuseTemporal => (
                 "denoise_indirect_diffuse_temporal",
-                "solari_denoise_indirect_diffuse_temporal_pipeline",
                 SOLARI_DENOISE_INDIRECT_DIFFUSE_SHADER,
             ),
             SolariPipelinesKey::DenoiseIndirectDiffuseSpatial => (
                 "denoise_indirect_diffuse_spatial",
-                "solari_denoise_indirect_diffuse_spatial_pipeline",
                 SOLARI_DENOISE_INDIRECT_DIFFUSE_SHADER,
             ),
-            SolariPipelinesKey::ShadeViewTarget { .. } => (
-                "shade_view_target",
-                "solari_shade_view_target_pipeline",
-                SOLARI_SHADE_VIEW_TARGET_SHADER,
+            SolariPipelinesKey::SampleDirectDiffuse => {
+                ("sample_direct_diffuse", SOLARI_SAMPLE_DIRECT_DIFFUSE_SHADER)
+            }
+            SolariPipelinesKey::DenoiseDirectDiffuseTemporal => (
+                "denoise_direct_diffuse_temporal",
+                SOLARI_DENOISE_DIRECT_DIFFUSE_SHADER,
             ),
-            SolariPipelinesKey::Taa => ("taa", "solari_taa_pipeline", SOLARI_TAA_SHADER),
+            SolariPipelinesKey::DenoiseDirectDiffuseSpatial => (
+                "denoise_direct_diffuse_spatial",
+                SOLARI_DENOISE_DIRECT_DIFFUSE_SHADER,
+            ),
+            SolariPipelinesKey::ShadeViewTarget { .. } => {
+                ("shade_view_target", SOLARI_SHADE_VIEW_TARGET_SHADER)
+            }
+            SolariPipelinesKey::Taa => ("taa", SOLARI_TAA_SHADER),
         };
 
         let mut shader_defs = vec![ShaderDefVal::UInt("WORLD_CACHE_BIND_GROUP".into(), 2)];
@@ -108,7 +109,7 @@ impl SpecializedComputePipeline for SolariPipelines {
         }
 
         ComputePipelineDescriptor {
-            label: Some(label.into()),
+            label: Some(format!("solari_{entry_point}_pipeline").into()), // TODO: Avoid allocation
             layout: vec![
                 self.scene_bind_group_layout.clone(),
                 self.bind_group_layout.clone(),
@@ -130,6 +131,9 @@ pub struct SolariPipelineIds {
     pub interpolate_screen_probes: CachedComputePipelineId,
     pub denoise_indirect_diffuse_temporal: CachedComputePipelineId,
     pub denoise_indirect_diffuse_spatial: CachedComputePipelineId,
+    pub sample_direct_diffuse: CachedComputePipelineId,
+    pub denoise_direct_diffuse_temporal: CachedComputePipelineId,
+    pub denoise_direct_diffuse_spatial: CachedComputePipelineId,
     pub shade_view_target: CachedComputePipelineId,
     pub taa: CachedComputePipelineId,
 }
@@ -154,6 +158,13 @@ pub fn prepare_pipelines(
             ),
             denoise_indirect_diffuse_spatial: create_pipeline(
                 SolariPipelinesKey::DenoiseIndirectDiffuseSpatial,
+            ),
+            sample_direct_diffuse: create_pipeline(SolariPipelinesKey::SampleDirectDiffuse),
+            denoise_direct_diffuse_temporal: create_pipeline(
+                SolariPipelinesKey::DenoiseDirectDiffuseTemporal,
+            ),
+            denoise_direct_diffuse_spatial: create_pipeline(
+                SolariPipelinesKey::DenoiseDirectDiffuseSpatial,
             ),
             shade_view_target: create_pipeline(SolariPipelinesKey::ShadeViewTarget {
                 debug_view: solari_settings.debug_view,

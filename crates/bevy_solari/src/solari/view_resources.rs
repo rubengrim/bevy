@@ -29,6 +29,10 @@ pub struct SolariResources {
     indirect_diffuse_denoiser_temporal_history: CachedTexture,
     indirect_diffuse_denoised_temporal: CachedTexture,
     indirect_diffuse_denoised_spatiotemporal: CachedTexture,
+    direct_diffuse: CachedTexture,
+    direct_diffuse_denoiser_temporal_history: CachedTexture,
+    direct_diffuse_denoised_temporal: CachedTexture,
+    direct_diffuse_denoised_spatiotemporal: CachedTexture,
     taa_history_previous: CachedTexture,
     taa_history_current: CachedTexture,
 }
@@ -137,6 +141,24 @@ pub fn prepare_resources(
                 viewport,
             );
 
+            let direct_diffuse = texture(
+                "solari_direct_diffuse",
+                TextureFormat::Rgba16Float,
+                viewport,
+            );
+            let (direct_diffuse_denoiser_temporal_history, direct_diffuse_denoised_temporal) =
+                texture_double_buffered(
+                    "solari_direct_diffuse_temporal_denoise_1",
+                    "solari_direct_diffuse_temporal_denoise_2",
+                    TextureFormat::Rgba16Float,
+                    viewport,
+                );
+            let direct_diffuse_denoised_spatiotemporal = texture(
+                "solari_direct_diffuse_denoised_spatiotemporal",
+                TextureFormat::Rgba16Float,
+                viewport,
+            );
+
             let (taa_history_previous, taa_history_current) = texture_double_buffered(
                 "solari_taa_history_1",
                 "solari_taa_history_2",
@@ -161,6 +183,13 @@ pub fn prepare_resources(
                     .get(&render_device, indirect_diffuse_denoised_temporal),
                 indirect_diffuse_denoised_spatiotemporal: texture_cache
                     .get(&render_device, indirect_diffuse_denoised_spatiotemporal),
+                direct_diffuse: texture_cache.get(&render_device, direct_diffuse),
+                direct_diffuse_denoiser_temporal_history: texture_cache
+                    .get(&render_device, direct_diffuse_denoiser_temporal_history),
+                direct_diffuse_denoised_temporal: texture_cache
+                    .get(&render_device, direct_diffuse_denoised_temporal),
+                direct_diffuse_denoised_spatiotemporal: texture_cache
+                    .get(&render_device, direct_diffuse_denoised_spatiotemporal),
                 taa_history_previous: texture_cache.get(&render_device, taa_history_previous),
                 taa_history_current: texture_cache.get(&render_device, taa_history_current),
             });
@@ -263,6 +292,30 @@ impl FromWorld for SolariBindGroupLayout {
                 format: TextureFormat::Rgba16Float,
                 view_dimension: TextureViewDimension::D2,
             }),
+            // Direct diffuse
+            entry(BindingType::StorageTexture {
+                access: StorageTextureAccess::ReadWrite,
+                format: TextureFormat::Rgba16Float,
+                view_dimension: TextureViewDimension::D2,
+            }),
+            // Direct diffuse denoiser temporal history
+            entry(BindingType::Texture {
+                sample_type: TextureSampleType::Float { filterable: false },
+                view_dimension: TextureViewDimension::D2,
+                multisampled: false,
+            }),
+            // Direct diffuse denoised (temporal)
+            entry(BindingType::StorageTexture {
+                access: StorageTextureAccess::ReadWrite,
+                format: TextureFormat::Rgba16Float,
+                view_dimension: TextureViewDimension::D2,
+            }),
+            // Direct diffuse denoised (spatiotemporal)
+            entry(BindingType::StorageTexture {
+                access: StorageTextureAccess::ReadWrite,
+                format: TextureFormat::Rgba16Float,
+                view_dimension: TextureViewDimension::D2,
+            }),
             // TAA history (previous)
             entry(BindingType::Texture {
                 sample_type: TextureSampleType::Float { filterable: true },
@@ -339,6 +392,10 @@ pub fn queue_bind_groups(
                 )),
                 entry(t(&solari_resources.indirect_diffuse_denoised_temporal)),
                 entry(t(&solari_resources.indirect_diffuse_denoised_spatiotemporal)),
+                entry(t(&solari_resources.direct_diffuse)),
+                entry(t(&solari_resources.direct_diffuse_denoiser_temporal_history)),
+                entry(t(&solari_resources.direct_diffuse_denoised_temporal)),
+                entry(t(&solari_resources.direct_diffuse_denoised_spatiotemporal)),
                 entry(t(&solari_resources.taa_history_previous)),
                 entry(t(&solari_resources.taa_history_current)),
                 entry(BindingResource::TextureView(

@@ -39,10 +39,14 @@ const SOLARI_INTEPOLATE_SCREEN_PROBES_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 9717171717171755);
 const SOLARI_DENOISE_INDIRECT_DIFFUSE_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 1617171717171755);
-const SOLARI_SHADE_VIEW_TARGET_SHADER: HandleUntyped =
+const SOLARI_SAMPLE_DIRECT_DIFFUSE_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 1617171717171756);
-const SOLARI_TAA_SHADER: HandleUntyped =
+const SOLARI_DENOISE_DIRECT_DIFFUSE_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 1617171717171757);
+const SOLARI_SHADE_VIEW_TARGET_SHADER: HandleUntyped =
+    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 1617171717171758);
+const SOLARI_TAA_SHADER: HandleUntyped =
+    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 1617171717171759);
 
 impl Plugin for SolariRealtimePlugin {
     fn build(&self, app: &mut App) {
@@ -80,6 +84,19 @@ impl Plugin for SolariRealtimePlugin {
             app,
             SOLARI_DENOISE_INDIRECT_DIFFUSE_SHADER,
             "denoise_indirect_diffuse.wgsl",
+            Shader::from_wgsl
+        );
+
+        load_internal_asset!(
+            app,
+            SOLARI_SAMPLE_DIRECT_DIFFUSE_SHADER,
+            "sample_direct_diffuse.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            SOLARI_DENOISE_DIRECT_DIFFUSE_SHADER,
+            "denoise_direct_diffuse.wgsl",
             Shader::from_wgsl
         );
         load_internal_asset!(

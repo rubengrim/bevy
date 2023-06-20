@@ -25,7 +25,11 @@ struct SphericalHarmonicsPacked {
 @group(1) @binding(10) var indirect_diffuse_denoiser_temporal_history: texture_2d<f32>;
 @group(1) @binding(11) var indirect_diffuse_denoised_temporal: texture_storage_2d<rgba16float, read_write>;
 @group(1) @binding(12) var indirect_diffuse_denoised_spatiotemporal: texture_storage_2d<rgba16float, read_write>;
-@group(1) @binding(13) var taa_history: texture_2d<f32>;
-@group(1) @binding(14) var taa_history_output: texture_storage_2d<rgba16float, write>;
-@group(1) @binding(15) var view_target_other: texture_storage_2d<rgba16float, read_write>;
-@group(1) @binding(16) var view_target: texture_storage_2d<rgba16float, write>;
+@group(1) @binding(13) var direct_diffuse: texture_storage_2d<rgba16float, read_write>;
+@group(1) @binding(14) var direct_diffuse_denoiser_temporal_history: texture_2d<f32>;
+@group(1) @binding(15) var direct_diffuse_denoised_temporal: texture_storage_2d<rgba16float, read_write>;
+@group(1) @binding(16) var direct_diffuse_denoised_spatiotemporal: texture_storage_2d<rgba16float, read_write>;
+@group(1) @binding(17) var taa_history: texture_2d<f32>;
+@group(1) @binding(18) var taa_history_output: texture_storage_2d<rgba16float, write>;
+@group(1) @binding(19) var view_target_other: texture_storage_2d<rgba16float, read_write>;
+@group(1) @binding(20) var view_target: texture_storage_2d<rgba16float, write>;
