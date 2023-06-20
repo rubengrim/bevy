@@ -9,7 +9,7 @@ fn sample_direct_diffuse(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     let light_count = arrayLength(&emissive_object_indices);
     if light_count == 0u {
-        textureStore(view_target, global_id.xy, vec4(0.0, 0.0, 0.0, 1.0));
+        textureStore(direct_diffuse, global_id.xy, vec4(0.0, 0.0, 0.0, 1.0));
         return;
     }
 
@@ -20,7 +20,7 @@ fn sample_direct_diffuse(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let g_buffer_pixel = textureLoad(g_buffer, global_id.xy);
     let pixel_depth = decode_g_buffer_depth(g_buffer_pixel);
     if pixel_depth < 0.0 {
-        textureStore(view_target, global_id.xy, vec4(0.0, 0.0, 0.0, 1.0));
+        textureStore(direct_diffuse, global_id.xy, vec4(0.0, 0.0, 0.0, 1.0));
         return;
     }
     let pixel_id = vec2<f32>(global_id.xy) + 0.5;
