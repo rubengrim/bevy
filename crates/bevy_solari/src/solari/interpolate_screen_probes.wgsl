@@ -49,7 +49,7 @@ fn interpolate_probe(
     var irradiance = (c1 * L22 * xx_yy) + (c3 * L20 * zz) + (c4 * L00) - (c5 * L20) + (2.0 * c1 * ((L2_2 * xy) + (L21 * xz) + (L2_1 * yz))) + (2.0 * c2 * ((L11 * x) + (L1_1 * y) + (L10 * z)));
 
     *irradiance_no_rejections_total += irradiance;
-    if plane_distance > 0.03 {
+    if plane_distance > 0.01 {
         return;
     }
 
