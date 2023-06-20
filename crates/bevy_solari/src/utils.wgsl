@@ -23,11 +23,33 @@ fn trace_ray(ray_origin: vec3<f32>, ray_direction: vec3<f32>, ray_t_min: f32) ->
     return rayQueryGetCommittedIntersection(&rq);
 }
 
-fn sample_direct_lighting(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>, state: ptr<function, u32>) -> vec3<f32> {
-    let light_count = arrayLength(&emissive_object_indices);
+fn trace_light_visibility(ray_origin: vec3<f32>, light_position: vec3<f32>, light_distance: f32) -> f32 {
+    let ray_flags = RAY_FLAG_TERMINATE_ON_FIRST_HIT;
+    let ray_cull_mask = 0xFFu;
+    let ray_t_min = 0.01;
+    let ray_t_max = light_distance - 0.01;
+    let ray_direction = (light_position - ray_origin) / light_distance;
+    let ray = RayDesc(ray_flags, ray_cull_mask, ray_t_min, ray_t_max, ray_origin, ray_direction);
+    var rq: ray_query;
+    rayQueryInitialize(&rq, tlas, ray);
+    rayQueryProceed(&rq);
+    let ray_hit = rayQueryGetCommittedIntersection(&rq);
+    return f32(ray_hit.kind == RAY_QUERY_INTERSECTION_NONE);
+}
+
+struct RandomLightSample {
+    world_position: vec3<f32>,
+    light_distance: f32,
+    light: vec3<f32>,
+    inverse_pdf: f32,
+}
+
+fn sample_unshadowed_direct_lighting(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>, light_count: u32, state: ptr<function, u32>) -> RandomLightSample {
     let light_i = rand_range_u(light_count, state);
+    let triangle_count = emissive_object_triangle_counts[light_i];
+    let triangle_i = rand_range_u(triangle_count, state);
+
     let light_object_i = emissive_object_indices[light_i];
-    let light_triangle_count = emissive_object_triangle_counts[light_i];
     let light_mm_indices = mesh_material_indices[light_object_i];
     let light_transform = transforms[light_object_i];
     let mesh_index = light_mm_indices >> 16u;
@@ -35,56 +57,52 @@ fn sample_direct_lighting(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>,
     let index_buffer = &index_buffers[mesh_index].buffer;
     let vertex_buffer = &vertex_buffers[mesh_index].buffer;
     let material = materials[material_index];
-    let triangle_i = rand_range_u(light_triangle_count, state);
     let indices_i = (triangle_i * 3u) + vec3(0u, 1u, 2u);
     let indices = vec3((*index_buffer)[indices_i.x], (*index_buffer)[indices_i.y], (*index_buffer)[indices_i.z]);
     let vertices = array<SolariVertex, 3>(unpack_vertex((*vertex_buffer)[indices.x]), unpack_vertex((*vertex_buffer)[indices.y]), unpack_vertex((*vertex_buffer)[indices.z]));
+
     var r = rand_vec2(state);
     if r.x + r.y > 1.0 { r = 1.0 - r; }
     let barycentrics = vec3(r, 1.0 - r.x - r.y);
+
     let local_position = mat3x3(vertices[0].local_position, vertices[1].local_position, vertices[2].local_position) * barycentrics;
     let world_position = (light_transform * vec4(local_position, 1.0)).xyz;
+
     let light_distance = distance(ray_origin, world_position);
-
-    let ray_flags = RAY_FLAG_TERMINATE_ON_FIRST_HIT;
-    let ray_cull_mask = 0xFFu;
-    let ray_t_min = 0.01;
-    let ray_t_max = light_distance - 0.01;
     let ray_direction = (world_position - ray_origin) / light_distance;
-    let ray = RayDesc(ray_flags, ray_cull_mask, ray_t_min, ray_t_max, ray_origin, ray_direction);
-    var rq: ray_query;
-    rayQueryInitialize(&rq, tlas, ray);
-    rayQueryProceed(&rq);
-    let ray_hit = rayQueryGetCommittedIntersection(&rq);
 
-    if ray_hit.kind == RAY_QUERY_INTERSECTION_NONE {
-        let local_normal = mat3x3(vertices[0].local_normal, vertices[1].local_normal, vertices[2].local_normal) * barycentrics;
-        var world_normal = normalize(mat3x3(light_transform[0].xyz, light_transform[1].xyz, light_transform[2].xyz) * local_normal);
-        if material.normal_map_index != TEXTURE_MAP_NONE {
-            let uv = mat3x2(vertices[0].uv, vertices[1].uv, vertices[2].uv) * barycentrics;
-            let local_tangent = mat3x3(vertices[0].local_tangent.xyz, vertices[1].local_tangent.xyz, vertices[2].local_tangent.xyz) * barycentrics;
-            let world_tangent = normalize(mat3x3(light_transform[0].xyz, light_transform[1].xyz, light_transform[2].xyz) * local_tangent);
-            let N = world_normal;
-            let T = world_tangent;
-            let B = vertices[0].local_tangent.w * cross(N, T);
-            let Nt = textureSampleLevel(texture_maps[material.normal_map_index], texture_sampler, uv, 0.0).rgb;
-            world_normal = normalize(Nt.x * T + Nt.y * B + Nt.z * N);
-        }
-
-        let cos_theta_origin = saturate(dot(ray_direction, origin_world_normal));
-        let cos_theta_light = saturate(dot(-ray_direction, world_normal));
-        let light_distance_squared = light_distance * light_distance;
-        let light = material.emission * cos_theta_origin * (cos_theta_light / light_distance_squared);
-
-        let triangle_edge0 = vertices[0].local_position - vertices[1].local_position;
-        let triangle_edge1 = vertices[0].local_position - vertices[2].local_position;
-        let triangle_area = length(cross(triangle_edge0, triangle_edge1)) / 2.0;
-
-        let weight = f32(light_count * light_triangle_count) * triangle_area;
-        return light * weight;
-    } else {
-        return vec3(0.0);
+    let local_normal = mat3x3(vertices[0].local_normal, vertices[1].local_normal, vertices[2].local_normal) * barycentrics;
+    var world_normal = normalize(mat3x3(light_transform[0].xyz, light_transform[1].xyz, light_transform[2].xyz) * local_normal);
+    if material.normal_map_index != TEXTURE_MAP_NONE {
+        let uv = mat3x2(vertices[0].uv, vertices[1].uv, vertices[2].uv) * barycentrics;
+        let local_tangent = mat3x3(vertices[0].local_tangent.xyz, vertices[1].local_tangent.xyz, vertices[2].local_tangent.xyz) * barycentrics;
+        let world_tangent = normalize(mat3x3(light_transform[0].xyz, light_transform[1].xyz, light_transform[2].xyz) * local_tangent);
+        let N = world_normal;
+        let T = world_tangent;
+        let B = vertices[0].local_tangent.w * cross(N, T);
+        let Nt = textureSampleLevel(texture_maps[material.normal_map_index], texture_sampler, uv, 0.0).rgb;
+        world_normal = normalize(Nt.x * T + Nt.y * B + Nt.z * N);
     }
+
+    let cos_theta_origin = saturate(dot(ray_direction, origin_world_normal));
+    let cos_theta_light = saturate(dot(-ray_direction, world_normal));
+    let light_distance_squared = light_distance * light_distance;
+    let light = material.emission * cos_theta_origin * (cos_theta_light / light_distance_squared);
+
+    let triangle_edge0 = vertices[0].local_position - vertices[1].local_position;
+    let triangle_edge1 = vertices[0].local_position - vertices[2].local_position;
+    let triangle_area = length(cross(triangle_edge0, triangle_edge1)) / 2.0;
+
+    let inverse_pdf = f32(light_count * triangle_count) * triangle_area;
+
+    return RandomLightSample(world_position, light_distance, light, inverse_pdf);
+}
+
+fn sample_direct_lighting(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>, state: ptr<function, u32>) -> vec3<f32> {
+    let light_count = arrayLength(&emissive_object_indices);
+    let unshadowed_light = sample_unshadowed_direct_lighting(ray_origin, origin_world_normal, light_count, state);
+    let visibility = trace_light_visibility(ray_origin, unshadowed_light.world_position, unshadowed_light.light_distance);
+    return unshadowed_light.light * unshadowed_light.inverse_pdf * visibility;
 }
 
 fn rand_u(state: ptr<function, u32>) -> u32 {
