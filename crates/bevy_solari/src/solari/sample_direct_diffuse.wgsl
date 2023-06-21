@@ -70,25 +70,26 @@ fn sample_direct_diffuse(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var direct_light = vec3(0.0);
     var direct_light_weight = 1.0;
 
-    if temporal_combine {
-        reservoir.W *= trace_light_visibility(pixel_world_position, reservoir.light_position, distance(pixel_world_position, reservoir.light_position));
+    // TODO: This is broken
+    // if temporal_combine {
+    //     reservoir.W *= trace_light_visibility(pixel_world_position, reservoir.light_position, distance(pixel_world_position, reservoir.light_position));
 
-        direct_light += reservoir.unshadowed_light * reservoir.W;
-        direct_light_weight = 0.5;
+    //     direct_light += reservoir.unshadowed_light * reservoir.W;
+    //     direct_light_weight = 0.5;
 
-        var history_reservoir = direct_diffuse_reservoirs_history[u32(history_id.x) + u32(history_id.y) * screen_size.x];
-        history_reservoir.sample_count = min(history_reservoir.sample_count, 32u * 20u);
-        let history_weight = history_reservoir.target_pdf * history_reservoir.W * f32(history_reservoir.sample_count);
+    //     var history_reservoir = direct_diffuse_reservoirs_history[u32(history_id.x) + u32(history_id.y) * screen_size.x];
+    //     history_reservoir.sample_count = min(history_reservoir.sample_count, 32u * 20u);
+    //     let history_weight = history_reservoir.target_pdf * history_reservoir.W * f32(history_reservoir.sample_count);
 
-        reservoir.weight += history_weight;
-        reservoir.sample_count += history_reservoir.sample_count;
-        if rand_f(&rng) < history_weight / reservoir.weight {
-            reservoir.unshadowed_light = history_reservoir.unshadowed_light;
-            reservoir.light_position = history_reservoir.light_position;
-            reservoir.target_pdf = history_reservoir.target_pdf;
-        }
-        reservoir.W = reservoir.weight / (reservoir.target_pdf * f32(reservoir.sample_count));
-    }
+    //     reservoir.weight += history_weight;
+    //     reservoir.sample_count += history_reservoir.sample_count;
+    //     if rand_f(&rng) < history_weight / reservoir.weight {
+    //         reservoir.unshadowed_light = history_reservoir.unshadowed_light;
+    //         reservoir.light_position = history_reservoir.light_position;
+    //         reservoir.target_pdf = history_reservoir.target_pdf;
+    //     }
+    //     reservoir.W = reservoir.weight / (reservoir.target_pdf * f32(reservoir.sample_count));
+    // }
 
     direct_light += reservoir.unshadowed_light * reservoir.W;
     direct_light *= trace_light_visibility(pixel_world_position, reservoir.light_position, distance(pixel_world_position, reservoir.light_position));
