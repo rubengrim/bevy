@@ -85,6 +85,7 @@ pub fn queue_scene_bind_group(
             base_color_map_index: get_texture_map_index(&material.base_color_map),
             normal_map_index: get_texture_map_index(&material.normal_map),
             emission: [emission[0], emission[1], emission[2]].into(),
+            emission_map_index: get_texture_map_index(&material.emission_map),
         })
     };
 
@@ -116,7 +117,7 @@ pub fn queue_scene_bind_group(
             transforms.push(transform);
             previous_transforms.push(previous_transform);
 
-            if material.emission.is_some() {
+            if material.emission.is_some() || material.emission_map.is_some() {
                 emissive_object_indices.push(instance_custom_index);
                 emissive_object_triangle_counts.push(
                     match mesh_assets.get(mesh_handle).unwrap().buffer_info {

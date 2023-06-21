@@ -16,6 +16,7 @@ pub struct SolariMaterial {
     pub base_color_map: Option<Handle<Image>>,
     pub normal_map: Option<Handle<Image>>,
     pub emission: Option<Color>,
+    pub emission_map: Option<Handle<Image>>,
 }
 
 #[derive(Bundle, Clone, Default)]
@@ -32,4 +33,5 @@ pub struct GpuSolariMaterial {
     pub base_color_map_index: u32,
     pub normal_map_index: u32,
     pub emission: Vec3,
+    pub emission_map_index: u32,
 }

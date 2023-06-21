@@ -43,6 +43,7 @@ struct SolariMaterial {
     base_color_map_index: u32,
     normal_map_index: u32,
     emission: vec3<f32>,
+    emission_map_index: u32,
 }
 
 struct SolariSampledMaterial {
@@ -59,6 +60,9 @@ fn sample_material(material: SolariMaterial, uv: vec2<f32>) -> SolariSampledMate
     }
 
     m.emission = material.emission;
+    if material.emission_map_index != TEXTURE_MAP_NONE {
+        m.emission *= textureSampleLevel(texture_maps[material.emission_map_index], texture_sampler, uv, 0.0).rgb;
+    }
 
     return m;
 }
