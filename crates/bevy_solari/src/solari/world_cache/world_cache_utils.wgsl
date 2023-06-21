@@ -16,7 +16,7 @@ fn wrap_key(key: u32) -> u32 {
 }
 
 fn quantize_position(world_position: vec3<f32>) -> vec3<f32> {
-    return floor((world_position + 0.01) * 6.0);
+    return floor((world_position + 0.01) * 2.0);
 }
 
 fn quantize_normal(world_normal: vec3<f32>) -> vec3<f32> {
