@@ -29,6 +29,8 @@ pub struct SolariResources {
     indirect_diffuse_denoiser_temporal_history: CachedTexture,
     indirect_diffuse_denoised_temporal: CachedTexture,
     indirect_diffuse_denoised_spatiotemporal: CachedTexture,
+    direct_diffuse_reservoirs_history: CachedBuffer,
+    direct_diffuse_reservoirs: CachedBuffer,
     direct_diffuse: CachedTexture,
     direct_diffuse_denoiser_temporal_history: CachedTexture,
     direct_diffuse_denoised_temporal: CachedTexture,
@@ -57,7 +59,6 @@ pub fn prepare_resources(
         dimension: TextureDimension::D2,
         format,
         usage: TextureUsages::STORAGE_BINDING,
-
         view_formats: &[],
     };
     let texture_double_buffered = |label_1, label_2, format, size: UVec2| {
@@ -87,6 +88,27 @@ pub fn prepare_resources(
             (t1, t2)
         } else {
             (t2, t1)
+        }
+    };
+    let buffer_double_buffered = |label_1, label_2, size: u64| {
+        let shared = BufferDescriptor {
+            label: None,
+            size,
+            usage: BufferUsages::STORAGE,
+            mapped_at_creation: false,
+        };
+        let b1 = BufferDescriptor {
+            label: Some(label_1),
+            ..shared
+        };
+        let b2 = BufferDescriptor {
+            label: Some(label_2),
+            ..shared
+        };
+        if frame_count.0 % 2 == 0 {
+            (b1, b2)
+        } else {
+            (b2, b1)
         }
     };
 
@@ -141,6 +163,12 @@ pub fn prepare_resources(
                 viewport,
             );
 
+            let (direct_diffuse_reservoirs_history, direct_diffuse_reservoirs) =
+                buffer_double_buffered(
+                    "solari_direct_diffuse_reservoirs_1",
+                    "solari_direct_diffuse_reservoirs_2",
+                    (viewport.x * viewport.y) as u64 * 48,
+                );
             let direct_diffuse = texture(
                 "solari_direct_diffuse",
                 TextureFormat::Rgba16Float,
@@ -183,6 +211,10 @@ pub fn prepare_resources(
                     .get(&render_device, indirect_diffuse_denoised_temporal),
                 indirect_diffuse_denoised_spatiotemporal: texture_cache
                     .get(&render_device, indirect_diffuse_denoised_spatiotemporal),
+                direct_diffuse_reservoirs_history: buffer_cache
+                    .get(&render_device, direct_diffuse_reservoirs_history),
+                direct_diffuse_reservoirs: buffer_cache
+                    .get(&render_device, direct_diffuse_reservoirs),
                 direct_diffuse: texture_cache.get(&render_device, direct_diffuse),
                 direct_diffuse_denoiser_temporal_history: texture_cache
                     .get(&render_device, direct_diffuse_denoiser_temporal_history),
@@ -292,6 +324,18 @@ impl FromWorld for SolariBindGroupLayout {
                 format: TextureFormat::Rgba16Float,
                 view_dimension: TextureViewDimension::D2,
             }),
+            // Direct diffuse reservoirs history
+            entry(BindingType::Buffer {
+                ty: BufferBindingType::Storage { read_only: true },
+                has_dynamic_offset: false,
+                min_binding_size: Some(unsafe { NonZeroU64::new_unchecked(48) }),
+            }),
+            // Direct diffuse reservoirs
+            entry(BindingType::Buffer {
+                ty: BufferBindingType::Storage { read_only: false },
+                has_dynamic_offset: false,
+                min_binding_size: Some(unsafe { NonZeroU64::new_unchecked(48) }),
+            }),
             // Direct diffuse
             entry(BindingType::StorageTexture {
                 access: StorageTextureAccess::ReadWrite,
@@ -392,6 +436,8 @@ pub fn queue_bind_groups(
                 )),
                 entry(t(&solari_resources.indirect_diffuse_denoised_temporal)),
                 entry(t(&solari_resources.indirect_diffuse_denoised_spatiotemporal)),
+                entry(b(&solari_resources.direct_diffuse_reservoirs_history)),
+                entry(b(&solari_resources.direct_diffuse_reservoirs)),
                 entry(t(&solari_resources.direct_diffuse)),
                 entry(t(&solari_resources.direct_diffuse_denoiser_temporal_history)),
                 entry(t(&solari_resources.direct_diffuse_denoised_temporal)),

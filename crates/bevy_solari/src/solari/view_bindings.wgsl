@@ -12,6 +12,16 @@ struct SphericalHarmonicsPacked {
     b6: vec3<f32>,
 }
 
+// TODO: Can probably be packed into 1-2 textures
+struct Reservoir {
+  unshadowed_light: vec3<f32>,
+  light_position: vec3<f32>,
+  target_pdf: f32,
+  weight: f32,
+  W: f32,
+  sample_count: u32,
+}
+
 @group(1) @binding(0) var<uniform> view: View;
 @group(1) @binding(1) var<uniform> previous_view_proj: mat4x4<f32>;
 @group(1) @binding(2) var g_buffer_previous: texture_2d<u32>;
@@ -25,11 +35,13 @@ struct SphericalHarmonicsPacked {
 @group(1) @binding(10) var indirect_diffuse_denoiser_temporal_history: texture_2d<f32>;
 @group(1) @binding(11) var indirect_diffuse_denoised_temporal: texture_storage_2d<rgba16float, read_write>;
 @group(1) @binding(12) var indirect_diffuse_denoised_spatiotemporal: texture_storage_2d<rgba16float, read_write>;
-@group(1) @binding(13) var direct_diffuse: texture_storage_2d<rgba16float, read_write>;
-@group(1) @binding(14) var direct_diffuse_denoiser_temporal_history: texture_2d<f32>;
-@group(1) @binding(15) var direct_diffuse_denoised_temporal: texture_storage_2d<rgba16float, read_write>;
-@group(1) @binding(16) var direct_diffuse_denoised_spatiotemporal: texture_storage_2d<rgba16float, read_write>;
-@group(1) @binding(17) var taa_history: texture_2d<f32>;
-@group(1) @binding(18) var taa_history_output: texture_storage_2d<rgba16float, write>;
-@group(1) @binding(19) var view_target_other: texture_storage_2d<rgba16float, read_write>;
-@group(1) @binding(20) var view_target: texture_storage_2d<rgba16float, write>;
+@group(1) @binding(13) var<storage, read> direct_diffuse_reservoirs_history: array<Reservoir>;
+@group(1) @binding(14) var<storage, read_write> direct_diffuse_reservoirs: array<Reservoir>;
+@group(1) @binding(15) var direct_diffuse: texture_storage_2d<rgba16float, read_write>;
+@group(1) @binding(16) var direct_diffuse_denoiser_temporal_history: texture_2d<f32>;
+@group(1) @binding(17) var direct_diffuse_denoised_temporal: texture_storage_2d<rgba16float, read_write>;
+@group(1) @binding(18) var direct_diffuse_denoised_spatiotemporal: texture_storage_2d<rgba16float, read_write>;
+@group(1) @binding(19) var taa_history: texture_2d<f32>;
+@group(1) @binding(20) var taa_history_output: texture_storage_2d<rgba16float, write>;
+@group(1) @binding(21) var view_target_other: texture_storage_2d<rgba16float, read_write>;
+@group(1) @binding(22) var view_target: texture_storage_2d<rgba16float, write>;

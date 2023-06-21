@@ -1,3 +1,4 @@
+* Validate reprojection in seperate pass, store in 1 bit of t_buffer g-channel, and reuse in each temporal pass?
 * ReSTIR for per-pixel direct light sampling
     * https://benedikt-bitterli.me/restir/bitterli20restir.pdf
     * https://d1qx31qr3h6wln.cloudfront.net/publications/hpg21_rearchitectingReSTIR.pdf
@@ -17,7 +18,6 @@
     * Variance driven world cache update rate, skipping very stable cells
     * Track "access heat map", kill rarely accessed world cells
 
-* Validate reprojection in seperate pass, store in 1 bit of t_buffer g-channel, and reuse in each temporal pass?
 * Add screenspace GI (SSAO/SSIL)
 * Large world optimizations
     * World-space DDGI probes for far irradiance
