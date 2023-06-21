@@ -248,10 +248,7 @@ pub(crate) fn convert_attribute(
         gltf::Semantic::Normals => Some((Mesh::ATTRIBUTE_NORMAL, ConversionMode::Any)),
         gltf::Semantic::Tangents => Some((Mesh::ATTRIBUTE_TANGENT, ConversionMode::Any)),
         gltf::Semantic::Colors(0) => Some((Mesh::ATTRIBUTE_COLOR, ConversionMode::Rgba)),
-        // TODO: Temporary fix for cornell box model
-        gltf::Semantic::TexCoords(0) | gltf::Semantic::TexCoords(1) => {
-            Some((Mesh::ATTRIBUTE_UV_0, ConversionMode::TexCoord))
-        }
+        gltf::Semantic::TexCoords(0) => Some((Mesh::ATTRIBUTE_UV_0, ConversionMode::TexCoord)),
         gltf::Semantic::Joints(0) => {
             Some((Mesh::ATTRIBUTE_JOINT_INDEX, ConversionMode::JointIndex))
         }
