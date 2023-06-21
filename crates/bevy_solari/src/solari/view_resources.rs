@@ -445,10 +445,10 @@ pub fn queue_bind_groups(
                 entry(t(&solari_resources.taa_history_previous)),
                 entry(t(&solari_resources.taa_history_current)),
                 entry(BindingResource::TextureView(
-                    view_target.main_texture_other_view(),
+                    view_target.main_texture_view(),
                 )),
                 entry(BindingResource::TextureView(
-                    view_target.main_texture_view(),
+                    view_target.main_texture_other_view(),
                 )),
             ];
 
