@@ -39,7 +39,7 @@ fn gmt_buffer(@builtin(global_invocation_id) global_id: vec3<u32>) {
             let N = world_normal;
             let T = world_tangent;
             let B = vertices[0].local_tangent.w * cross(N, T);
-            let Nt = textureSampleLevel(texture_maps[material.normal_map_index], texture_sampler, uv, 0.0).rgb;
+            let Nt = sample_texture_map(material.normal_map_index, uv).rgb;
             world_normal = normalize(Nt.x * T + Nt.y * B + Nt.z * N);
         }
 

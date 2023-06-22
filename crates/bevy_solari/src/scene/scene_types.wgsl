@@ -51,17 +51,21 @@ struct SolariSampledMaterial {
     emission: vec3<f32>,
 }
 
+fn sample_texture_map(i: u32, uv: vec2<f32>) -> vec4<f32> {
+    return textureSampleLevel(texture_maps[i], texture_map_samplers[i], uv, 0.0);
+}
+
 fn sample_material(material: SolariMaterial, uv: vec2<f32>) -> SolariSampledMaterial {
     var m: SolariSampledMaterial;
 
     m.base_color = material.base_color.rgb;
     if material.base_color_map_index != TEXTURE_MAP_NONE {
-        m.base_color *= textureSampleLevel(texture_maps[material.base_color_map_index], texture_sampler, uv, 0.0).rgb;
+        m.base_color *= sample_texture_map(material.base_color_map_index, uv).rgb;
     }
 
     m.emission = material.emission;
     if material.emission_map_index != TEXTURE_MAP_NONE {
-        m.emission *= textureSampleLevel(texture_maps[material.emission_map_index], texture_sampler, uv, 0.0).rgb;
+        m.emission *= sample_texture_map(material.emission_map_index, uv).rgb;
     }
 
     return m;
@@ -102,7 +106,7 @@ fn map_ray_hit(ray_hit: RayIntersection) -> SolariRayHit {
         let N = world_normal;
         let T = world_tangent;
         let B = vertices[0].local_tangent.w * cross(N, T);
-        let Nt = textureSampleLevel(texture_maps[material.normal_map_index], texture_sampler, uv, 0.0).rgb;
+        let Nt = sample_texture_map(material.normal_map_index, uv).rgb;
         world_normal = normalize(Nt.x * T + Nt.y * B + Nt.z * N);
     }
 

@@ -59,7 +59,7 @@ impl ViewNode for SolariNode {
             Some(denoise_direct_diffuse_temporal_pipeline),
             Some(denoise_direct_diffuse_spatial_pipeline),
             Some(shade_view_target_pipeline),
-            Some(taa_pipeline),
+            Some(_taa_pipeline),
             Some(viewport),
         ) = (
             pipeline_cache.get_compute_pipeline(pipeline_ids.gmt_buffer),

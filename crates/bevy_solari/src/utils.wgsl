@@ -81,12 +81,12 @@ fn sample_unshadowed_direct_lighting(ray_origin: vec3<f32>, origin_world_normal:
         let N = world_normal;
         let T = world_tangent;
         let B = vertices[0].local_tangent.w * cross(N, T);
-        let Nt = textureSampleLevel(texture_maps[material.normal_map_index], texture_sampler, uv, 0.0).rgb;
+        let Nt = sample_texture_map(material.normal_map_index, uv).rgb;
         world_normal = normalize(Nt.x * T + Nt.y * B + Nt.z * N);
     }
 
     if material.emission_map_index != TEXTURE_MAP_NONE {
-        material.emission *= textureSampleLevel(texture_maps[material.emission_map_index], texture_sampler, uv, 0.0).rgb;
+        material.emission *= sample_texture_map(material.emission_map_index, uv).rgb;
     }
 
     let cos_theta_origin = saturate(dot(ray_direction, origin_world_normal));

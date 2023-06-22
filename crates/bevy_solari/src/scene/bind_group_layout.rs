@@ -5,28 +5,16 @@ use bevy_ecs::{
 };
 use bevy_math::Mat4;
 use bevy_render::{globals::GlobalsUniform, render_resource::*, renderer::RenderDevice};
-use bevy_utils::default;
 use std::num::NonZeroU32;
 
 #[derive(Resource)]
-pub struct SolariSceneResources {
-    pub bind_group_layout: BindGroupLayout,
-    pub sampler: Sampler,
-}
+pub struct SolariSceneBindGroupLayout(pub BindGroupLayout);
 
-impl FromWorld for SolariSceneResources {
+impl FromWorld for SolariSceneBindGroupLayout {
     fn from_world(world: &mut World) -> Self {
         let render_device = world.resource::<RenderDevice>();
 
-        Self {
-            bind_group_layout: create_scene_bind_group_layout(render_device),
-            sampler: render_device.create_sampler(&SamplerDescriptor {
-                mipmap_filter: FilterMode::Linear,
-                mag_filter: FilterMode::Linear,
-                min_filter: FilterMode::Linear,
-                ..default()
-            }),
-        }
+        Self(create_scene_bind_group_layout(render_device))
     }
 }
 
@@ -59,7 +47,7 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
                 has_dynamic_offset: false,
                 min_binding_size: None, // TODO
             },
-            count: Some(unsafe { NonZeroU32::new_unchecked(50_000) }),
+            count: Some(unsafe { NonZeroU32::new_unchecked(10_000) }),
         },
         // Vertex buffers
         BindGroupLayoutEntry {
@@ -70,7 +58,7 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
                 has_dynamic_offset: false,
                 min_binding_size: None, // TODO
             },
-            count: Some(unsafe { NonZeroU32::new_unchecked(50_000) }),
+            count: Some(unsafe { NonZeroU32::new_unchecked(10_000) }),
         },
         // Transforms buffer
         BindGroupLayoutEntry {
@@ -114,14 +102,14 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
                 view_dimension: TextureViewDimension::D2,
                 multisampled: false,
             },
-            count: Some(unsafe { NonZeroU32::new_unchecked(50_000) }),
+            count: Some(unsafe { NonZeroU32::new_unchecked(10_000) }),
         },
-        // Texture sampler
+        // Texture map samplers
         BindGroupLayoutEntry {
             binding: 8,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Sampler(SamplerBindingType::Filtering),
-            count: None,
+            count: Some(unsafe { NonZeroU32::new_unchecked(10_000) }),
         },
         // Emissive object mesh material indices buffer
         BindGroupLayoutEntry {

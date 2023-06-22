@@ -2,7 +2,7 @@ use super::{
     resources::SolariWorldCacheResources, SOLARI_WORLD_CACHE_COMPACT_ACTIVE_CELLS_SHADER,
     SOLARI_WORLD_CACHE_UPDATE_SHADER,
 };
-use crate::scene::bind_group_layout::SolariSceneResources;
+use crate::scene::bind_group_layout::SolariSceneBindGroupLayout;
 use bevy_ecs::{
     system::Resource,
     world::{FromWorld, World},
@@ -24,7 +24,7 @@ pub struct SolariWorldCachePipelineIds {
 impl FromWorld for SolariWorldCachePipelineIds {
     fn from_world(world: &mut World) -> Self {
         let pipeline_cache = world.resource::<PipelineCache>();
-        let scene_resources = world.resource::<SolariSceneResources>();
+        let scene_bind_group_layout = world.resource::<SolariSceneBindGroupLayout>();
         let world_cache_resources = world.resource::<SolariWorldCacheResources>();
 
         let decay_world_cache_cells = ComputePipelineDescriptor {
@@ -78,7 +78,7 @@ impl FromWorld for SolariWorldCachePipelineIds {
         let world_cache_sample_irradiance = ComputePipelineDescriptor {
             label: Some("solari_world_cache_sample_irradiance_pipeline".into()),
             layout: vec![
-                scene_resources.bind_group_layout.clone(),
+                scene_bind_group_layout.0.clone(),
                 world_cache_resources.bind_group_layout_no_dispatch.clone(),
             ],
             push_constant_ranges: vec![],
@@ -94,7 +94,7 @@ impl FromWorld for SolariWorldCachePipelineIds {
         let world_cache_blend_new_samples = ComputePipelineDescriptor {
             label: Some("solari_world_cache_blend_new_samples_pipeline".into()),
             layout: vec![
-                scene_resources.bind_group_layout.clone(),
+                scene_bind_group_layout.0.clone(),
                 world_cache_resources.bind_group_layout_no_dispatch.clone(),
             ],
             push_constant_ranges: vec![],

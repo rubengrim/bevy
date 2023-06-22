@@ -1,7 +1,7 @@
 use super::{
     camera::SolariPathTracer, resources::create_view_bind_group_layout, SOLARI_PATH_TRACER_SHADER,
 };
-use crate::scene::bind_group_layout::SolariSceneResources;
+use crate::scene::bind_group_layout::SolariSceneBindGroupLayout;
 use bevy_ecs::{
     prelude::{Component, Entity},
     query::With,
@@ -24,10 +24,10 @@ pub struct SolariPathtracerPipeline {
 
 impl FromWorld for SolariPathtracerPipeline {
     fn from_world(world: &mut World) -> Self {
-        let scene_resources = world.resource::<SolariSceneResources>();
+        let scene_bind_group_layout = world.resource::<SolariSceneBindGroupLayout>();
         Self {
             view_bind_group_layout: create_view_bind_group_layout(world.resource::<RenderDevice>()),
-            scene_bind_group_layout: scene_resources.bind_group_layout.clone(),
+            scene_bind_group_layout: scene_bind_group_layout.0.clone(),
         }
     }
 }

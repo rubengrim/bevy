@@ -49,7 +49,9 @@ fn clip_towards_aabb_center(history_color: vec3<f32>, current_color: vec3<f32>, 
 }
 
 fn sample_history(u: f32, v: f32) -> vec3<f32> {
-    return textureSampleLevel(taa_history, texture_sampler, vec2(u, v), 0.0).rgb;
+    // TODO: Replace texture sampler
+    // return textureSampleLevel(taa_history, texture_sampler, vec2(u, v), 0.0).rgb;
+    return vec3(0.0);
 }
 
 fn sample_view_target(pixel_id: vec2<i32>) -> vec3<f32> {
@@ -95,7 +97,7 @@ fn taa(@builtin(global_invocation_id) global_id: vec3<u32>) {
 #endif
     var accumulated_samples = 1.0;
 
-#ifndef RESET
+    #ifndef RESET
     let g_buffer_current = textureLoad(g_buffer, pixel_id);
 
     // Pick the closest motion_vector from 5 samples (reduces aliasing on the edges of moving entities)

@@ -11,7 +11,7 @@
 @group(0) @binding(5) var<storage> previous_transforms: array<mat4x4<f32>>;
 @group(0) @binding(6) var<storage> materials: array<SolariMaterial>;
 @group(0) @binding(7) var texture_maps: binding_array<texture_2d<f32>>;
-@group(0) @binding(8) var texture_sampler: sampler;
+@group(0) @binding(8) var texture_map_samplers: binding_array<sampler>;
 @group(0) @binding(9) var<storage> emissive_object_indices: array<u32>;
 @group(0) @binding(10) var<storage> emissive_object_triangle_counts: array<u32>;
 @group(0) @binding(11) var<uniform> globals: Globals;

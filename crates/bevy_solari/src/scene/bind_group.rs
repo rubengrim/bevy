@@ -1,5 +1,5 @@
 use super::{
-    bind_group_layout::SolariSceneResources,
+    bind_group_layout::SolariSceneBindGroupLayout,
     blas::BlasStorage,
     material::{GpuSolariMaterial, SolariMaterial},
     misc::{new_storage_buffer, pack_object_indices, tlas_transform, IndexedVec},
@@ -31,7 +31,7 @@ pub fn queue_scene_bind_group(
         &PreviousGlobalTransform,
     )>,
     mut scene_bind_group: ResMut<SolariSceneBindGroup>,
-    scene_resources: Res<SolariSceneResources>,
+    scene_bind_group_layout: Res<SolariSceneBindGroupLayout>,
     mesh_assets: Res<RenderAssets<Mesh>>,
     image_assets: Res<RenderAssets<Image>>,
     blas_storage: Res<BlasStorage>,
@@ -49,6 +49,7 @@ pub fn queue_scene_bind_group(
     let mut previous_transforms = Vec::new();
     let mut materials = IndexedVec::new();
     let mut texture_maps = IndexedVec::new();
+    let mut samplers = Vec::new();
     let mut emissive_object_indices = Vec::new();
     let mut emissive_object_triangle_counts = Vec::new();
     let objects = objects.iter().collect::<Vec<_>>();
@@ -68,7 +69,9 @@ pub fn queue_scene_bind_group(
         if let Some(texture_map_handle) = maybe_texture_map_handle.clone() {
             texture_maps.get_index(texture_map_handle, |texture_map_handle| {
                 // TODO: Handle unwrap
-                &*image_assets.get(&texture_map_handle).unwrap().texture_view
+                let image = image_assets.get(&texture_map_handle).unwrap();
+                samplers.push(&*image.sampler);
+                &*image.texture_view
             })
         } else {
             u32::MAX
@@ -191,11 +194,14 @@ pub fn queue_scene_bind_group(
     if texture_maps.vec.is_empty() {
         texture_maps.vec.push(&fallback_image.texture_view);
     }
+    if samplers.is_empty() {
+        samplers.push(&fallback_image.sampler);
+    }
 
     // Create scene bind group
     scene_bind_group.0 = Some(render_device.create_bind_group(&BindGroupDescriptor {
         label: Some("solari_scene_bind_group"),
-        layout: &scene_resources.bind_group_layout,
+        layout: &scene_bind_group_layout.0,
         entries: &[
             BindGroupEntry {
                 binding: 0,
@@ -231,7 +237,7 @@ pub fn queue_scene_bind_group(
             },
             BindGroupEntry {
                 binding: 8,
-                resource: BindingResource::Sampler(&scene_resources.sampler),
+                resource: BindingResource::SamplerArray(&samplers),
             },
             BindGroupEntry {
                 binding: 9,

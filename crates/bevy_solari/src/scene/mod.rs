@@ -7,7 +7,7 @@ mod scene;
 
 use self::{
     bind_group::{queue_scene_bind_group, SolariSceneBindGroup},
-    bind_group_layout::SolariSceneResources,
+    bind_group_layout::SolariSceneBindGroupLayout,
     blas::{prepare_blas, BlasStorage},
     material::SolariMaterial,
     scene::{
@@ -50,7 +50,7 @@ impl Plugin for SolariScenePlugin {
 
         app.sub_app_mut(RenderApp)
             .init_resource::<BlasStorage>()
-            .init_resource::<SolariSceneResources>()
+            .init_resource::<SolariSceneBindGroupLayout>()
             .init_resource::<SolariSceneBindGroup>()
             .add_systems(ExtractSchedule, extract_scene)
             .add_systems(Render, prepare_blas.in_set(RenderSet::Prepare))
