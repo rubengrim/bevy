@@ -54,7 +54,7 @@ fn interpolate_probe(
     }
 
     let screen_distance = distance(probe_pixel_id_center, pixel_id);
-    let screen_distance_weight = smoothstep(22.0, 0.0, screen_distance);
+    let screen_distance_weight = smoothstep(32.0, 0.0, screen_distance);
     irradiance *= screen_distance_weight;
     *weight_total += screen_distance_weight;
 
@@ -91,13 +91,17 @@ fn interpolate_screen_probes(
     let pixel_world_position = depth_to_world_position(pixel_depth, pixel_id / view.viewport.zw);
     let pixel_world_normal = decode_g_buffer_world_normal(g_buffer_pixel);
 
+    // TODO: Spatiotemporal blue noise for jitter instead of rand_vec2()
+    var pixel_id_jittered = pixel_id + (rand_vec2(&rng) * 16.0 - 8.0);
+    let pixel_world_position_jittered = depth_to_world_position(pixel_depth, pixel_id_jittered / view.viewport.zw);
+    let plane_distance = abs(dot(pixel_world_position - pixel_world_position_jittered, pixel_world_normal));
+    if plane_distance >= 0.5 {
+        pixel_id_jittered = pixel_id;
+    }
+
     var irradiance = vec3(0.0);
     var irradiance_no_rejections = vec3(0.0);
     var weight = 0.0;
-    // TODO: Spatiotemporal blue noise for jitter instead of rand_vec2()
-    // TODO: Cancel jitter if outside pixel plane
-    // TODO: Jitter size?
-    let pixel_id_jittered = pixel_id + (rand_vec2(&rng) - 0.5);
     interpolate_probe(&irradiance, &irradiance_no_rejections, &weight, pixel_id_jittered, pixel_world_position, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(-1i, 1i), probe_thread_id);
     interpolate_probe(&irradiance, &irradiance_no_rejections, &weight, pixel_id_jittered, pixel_world_position, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(0i, 1i), probe_thread_id);
     interpolate_probe(&irradiance, &irradiance_no_rejections, &weight, pixel_id_jittered, pixel_world_position, pixel_world_normal, i32(workgroup_count.x), vec2<i32>(workgroup_id.xy) + vec2(1i, 1i), probe_thread_id);
@@ -112,5 +116,6 @@ fn interpolate_screen_probes(
         weight = 9.0;
     }
     irradiance /= weight;
+
     textureStore(indirect_diffuse, global_id.xy, vec4(irradiance, 1.0));
 }
