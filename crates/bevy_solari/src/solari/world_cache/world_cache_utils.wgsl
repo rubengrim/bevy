@@ -20,7 +20,7 @@ fn quantize_position(world_position: vec3<f32>) -> vec3<f32> {
 }
 
 fn quantize_normal(world_normal: vec3<f32>) -> vec3<f32> {
-    return round(world_normal * 0.7);
+    return floor(world_normal * 0.001);
 }
 
 fn compute_key(world_position: vec3<f32>, world_normal: vec3<f32>) -> u32 {
