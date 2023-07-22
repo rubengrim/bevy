@@ -1,6 +1,11 @@
 mod graph_runner;
 mod render_device;
 
+pub mod wgpu_hal_api {
+    pub use wgpu_core::api::Vulkan;
+    pub use wgpu_hal::Api;
+}
+
 use bevy_derive::{Deref, DerefMut};
 use bevy_utils::tracing::{error, info, info_span};
 pub use graph_runner::*;
