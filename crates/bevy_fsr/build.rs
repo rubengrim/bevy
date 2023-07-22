@@ -41,6 +41,7 @@ fn main() {
         .clang_args(["-x", "c++"])
         .clang_arg(format!("-Iinclude"))
         .bitfield_enum("FfxFsr2InitializationFlagBits")
+        .newtype_enum("FfxSurfaceFormat")
         .blocklist_type("VkDevice")
         .blocklist_type("VkPhysicalDevice")
         .blocklist_type("PFN_vkGetDeviceProcAddr")

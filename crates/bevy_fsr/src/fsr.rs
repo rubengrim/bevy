@@ -14,18 +14,23 @@ mod fsr {
 use bevy_math::{UVec2, Vec2};
 use bevy_render::{
     prelude::PerspectiveProjection,
-    render_resource::{CommandEncoder, Texture},
+    render_resource::CommandEncoder,
     renderer::{
         wgpu_hal_api::{Api, Vulkan},
         RenderDevice,
     },
+    texture::GpuImage,
 };
 use fsr::{
     ffxFsr2ContextCreate, ffxFsr2ContextDestroy, ffxFsr2ContextDispatch, ffxFsr2GetJitterOffset,
     ffxFsr2GetJitterPhaseCount, ffxGetDeviceVK, ffxGetInterfaceVK, ffxGetResourceVK,
     ffxGetScratchMemorySizeVK, FfxDimensions2D, FfxErrorCodes_FFX_OK, FfxFloatCoords2D,
     FfxFsr2Context, FfxFsr2ContextDescription, FfxFsr2DispatchDescription,
-    FfxFsr2InitializationFlagBits, FfxInterface, VkDeviceContext,
+    FfxFsr2InitializationFlagBits, FfxInterface, FfxResource, FfxResourceDescription,
+    FfxResourceDescription__bindgen_ty_1, FfxResourceDescription__bindgen_ty_2,
+    FfxResourceDescription__bindgen_ty_3, FfxResourceFlags_FFX_RESOURCE_FLAGS_NONE,
+    FfxResourceStates_FFX_RESOURCE_STATE_PIXEL_COMPUTE_READ,
+    FfxResourceType_FFX_RESOURCE_TYPE_TEXTURE2D, FfxSurfaceFormat, VkDeviceContext,
 };
 use std::{mem::MaybeUninit, ops::Sub, ptr};
 
@@ -184,7 +189,7 @@ impl FsrContext {
             preExposure: 0.0,
             reset: dispatch_description.reset,
             cameraNear: dispatch_description.camera_projection.near,
-            cameraFar: dispatch_description.camera_projection.far,
+            cameraFar: dispatch_description.camera_projection.far, // TODO: f32::INFINITY instead?
             cameraFovAngleVertical: dispatch_description.camera_projection.fov,
             viewSpaceToMetersFactor: todo!(),
             enableAutoReactive: false,
@@ -221,13 +226,42 @@ impl Drop for FsrContext {
 
 pub struct FsrDispatchDescription<'a> {
     pub command_encoder: &'a mut CommandEncoder,
-    pub color: &'a Texture,
-    pub depth: &'a Texture,
-    pub motion_vectors: &'a Texture,
-    pub output: &'a Texture,
+    pub color_and_output: &'a GpuImage,
+    pub depth: &'a GpuImage,
+    pub motion_vectors: &'a GpuImage,
     pub jitter: Vec2,
     pub render_size: UVec2,
     pub frame_time_delta: f32,
     pub reset: bool,
     pub camera_projection: &'a PerspectiveProjection,
+}
+
+// TODO: Lots of cleanup and double checking I did things right needed
+fn ffx_texture(image: &GpuImage) -> FfxResource {
+    unsafe {
+        ffxGetResourceVK(
+            // image
+            //     .texture
+            //     .as_hal::<Vulkan, _, _>(|texture| texture.unwrap().raw_handle()),
+            todo!("Need to modify wgpu to allow Texture::as_hal() to return a"),
+            FfxResourceDescription {
+                type_: FfxResourceType_FFX_RESOURCE_TYPE_TEXTURE2D,
+                format: match image.texture_format {
+                    _ => todo!(),
+                },
+                __bindgen_anon_1: FfxResourceDescription__bindgen_ty_1 {
+                    width: image.size.x as u32,
+                },
+                __bindgen_anon_2: FfxResourceDescription__bindgen_ty_2 {
+                    height: image.size.y as u32,
+                },
+                __bindgen_anon_3: FfxResourceDescription__bindgen_ty_3 { depth: todo!() },
+                mipCount: image.mip_level_count,
+                flags: FfxResourceFlags_FFX_RESOURCE_FLAGS_NONE,
+                usage: todo!(),
+            },
+            ptr::null_mut(),
+            FfxResourceStates_FFX_RESOURCE_STATE_PIXEL_COMPUTE_READ,
+        )
+    }
 }
