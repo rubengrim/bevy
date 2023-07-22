@@ -36,7 +36,7 @@ fn main() {
 
     // Generate rust bindings
     Builder::default()
-        .header("include/wrapper.h")
+        .header("include/bindgen.h")
         .clang_arg(format!("-I{vulkan_sdk}/{vulkan_sdk_include}"))
         .clang_args(["-x", "c++"])
         .clang_arg(format!("-Iinclude"))
