@@ -12,17 +12,22 @@ mod fsr {
 }
 
 use bevy_math::{UVec2, Vec2};
-use bevy_render::renderer::{
-    wgpu_hal_api::{Api, Vulkan},
-    RenderDevice,
+use bevy_render::{
+    prelude::PerspectiveProjection,
+    render_resource::{CommandEncoder, Texture},
+    renderer::{
+        wgpu_hal_api::{Api, Vulkan},
+        RenderDevice,
+    },
 };
 use fsr::{
-    ffxFsr2ContextCreate, ffxFsr2ContextDestroy, ffxFsr2GetJitterOffset,
-    ffxFsr2GetJitterPhaseCount, ffxGetDeviceVK, ffxGetInterfaceVK, ffxGetScratchMemorySizeVK,
-    FfxDimensions2D, FfxErrorCodes_FFX_OK, FfxFsr2Context, FfxFsr2ContextDescription,
+    ffxFsr2ContextCreate, ffxFsr2ContextDestroy, ffxFsr2ContextDispatch, ffxFsr2GetJitterOffset,
+    ffxFsr2GetJitterPhaseCount, ffxGetDeviceVK, ffxGetInterfaceVK, ffxGetResourceVK,
+    ffxGetScratchMemorySizeVK, FfxDimensions2D, FfxErrorCodes_FFX_OK, FfxFloatCoords2D,
+    FfxFsr2Context, FfxFsr2ContextDescription, FfxFsr2DispatchDescription,
     FfxFsr2InitializationFlagBits, FfxInterface, VkDeviceContext,
 };
-use std::{mem::MaybeUninit, ops::Sub};
+use std::{mem::MaybeUninit, ops::Sub, ptr};
 
 // TODO
 const MAX_CONTEXTS: usize = 1;
@@ -151,8 +156,49 @@ impl FsrContext {
             .log2()
     }
 
-    pub fn dispatch(&mut self) {
-        todo!()
+    pub fn dispatch<'a>(&mut self, dispatch_description: FsrDispatchDescription<'a>) {
+        let dispatch_description = FfxFsr2DispatchDescription {
+            commandList: todo!(),
+            color: todo!(),
+            depth: todo!(),
+            motionVectors: todo!(),
+            exposure: todo!(),
+            reactive: todo!(),
+            transparencyAndComposition: todo!(),
+            output: todo!(),
+            jitterOffset: FfxFloatCoords2D {
+                x: dispatch_description.jitter.x,
+                y: dispatch_description.jitter.y,
+            },
+            motionVectorScale: FfxFloatCoords2D {
+                x: dispatch_description.render_size.x as f32,
+                y: dispatch_description.render_size.y as f32,
+            },
+            renderSize: FfxDimensions2D {
+                width: dispatch_description.render_size.x,
+                height: dispatch_description.render_size.y,
+            },
+            enableSharpening: false,
+            sharpness: 0.0,
+            frameTimeDelta: dispatch_description.frame_time_delta,
+            preExposure: 0.0,
+            reset: dispatch_description.reset,
+            cameraNear: dispatch_description.camera_projection.near,
+            cameraFar: dispatch_description.camera_projection.far,
+            cameraFovAngleVertical: dispatch_description.camera_projection.fov,
+            viewSpaceToMetersFactor: todo!(),
+            enableAutoReactive: false,
+            colorOpaqueOnly: todo!(),
+            autoTcThreshold: 0.0,
+            autoTcScale: 0.0,
+            autoReactiveScale: 0.0,
+            autoReactiveMax: 0.0,
+        };
+
+        unsafe {
+            let return_code = ffxFsr2ContextDispatch(&mut self.context, &dispatch_description);
+            assert_eq!(return_code, FfxErrorCodes_FFX_OK);
+        }
     }
 }
 
@@ -171,4 +217,17 @@ impl Drop for FsrContext {
 
         unsafe { self.render_device.wgpu_device().as_hal::<Vulkan, _, _>(c) };
     }
+}
+
+pub struct FsrDispatchDescription<'a> {
+    pub command_encoder: &'a mut CommandEncoder,
+    pub color: &'a Texture,
+    pub depth: &'a Texture,
+    pub motion_vectors: &'a Texture,
+    pub output: &'a Texture,
+    pub jitter: Vec2,
+    pub render_size: UVec2,
+    pub frame_time_delta: f32,
+    pub reset: bool,
+    pub camera_projection: &'a PerspectiveProjection,
 }
