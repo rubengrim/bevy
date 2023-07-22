@@ -79,11 +79,9 @@ impl FsrInterface {
         hdr: bool,
         dynamic_resolution_scaling: bool,
     ) -> FsrContext {
-        let mut flags =
-            FfxFsr2InitializationFlagBits::FFX_FSR2_ENABLE_DISPLAY_RESOLUTION_MOTION_VECTORS
-                | FfxFsr2InitializationFlagBits::FFX_FSR2_ENABLE_DEPTH_INVERTED
-                | FfxFsr2InitializationFlagBits::FFX_FSR2_ENABLE_DEPTH_INFINITE
-                | FfxFsr2InitializationFlagBits::FFX_FSR2_ENABLE_AUTO_EXPOSURE;
+        let mut flags = FfxFsr2InitializationFlagBits::FFX_FSR2_ENABLE_DEPTH_INVERTED
+            | FfxFsr2InitializationFlagBits::FFX_FSR2_ENABLE_DEPTH_INFINITE
+            | FfxFsr2InitializationFlagBits::FFX_FSR2_ENABLE_AUTO_EXPOSURE;
         if hdr {
             flags |= FfxFsr2InitializationFlagBits::FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE;
         }
