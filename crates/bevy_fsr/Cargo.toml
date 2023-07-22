@@ -22,7 +22,7 @@ keywords = ["bevy"]
 # bevy_reflect = { path = "../bevy_reflect", version = "0.12.0-dev" }
 bevy_render = { path = "../bevy_render", version = "0.12.0-dev" }
 # bevy_transform = { path = "../bevy_transform", version = "0.12.0-dev" }
-# bevy_math = { path = "../bevy_math", version = "0.12.0-dev" }
+bevy_math = { path = "../bevy_math", version = "0.12.0-dev" }
 # bevy_utils = { path = "../bevy_utils", version = "0.12.0-dev" }
 
 ash = "0.37"

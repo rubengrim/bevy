@@ -40,6 +40,7 @@ fn main() {
         .clang_arg(format!("-I{vulkan_sdk}/{vulkan_sdk_include}"))
         .clang_args(["-x", "c++"])
         .clang_arg(format!("-Iinclude"))
+        .bitfield_enum("FfxFsr2InitializationFlagBits")
         .blocklist_type("VkDevice")
         .blocklist_type("VkPhysicalDevice")
         .blocklist_type("PFN_vkGetDeviceProcAddr")
