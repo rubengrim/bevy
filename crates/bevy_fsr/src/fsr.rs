@@ -14,7 +14,7 @@ mod fsr {
 use bevy_math::{UVec2, Vec2};
 use bevy_render::{
     prelude::PerspectiveProjection,
-    render_resource::CommandEncoder,
+    render_resource::{CommandEncoder, TextureFormat},
     renderer::{
         wgpu_hal_api::{Api, Vulkan},
         RenderDevice,
@@ -30,7 +30,8 @@ use fsr::{
     FfxResourceDescription__bindgen_ty_1, FfxResourceDescription__bindgen_ty_2,
     FfxResourceDescription__bindgen_ty_3, FfxResourceFlags_FFX_RESOURCE_FLAGS_NONE,
     FfxResourceStates_FFX_RESOURCE_STATE_PIXEL_COMPUTE_READ,
-    FfxResourceType_FFX_RESOURCE_TYPE_TEXTURE2D, FfxSurfaceFormat, VkDeviceContext,
+    FfxResourceType_FFX_RESOURCE_TYPE_TEXTURE2D, FfxResourceUsage_FFX_RESOURCE_USAGE_UAV,
+    FfxSurfaceFormat, VkDeviceContext,
 };
 use std::{mem::MaybeUninit, ops::Sub, ptr};
 
@@ -240,14 +241,21 @@ pub struct FsrDispatchDescription<'a> {
 fn ffx_texture(image: &GpuImage) -> FfxResource {
     unsafe {
         ffxGetResourceVK(
-            // image
-            //     .texture
-            //     .as_hal::<Vulkan, _, _>(|texture| texture.unwrap().raw_handle()),
-            todo!("Need to modify wgpu to allow Texture::as_hal() to return a"),
+            image
+                .texture
+                .as_hal::<Vulkan, _, _>(|texture| texture.unwrap().raw_handle()),
             FfxResourceDescription {
                 type_: FfxResourceType_FFX_RESOURCE_TYPE_TEXTURE2D,
                 format: match image.texture_format {
-                    _ => todo!(),
+                    TextureFormat::Rgba8UnormSrgb => {
+                        FfxSurfaceFormat::FFX_SURFACE_FORMAT_R8G8B8A8_UNORM
+                    }
+                    TextureFormat::Rgba16Float => {
+                        FfxSurfaceFormat::FFX_SURFACE_FORMAT_R16G16B16A16_FLOAT
+                    }
+                    TextureFormat::Depth32Float => FfxSurfaceFormat::FFX_SURFACE_FORMAT_R32_FLOAT,
+                    TextureFormat::Rg16Float => FfxSurfaceFormat::FFX_SURFACE_FORMAT_R16G16_FLOAT,
+                    _ => unimplemented!(),
                 },
                 __bindgen_anon_1: FfxResourceDescription__bindgen_ty_1 {
                     width: image.size.x as u32,
@@ -255,10 +263,10 @@ fn ffx_texture(image: &GpuImage) -> FfxResource {
                 __bindgen_anon_2: FfxResourceDescription__bindgen_ty_2 {
                     height: image.size.y as u32,
                 },
-                __bindgen_anon_3: FfxResourceDescription__bindgen_ty_3 { depth: todo!() },
+                __bindgen_anon_3: FfxResourceDescription__bindgen_ty_3 { depth: 1 },
                 mipCount: image.mip_level_count,
                 flags: FfxResourceFlags_FFX_RESOURCE_FLAGS_NONE,
-                usage: todo!(),
+                usage: FfxResourceUsage_FFX_RESOURCE_USAGE_UAV,
             },
             ptr::null_mut(),
             FfxResourceStates_FFX_RESOURCE_STATE_PIXEL_COMPUTE_READ,
