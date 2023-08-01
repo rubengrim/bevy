@@ -190,7 +190,7 @@ impl FsrContext {
             preExposure: 0.0,
             reset: dispatch_description.reset,
             cameraNear: dispatch_description.camera_projection.near,
-            cameraFar: dispatch_description.camera_projection.far, // TODO: f32::INFINITY instead?
+            cameraFar: f32::INFINITY,
             cameraFovAngleVertical: dispatch_description.camera_projection.fov,
             viewSpaceToMetersFactor: todo!(),
             enableAutoReactive: false,
