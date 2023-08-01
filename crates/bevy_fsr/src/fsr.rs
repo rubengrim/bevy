@@ -163,15 +163,25 @@ impl FsrContext {
     }
 
     pub fn dispatch<'a>(&mut self, dispatch_description: FsrDispatchDescription<'a>) {
+        let command_list = unsafe {
+            ffxGetCommandListVK(
+                dispatch_description
+                    .command_encoder
+                    .as_hal_mut::<Vulkan, _, _>(|command_encoder| {
+                        command_encoder.unwrap().raw_handle() // TODO: Error if not Vulkan
+                    }),
+            )
+        };
+
         let dispatch_description = FfxFsr2DispatchDescription {
-            commandList: todo!(),
-            color: todo!(),
-            depth: todo!(),
-            motionVectors: todo!(),
-            exposure: todo!(),
-            reactive: todo!(),
-            transparencyAndComposition: todo!(),
-            output: todo!(),
+            commandList: command_list,
+            color: ffx_texture(dispatch_description.color_and_output),
+            depth: ffx_texture(dispatch_description.depth),
+            motionVectors: ffx_texture(dispatch_description.motion_vectors),
+            exposure: ffx_null_texture(),
+            reactive: ffx_null_texture(),
+            transparencyAndComposition: ffx_null_texture(),
+            output: ffx_texture(dispatch_description.color_and_output),
             jitterOffset: FfxFloatCoords2D {
                 x: dispatch_description.jitter.x,
                 y: dispatch_description.jitter.y,
@@ -192,9 +202,9 @@ impl FsrContext {
             cameraNear: dispatch_description.camera_projection.near,
             cameraFar: f32::INFINITY,
             cameraFovAngleVertical: dispatch_description.camera_projection.fov,
-            viewSpaceToMetersFactor: todo!(),
+            viewSpaceToMetersFactor: 0.0, // TODO: Need to set properly?
             enableAutoReactive: false,
-            colorOpaqueOnly: todo!(),
+            colorOpaqueOnly: ffx_null_texture(),
             autoTcThreshold: 0.0,
             autoTcScale: 0.0,
             autoReactiveScale: 0.0,
@@ -272,4 +282,22 @@ fn ffx_texture(image: &GpuImage) -> FfxResource {
             FfxResourceStates_FFX_RESOURCE_STATE_PIXEL_COMPUTE_READ,
         )
     }
+}
+
+fn ffx_null_texture() -> FfxResource {
+    ffxGetResourceVK(
+        ptr::null(),
+        FfxResourceDescription {
+            type_: FfxResourceType_FFX_RESOURCE_TYPE_TEXTURE2D,
+            format: FFX_SURFACE_FORMAT_R8G8B8A8_UNORM,
+            __bindgen_anon_1: FfxResourceDescription__bindgen_ty_1 { width: 0 },
+            __bindgen_anon_2: FfxResourceDescription__bindgen_ty_2 { height: 0 },
+            __bindgen_anon_3: FfxResourceDescription__bindgen_ty_3 { depth: 0 },
+            mipCount: 0,
+            flags: FfxResourceFlags_FFX_RESOURCE_FLAGS_NONE,
+            usage: FfxResourceUsage_FFX_RESOURCE_USAGE_UAV,
+        },
+        ptr::null_mut(),
+        FfxResourceStates_FFX_RESOURCE_STATE_PIXEL_COMPUTE_READ,
+    )
 }
