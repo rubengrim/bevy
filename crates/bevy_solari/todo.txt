@@ -1,4 +1,4 @@
-* Skylight (bruneton sky)
+* Skylight https://github.com/sebh/UnrealEngineSkyAtmosphere
 * World cache improvements
     * Tie world cache to camera, use a log scale for cell size
     * Reservoir sampling for the world cache update method
