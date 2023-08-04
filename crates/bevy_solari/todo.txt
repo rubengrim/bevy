@@ -1,5 +1,7 @@
 * Skylight https://github.com/sebh/UnrealEngineSkyAtmosphere
 * World cache improvements
+    * Use geometric normals for key
+    * Short trace distance
     * Tie world cache to camera, use a log scale for cell size
     * Reservoir sampling for the world cache update method
         * Light sources and other cache entries via choosing a random slice of world_cache_active_cell_indices
@@ -15,6 +17,7 @@
     * Temporal accumulation
     * Ray guiding using last-frame's probes
 * Improve spatiotemporal denoiser
+    * Spatial weights
     * Early return for denoise passes for sky pixels or 0 spatial denoising
     * Experiment with mixing spatial denoise into temporal history, either before or after
 
