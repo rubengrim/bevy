@@ -1,4 +1,4 @@
-* Skylight / IBL (sample from a sun disk, add atmosphere / sky background on top)
+* Skylight (bruneton sky)
 * World cache improvements
     * Tie world cache to camera, use a log scale for cell size
     * Reservoir sampling for the world cache update method
