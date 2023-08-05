@@ -20,7 +20,7 @@ fn world_cache_sample_irradiance(@builtin(global_invocation_id) active_cell_id: 
         let ray_hit = trace_ray(cell_data.position, ray_direction, 0.001);
         if ray_hit.kind != RAY_QUERY_INTERSECTION_NONE {
             let ray_hit = map_ray_hit(ray_hit);
-            irradiance += ray_hit.material.base_color * query_world_cache(ray_hit.world_position, ray_hit.world_normal);
+            irradiance += ray_hit.material.base_color * query_world_cache(ray_hit.world_position, ray_hit.geometric_world_normal);
         }
 
         world_cache_active_cells_new_irradiance[active_cell_id.x] = irradiance;

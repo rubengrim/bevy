@@ -38,7 +38,7 @@ fn update_screen_probes(
     let ray_hit = trace_ray(ray_origin, octahedral_normal, 0.001);
     if ray_hit.kind != RAY_QUERY_INTERSECTION_NONE {
         let ray_hit = map_ray_hit(ray_hit);
-        color = ray_hit.material.base_color * query_world_cache(ray_hit.world_position, ray_hit.world_normal);
+        color = ray_hit.material.base_color * query_world_cache(ray_hit.world_position, ray_hit.geometric_world_normal);
     }
 
     textureStore(screen_probes_unfiltered, global_id.xy, vec4(color, 1.0));

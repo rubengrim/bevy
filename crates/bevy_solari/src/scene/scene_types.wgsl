@@ -74,6 +74,7 @@ fn sample_material(material: SolariMaterial, uv: vec2<f32>) -> SolariSampledMate
 struct SolariRayHit {
     world_position: vec3<f32>,
     world_normal: vec3<f32>,
+    geometric_world_normal: vec3<f32>,
     uv: vec2<f32>,
     material: SolariSampledMaterial,
 }
@@ -100,6 +101,7 @@ fn map_ray_hit(ray_hit: RayIntersection) -> SolariRayHit {
     let transform = transforms[ray_hit.instance_custom_index];
     let local_normal = mat3x3(vertices[0].local_normal, vertices[1].local_normal, vertices[2].local_normal) * barycentrics;
     var world_normal = normalize(mat3x3(transform[0].xyz, transform[1].xyz, transform[2].xyz) * local_normal);
+    let geometric_world_normal = world_normal;
     if material.normal_map_index != TEXTURE_MAP_NONE {
         let local_tangent = mat3x3(vertices[0].local_tangent.xyz, vertices[1].local_tangent.xyz, vertices[2].local_tangent.xyz) * barycentrics;
         let world_tangent = normalize(mat3x3(transform[0].xyz, transform[1].xyz, transform[2].xyz) * local_tangent);
@@ -112,5 +114,5 @@ fn map_ray_hit(ray_hit: RayIntersection) -> SolariRayHit {
 
     let sampled_material = sample_material(material, uv);
 
-    return SolariRayHit(world_position, world_normal, uv, sampled_material);
+    return SolariRayHit(world_position, world_normal, geometric_world_normal, uv, sampled_material);
 }
