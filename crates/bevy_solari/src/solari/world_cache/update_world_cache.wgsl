@@ -1,4 +1,5 @@
 #import bevy_solari::scene_bindings
+#import bevy_solari::view_bindings
 #import bevy_solari::utils
 #import bevy_solari::world_cache::bindings
 #import bevy_solari::world_cache::utils

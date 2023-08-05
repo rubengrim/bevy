@@ -113,51 +113,101 @@ impl ViewNode for SolariNode {
 
         solari_pass.set_bind_group(0, &world_cache_resources.bind_group, &[]);
 
+        solari_pass.push_debug_group("decay_world_cache_cells");
         solari_pass.set_pipeline(decay_world_cache_cells_pipeline);
         solari_pass.dispatch_workgroups((WORLD_CACHE_SIZE / 1024) as u32, 1, 1);
+        solari_pass.pop_debug_group();
 
+        solari_pass.push_debug_group("compact_world_cache_single_block");
         solari_pass.set_pipeline(compact_world_cache_single_block_pipeline);
         solari_pass.dispatch_workgroups((WORLD_CACHE_SIZE / 1024) as u32, 1, 1);
+        solari_pass.pop_debug_group();
 
+        solari_pass.push_debug_group("compact_world_cache_blocks");
         solari_pass.set_pipeline(compact_world_cache_blocks_pipeline);
         solari_pass.dispatch_workgroups(1, 1, 1);
+        solari_pass.pop_debug_group();
 
+        solari_pass.push_debug_group("compact_world_cache_write_active_cells");
         solari_pass.set_pipeline(compact_world_cache_write_active_cells_pipeline);
         solari_pass.dispatch_workgroups((WORLD_CACHE_SIZE / 1024) as u32, 1, 1);
+        solari_pass.pop_debug_group();
 
         solari_pass.set_bind_group(0, &scene_bind_group, &[]);
         solari_pass.set_bind_group(1, &bind_group.0, &view_dynamic_offsets);
         solari_pass.set_bind_group(2, &world_cache_resources.bind_group_no_dispatch, &[]);
 
+        solari_pass.push_debug_group("world_cache_sample_irradiance");
         solari_pass.set_pipeline(world_cache_sample_irradiance_pipeline);
         solari_pass
             .dispatch_workgroups_indirect(&world_cache_resources.active_cells_dispatch_buffer, 0);
+        solari_pass.pop_debug_group();
 
+        solari_pass.push_debug_group("world_cache_blend_new_samples");
         solari_pass.set_pipeline(world_cache_blend_new_samples_pipeline);
         solari_pass
             .dispatch_workgroups_indirect(&world_cache_resources.active_cells_dispatch_buffer, 0);
+        solari_pass.pop_debug_group();
 
         solari_pass.pop_debug_group();
 
         solari_pass.push_debug_group("screen_shading");
 
-        let mut dispatch = |pipeline| {
-            solari_pass.set_pipeline(pipeline);
-            solari_pass.dispatch_workgroups(width, height, 1);
-        };
+        solari_pass.push_debug_group("gmt_buffer");
+        solari_pass.set_pipeline(gmt_buffer_pipeline);
+        solari_pass.dispatch_workgroups(width, height, 1);
+        solari_pass.pop_debug_group();
 
-        dispatch(gmt_buffer_pipeline);
-        dispatch(update_screen_probes_pipeline);
-        dispatch(filter_screen_probes_pipeline);
-        dispatch(intepolate_screen_probes_pipeline);
-        dispatch(denoise_indirect_diffuse_temporal_pipeline);
-        dispatch(denoise_indirect_diffuse_spatial_pipeline);
-        dispatch(sample_direct_diffuse_pipeline);
-        dispatch(denoise_direct_diffuse_temporal_pipeline);
-        dispatch(denoise_direct_diffuse_spatial_pipeline);
-        dispatch(shade_view_target_pipeline);
+        solari_pass.push_debug_group("update_screen_probes");
+        solari_pass.set_pipeline(update_screen_probes_pipeline);
+        solari_pass.dispatch_workgroups(width, height, 1);
+        solari_pass.pop_debug_group();
+
+        solari_pass.push_debug_group("filter_screen_probes");
+        solari_pass.set_pipeline(filter_screen_probes_pipeline);
+        solari_pass.dispatch_workgroups(width, height, 1);
+        solari_pass.pop_debug_group();
+
+        solari_pass.push_debug_group("intepolate_screen_probes");
+        solari_pass.set_pipeline(intepolate_screen_probes_pipeline);
+        solari_pass.dispatch_workgroups(width, height, 1);
+        solari_pass.pop_debug_group();
+
+        solari_pass.push_debug_group("denoise_indirect_diffuse_temporal");
+        solari_pass.set_pipeline(denoise_indirect_diffuse_temporal_pipeline);
+        solari_pass.dispatch_workgroups(width, height, 1);
+        solari_pass.pop_debug_group();
+
+        solari_pass.push_debug_group("denoise_indirect_diffuse_spatial");
+        solari_pass.set_pipeline(denoise_indirect_diffuse_spatial_pipeline);
+        solari_pass.dispatch_workgroups(width, height, 1);
+        solari_pass.pop_debug_group();
+
+        solari_pass.push_debug_group("sample_direct_diffuse");
+        solari_pass.set_pipeline(sample_direct_diffuse_pipeline);
+        solari_pass.dispatch_workgroups(width, height, 1);
+        solari_pass.pop_debug_group();
+
+        solari_pass.push_debug_group("denoise_direct_diffuse_temporal");
+        solari_pass.set_pipeline(denoise_direct_diffuse_temporal_pipeline);
+        solari_pass.dispatch_workgroups(width, height, 1);
+        solari_pass.pop_debug_group();
+
+        solari_pass.push_debug_group("denoise_direct_diffuse_spatial");
+        solari_pass.set_pipeline(denoise_direct_diffuse_spatial_pipeline);
+        solari_pass.dispatch_workgroups(width, height, 1);
+        solari_pass.pop_debug_group();
+
+        solari_pass.push_debug_group("shade_view_target");
+        solari_pass.set_pipeline(shade_view_target_pipeline);
+        solari_pass.dispatch_workgroups(width, height, 1);
+        solari_pass.pop_debug_group();
+
         // TODO: Enable TAA
-        // dispatch(taa_pipeline);
+        // solari_pass.push_debug_group("taa");
+        // solari_pass.set_pipeline(taa_pipeline);
+        solari_pass.dispatch_workgroups(width, height, 1);
+        // solari_pass.pop_debug_group();
 
         solari_pass.pop_debug_group();
 
