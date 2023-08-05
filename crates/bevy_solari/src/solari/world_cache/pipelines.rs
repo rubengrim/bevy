@@ -1,8 +1,11 @@
-use super::{
-    resources::SolariWorldCacheResources, SOLARI_WORLD_CACHE_COMPACT_ACTIVE_CELLS_SHADER,
-    SOLARI_WORLD_CACHE_UPDATE_SHADER,
+use super::resources::SolariWorldCacheResources;
+use crate::{
+    scene::bind_group_layout::SolariSceneBindGroupLayout,
+    solari::{
+        SolariViewBindGroupLayout, SOLARI_WORLD_CACHE_COMPACT_ACTIVE_CELLS_SHADER,
+        SOLARI_WORLD_CACHE_UPDATE_SHADER,
+    },
 };
-use crate::scene::bind_group_layout::SolariSceneBindGroupLayout;
 use bevy_ecs::{
     system::Resource,
     world::{FromWorld, World},
@@ -25,6 +28,7 @@ impl FromWorld for SolariWorldCachePipelineIds {
     fn from_world(world: &mut World) -> Self {
         let pipeline_cache = world.resource::<PipelineCache>();
         let scene_bind_group_layout = world.resource::<SolariSceneBindGroupLayout>();
+        let view_bind_group_layout = world.resource::<SolariViewBindGroupLayout>();
         let world_cache_resources = world.resource::<SolariWorldCacheResources>();
 
         let decay_world_cache_cells = ComputePipelineDescriptor {
@@ -79,6 +83,7 @@ impl FromWorld for SolariWorldCachePipelineIds {
             label: Some("solari_world_cache_sample_irradiance_pipeline".into()),
             layout: vec![
                 scene_bind_group_layout.0.clone(),
+                view_bind_group_layout.0.clone(),
                 world_cache_resources.bind_group_layout_no_dispatch.clone(),
             ],
             push_constant_ranges: vec![],
@@ -86,7 +91,7 @@ impl FromWorld for SolariWorldCachePipelineIds {
             shader_defs: vec![
                 "EXCLUDE_VIEW".into(),
                 "EXCLUDE_WORLD_CACHE_ACTIVE_CELLS_DISPATCH".into(),
-                ShaderDefVal::UInt("WORLD_CACHE_BIND_GROUP".into(), 1),
+                ShaderDefVal::UInt("WORLD_CACHE_BIND_GROUP".into(), 2),
             ],
             entry_point: "world_cache_sample_irradiance".into(),
         };
@@ -95,6 +100,7 @@ impl FromWorld for SolariWorldCachePipelineIds {
             label: Some("solari_world_cache_blend_new_samples_pipeline".into()),
             layout: vec![
                 scene_bind_group_layout.0.clone(),
+                view_bind_group_layout.0.clone(),
                 world_cache_resources.bind_group_layout_no_dispatch.clone(),
             ],
             push_constant_ranges: vec![],
@@ -102,7 +108,7 @@ impl FromWorld for SolariWorldCachePipelineIds {
             shader_defs: vec![
                 "EXCLUDE_VIEW".into(),
                 "EXCLUDE_WORLD_CACHE_ACTIVE_CELLS_DISPATCH".into(),
-                ShaderDefVal::UInt("WORLD_CACHE_BIND_GROUP".into(), 1),
+                ShaderDefVal::UInt("WORLD_CACHE_BIND_GROUP".into(), 2),
             ],
             entry_point: "world_cache_blend_new_samples".into(),
         };

@@ -17,7 +17,7 @@ use bevy_render::{
 use std::num::NonZeroU64;
 
 #[derive(Component)]
-pub struct SolariResources {
+pub struct SolariViewResources {
     g_buffer_previous: CachedTexture,
     g_buffer: CachedTexture,
     m_buffer: CachedTexture,
@@ -39,7 +39,7 @@ pub struct SolariResources {
     taa_history_current: CachedTexture,
 }
 
-pub fn prepare_resources(
+pub fn prepare_view_resources(
     views: Query<(Entity, &ExtractedCamera), With<SolariSettings>>,
     frame_count: Res<FrameCount>,
     mut commands: Commands,
@@ -194,7 +194,7 @@ pub fn prepare_resources(
                 viewport,
             );
 
-            commands.entity(entity).insert(SolariResources {
+            commands.entity(entity).insert(SolariViewResources {
                 g_buffer_previous: texture_cache.get(&render_device, g_buffer_previous),
                 g_buffer: texture_cache.get(&render_device, g_buffer),
                 m_buffer: texture_cache.get(&render_device, m_buffer),
@@ -230,9 +230,9 @@ pub fn prepare_resources(
 }
 
 #[derive(Resource)]
-pub struct SolariBindGroupLayout(pub BindGroupLayout);
+pub struct SolariViewBindGroupLayout(pub BindGroupLayout);
 
-impl FromWorld for SolariBindGroupLayout {
+impl FromWorld for SolariViewBindGroupLayout {
     fn from_world(world: &mut World) -> Self {
         let mut entry_i = 0;
         let mut entry = |ty| {
@@ -396,13 +396,13 @@ impl FromWorld for SolariBindGroupLayout {
 }
 
 #[derive(Component)]
-pub struct SolariBindGroup(pub BindGroup);
+pub struct SolariViewBindGroup(pub BindGroup);
 
-pub fn queue_bind_groups(
-    views: Query<(Entity, &SolariResources, &ViewTarget)>,
+pub fn queue_view_bind_groups(
+    views: Query<(Entity, &SolariViewResources, &ViewTarget)>,
     view_uniforms: Res<ViewUniforms>,
     previous_view_proj_uniforms: Res<PreviousViewProjectionUniforms>,
-    bind_group_layout: Res<SolariBindGroupLayout>,
+    bind_group_layout: Res<SolariViewBindGroupLayout>,
     mut commands: Commands,
     render_device: Res<RenderDevice>,
 ) {
@@ -454,7 +454,7 @@ pub fn queue_bind_groups(
 
             commands
                 .entity(entity)
-                .insert(SolariBindGroup(render_device.create_bind_group(
+                .insert(SolariViewBindGroup(render_device.create_bind_group(
                     &BindGroupDescriptor {
                         label: Some("solari_bind_group"),
                         layout: &bind_group_layout.0,

@@ -1,6 +1,11 @@
 use super::{
-    camera::PreviousViewProjectionUniformOffset, pipelines::SolariPipelineIds,
-    view_resources::SolariBindGroup, world_cache::resources::SolariWorldCacheResources,
+    camera::PreviousViewProjectionUniformOffset,
+    pipelines::SolariPipelineIds,
+    view_resources::SolariViewBindGroup,
+    world_cache::{
+        pipelines::SolariWorldCachePipelineIds,
+        resources::{SolariWorldCacheResources, WORLD_CACHE_SIZE},
+    },
 };
 use crate::scene::bind_group::SolariSceneBindGroup;
 use bevy_ecs::{query::QueryItem, world::World};
@@ -17,7 +22,7 @@ pub struct SolariNode;
 
 impl ViewNode for SolariNode {
     type ViewQuery = (
-        &'static SolariBindGroup,
+        &'static SolariViewBindGroup,
         &'static SolariPipelineIds,
         &'static ViewUniformOffset,
         &'static PreviousViewProjectionUniformOffset,
@@ -41,14 +46,22 @@ impl ViewNode for SolariNode {
             Some(pipeline_cache),
             Some(SolariSceneBindGroup(Some(scene_bind_group))),
             Some(world_cache_resources),
+            Some(world_cache_pipeline_ids),
         ) = (
             world.get_resource::<PipelineCache>(),
             world.get_resource::<SolariSceneBindGroup>(),
             world.get_resource::<SolariWorldCacheResources>(),
+            world.get_resource::<SolariWorldCachePipelineIds>(),
         ) else {
             return Ok(());
         };
         let (
+            Some(decay_world_cache_cells_pipeline),
+            Some(compact_world_cache_single_block_pipeline),
+            Some(compact_world_cache_blocks_pipeline),
+            Some(compact_world_cache_write_active_cells_pipeline),
+            Some(world_cache_sample_irradiance_pipeline),
+            Some(world_cache_blend_new_samples_pipeline),
             Some(gmt_buffer_pipeline),
             Some(update_screen_probes_pipeline),
             Some(filter_screen_probes_pipeline),
@@ -62,6 +75,12 @@ impl ViewNode for SolariNode {
             Some(_taa_pipeline),
             Some(viewport),
         ) = (
+            pipeline_cache.get_compute_pipeline(world_cache_pipeline_ids.decay_world_cache_cells),
+            pipeline_cache.get_compute_pipeline(world_cache_pipeline_ids.compact_world_cache_single_block),
+            pipeline_cache.get_compute_pipeline(world_cache_pipeline_ids.compact_world_cache_blocks),
+            pipeline_cache.get_compute_pipeline(world_cache_pipeline_ids.compact_world_cache_write_active_cells),
+            pipeline_cache.get_compute_pipeline(world_cache_pipeline_ids.world_cache_sample_irradiance),
+            pipeline_cache.get_compute_pipeline(world_cache_pipeline_ids.world_cache_blend_new_samples),
             pipeline_cache.get_compute_pipeline(pipeline_ids.gmt_buffer),
             pipeline_cache.get_compute_pipeline(pipeline_ids.update_screen_probes),
             pipeline_cache.get_compute_pipeline(pipeline_ids.filter_screen_probes),
@@ -80,39 +99,67 @@ impl ViewNode for SolariNode {
 
         let width = (viewport.x + 7) / 8;
         let height = (viewport.y + 7) / 8;
+        let view_dynamic_offsets = [
+            view_uniform_offset.offset,
+            previous_view_projection_uniform_offset.offset,
+        ];
 
-        {
-            let command_encoder = render_context.command_encoder();
-            let mut solari_pass = command_encoder.begin_compute_pass(&ComputePassDescriptor {
-                label: Some("solari_pass"),
-            });
+        let command_encoder = render_context.command_encoder();
+        let mut solari_pass = command_encoder.begin_compute_pass(&ComputePassDescriptor {
+            label: Some("solari_pass"),
+        });
 
-            solari_pass.set_bind_group(0, &scene_bind_group, &[]);
-            let view_dynamic_offsets = [
-                view_uniform_offset.offset,
-                previous_view_projection_uniform_offset.offset,
-            ];
-            solari_pass.set_bind_group(1, &bind_group.0, &view_dynamic_offsets);
-            solari_pass.set_bind_group(2, &world_cache_resources.bind_group, &[]);
+        solari_pass.push_debug_group("world_cache_update");
 
-            let mut dispatch = |pipeline| {
-                solari_pass.set_pipeline(pipeline);
-                solari_pass.dispatch_workgroups(width, height, 1);
-            };
+        solari_pass.set_bind_group(0, &world_cache_resources.bind_group, &[]);
 
-            dispatch(gmt_buffer_pipeline);
-            dispatch(update_screen_probes_pipeline);
-            dispatch(filter_screen_probes_pipeline);
-            dispatch(intepolate_screen_probes_pipeline);
-            dispatch(denoise_indirect_diffuse_temporal_pipeline);
-            dispatch(denoise_indirect_diffuse_spatial_pipeline);
-            dispatch(sample_direct_diffuse_pipeline);
-            dispatch(denoise_direct_diffuse_temporal_pipeline);
-            dispatch(denoise_direct_diffuse_spatial_pipeline);
-            dispatch(shade_view_target_pipeline);
-            // TODO: Enable TAA
-            // dispatch(taa_pipeline);
-        }
+        solari_pass.set_pipeline(decay_world_cache_cells_pipeline);
+        solari_pass.dispatch_workgroups((WORLD_CACHE_SIZE / 1024) as u32, 1, 1);
+
+        solari_pass.set_pipeline(compact_world_cache_single_block_pipeline);
+        solari_pass.dispatch_workgroups((WORLD_CACHE_SIZE / 1024) as u32, 1, 1);
+
+        solari_pass.set_pipeline(compact_world_cache_blocks_pipeline);
+        solari_pass.dispatch_workgroups(1, 1, 1);
+
+        solari_pass.set_pipeline(compact_world_cache_write_active_cells_pipeline);
+        solari_pass.dispatch_workgroups((WORLD_CACHE_SIZE / 1024) as u32, 1, 1);
+
+        solari_pass.set_bind_group(0, &scene_bind_group, &[]);
+        solari_pass.set_bind_group(1, &bind_group.0, &view_dynamic_offsets);
+        solari_pass.set_bind_group(2, &world_cache_resources.bind_group_no_dispatch, &[]);
+
+        solari_pass.set_pipeline(world_cache_sample_irradiance_pipeline);
+        solari_pass
+            .dispatch_workgroups_indirect(&world_cache_resources.active_cells_dispatch_buffer, 0);
+
+        solari_pass.set_pipeline(world_cache_blend_new_samples_pipeline);
+        solari_pass
+            .dispatch_workgroups_indirect(&world_cache_resources.active_cells_dispatch_buffer, 0);
+
+        solari_pass.pop_debug_group();
+
+        solari_pass.push_debug_group("screen_shading");
+
+        let mut dispatch = |pipeline| {
+            solari_pass.set_pipeline(pipeline);
+            solari_pass.dispatch_workgroups(width, height, 1);
+        };
+
+        dispatch(gmt_buffer_pipeline);
+        dispatch(update_screen_probes_pipeline);
+        dispatch(filter_screen_probes_pipeline);
+        dispatch(intepolate_screen_probes_pipeline);
+        dispatch(denoise_indirect_diffuse_temporal_pipeline);
+        dispatch(denoise_indirect_diffuse_spatial_pipeline);
+        dispatch(sample_direct_diffuse_pipeline);
+        dispatch(denoise_direct_diffuse_temporal_pipeline);
+        dispatch(denoise_direct_diffuse_spatial_pipeline);
+        dispatch(shade_view_target_pipeline);
+        // TODO: Enable TAA
+        // dispatch(taa_pipeline);
+
+        solari_pass.pop_debug_group();
 
         Ok(())
     }

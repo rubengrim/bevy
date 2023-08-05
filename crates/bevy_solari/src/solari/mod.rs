@@ -2,7 +2,7 @@ pub mod camera;
 pub mod node;
 mod pipelines;
 mod view_resources;
-pub mod world_cache;
+mod world_cache;
 
 use self::{
     camera::{
@@ -11,8 +11,8 @@ use self::{
         SolariSettings,
     },
     pipelines::{prepare_pipelines, SolariPipelines},
-    view_resources::{prepare_resources, queue_bind_groups, SolariBindGroupLayout},
-    world_cache::SolariWorldCachePlugin,
+    view_resources::{prepare_view_resources, queue_view_bind_groups, SolariViewBindGroupLayout},
+    world_cache::{pipelines::SolariWorldCachePipelineIds, resources::SolariWorldCacheResources},
 };
 use bevy_app::{App, Plugin, PreUpdate};
 use bevy_asset::{load_internal_asset, HandleUntyped};
@@ -47,6 +47,14 @@ const SOLARI_SHADE_VIEW_TARGET_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 1617171717171758);
 const SOLARI_TAA_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 1617171717171759);
+const SOLARI_WORLD_CACHE_BINDINGS_SHADER: HandleUntyped =
+    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 1717171717171756);
+const SOLARI_WORLD_CACHE_UTILS_SHADER: HandleUntyped =
+    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 2717171717171756);
+const SOLARI_WORLD_CACHE_COMPACT_ACTIVE_CELLS_SHADER: HandleUntyped =
+    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 3717171717171756);
+const SOLARI_WORLD_CACHE_UPDATE_SHADER: HandleUntyped =
+    HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 4717171717171756);
 
 impl Plugin for SolariRealtimePlugin {
     fn build(&self, app: &mut App) {
@@ -106,15 +114,40 @@ impl Plugin for SolariRealtimePlugin {
             Shader::from_wgsl
         );
         load_internal_asset!(app, SOLARI_TAA_SHADER, "taa.wgsl", Shader::from_wgsl);
+        load_internal_asset!(
+            app,
+            SOLARI_WORLD_CACHE_BINDINGS_SHADER,
+            "world_cache/world_cache_bindings.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            SOLARI_WORLD_CACHE_UTILS_SHADER,
+            "world_cache/world_cache_utils.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            SOLARI_WORLD_CACHE_COMPACT_ACTIVE_CELLS_SHADER,
+            "world_cache/compact_active_cells.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            SOLARI_WORLD_CACHE_UPDATE_SHADER,
+            "world_cache/update_world_cache.wgsl",
+            Shader::from_wgsl
+        );
 
-        app.add_plugin(SolariWorldCachePlugin)
-            .add_plugin(ExtractComponentPlugin::<SolariSettings>::default())
+        app.add_plugin(ExtractComponentPlugin::<SolariSettings>::default())
             .add_plugin(ExtractComponentPlugin::<PreviousViewProjection>::default())
             .add_systems(PreUpdate, update_previous_view_projections);
 
         app.sub_app_mut(RenderApp)
             .init_resource::<PreviousViewProjectionUniforms>()
-            .init_resource::<SolariBindGroupLayout>()
+            .init_resource::<SolariViewBindGroupLayout>()
+            .init_resource::<SolariWorldCacheResources>()
+            .init_resource::<SolariWorldCachePipelineIds>()
             .init_resource::<SolariPipelines>()
             .init_resource::<SpecializedComputePipelines<SolariPipelines>>()
             .add_systems(
@@ -122,11 +155,11 @@ impl Plugin for SolariRealtimePlugin {
                 (
                     prepare_taa_jitter.before(prepare_view_uniforms),
                     prepare_previous_view_projection_uniforms,
-                    prepare_resources,
+                    prepare_view_resources,
                     prepare_pipelines,
                 )
                     .in_set(RenderSet::Prepare),
             )
-            .add_systems(Render, queue_bind_groups.in_set(RenderSet::Queue));
+            .add_systems(Render, queue_view_bind_groups.in_set(RenderSet::Queue));
     }
 }

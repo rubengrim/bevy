@@ -1,10 +1,11 @@
-use super::WORLD_CACHE_SIZE;
 use bevy_ecs::{
     system::Resource,
     world::{FromWorld, World},
 };
 use bevy_render::{render_resource::*, renderer::RenderDevice};
 use std::num::NonZeroU64;
+
+pub const WORLD_CACHE_SIZE: u64 = 1048576;
 
 #[derive(Resource)]
 pub struct SolariWorldCacheResources {

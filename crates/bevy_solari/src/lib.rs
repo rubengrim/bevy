@@ -11,7 +11,7 @@ pub use crate::{
 use crate::{
     path_tracer::{node::SolariPathTracerNode, SolariPathTracerPlugin},
     scene::SolariScenePlugin,
-    solari::{node::SolariNode, world_cache::node::SolariWorldCacheNode, SolariRealtimePlugin},
+    solari::{node::SolariNode, SolariRealtimePlugin},
 };
 use bevy_app::{App, Plugin};
 use bevy_asset::{load_internal_asset, HandleUntyped};
@@ -23,8 +23,7 @@ use bevy_core_pipeline::{
 use bevy_ecs::system::Resource;
 use bevy_reflect::TypeUuid;
 use bevy_render::{
-    main_graph::node::CAMERA_DRIVER,
-    render_graph::{RenderGraph, RenderGraphApp, ViewNodeRunner},
+    render_graph::{RenderGraphApp, ViewNodeRunner},
     render_resource::Shader,
     renderer::RenderDevice,
     settings::WgpuFeatures,
@@ -40,7 +39,6 @@ pub struct SolariPlugin;
 
 const SOLARI_GRAPH: &str = "solari_graph";
 const SOLARI_NODE: &str = "solari_node";
-const SOLARI_WORLD_CACHE_NODE: &str = "solari_world_cache";
 const SOLARI_PATH_TRACER_NODE: &str = "solari_path_tracer_node";
 
 const SOLARI_UTILS_SHADER: HandleUntyped =
@@ -77,10 +75,6 @@ impl Plugin for SolariPlugin {
                 extract_default_ui_camera_view::<SolariPathTracer>,
             ),
         );
-
-        let render_graph = &mut render_app.world.resource_mut::<RenderGraph>();
-        render_graph.add_node(SOLARI_WORLD_CACHE_NODE, SolariWorldCacheNode);
-        render_graph.add_node_edge(SOLARI_WORLD_CACHE_NODE, CAMERA_DRIVER);
 
         render_app
             .add_render_sub_graph(SOLARI_GRAPH)

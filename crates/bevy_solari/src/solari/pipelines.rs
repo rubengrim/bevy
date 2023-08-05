@@ -1,5 +1,5 @@
 use super::{
-    view_resources::SolariBindGroupLayout, world_cache::resources::SolariWorldCacheResources, *,
+    view_resources::SolariViewBindGroupLayout, world_cache::resources::SolariWorldCacheResources, *,
 };
 use crate::{
     scene::bind_group_layout::SolariSceneBindGroupLayout, SolariDebugView, SolariSettings,
@@ -24,13 +24,15 @@ pub struct SolariPipelines {
 impl FromWorld for SolariPipelines {
     fn from_world(world: &mut World) -> Self {
         let scene_bind_group_layout = world.resource::<SolariSceneBindGroupLayout>();
-        let bind_group_layout = world.resource::<SolariBindGroupLayout>();
+        let bind_group_layout = world.resource::<SolariViewBindGroupLayout>();
         let world_cache_resources = world.resource::<SolariWorldCacheResources>();
 
         Self {
             scene_bind_group_layout: scene_bind_group_layout.0.clone(),
             bind_group_layout: bind_group_layout.0.clone(),
-            world_cache_bind_group_layout: world_cache_resources.bind_group_layout.clone(),
+            world_cache_bind_group_layout: world_cache_resources
+                .bind_group_layout_no_dispatch
+                .clone(),
         }
     }
 }
