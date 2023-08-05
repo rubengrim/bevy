@@ -206,7 +206,7 @@ impl ViewNode for SolariNode {
         // TODO: Enable TAA
         // solari_pass.push_debug_group("taa");
         // solari_pass.set_pipeline(taa_pipeline);
-        solari_pass.dispatch_workgroups(width, height, 1);
+        // solari_pass.dispatch_workgroups(width, height, 1);
         // solari_pass.pop_debug_group();
 
         solari_pass.pop_debug_group();
