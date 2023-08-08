@@ -107,9 +107,8 @@ pub fn queue_scene_bind_group(
 
     // Fill TLAS and scene buffers
     // TODO: Parallelize loop
-    for (i, (mesh_handle, material_handle, material, transform, previous_transform)) in
-        objects.into_iter().enumerate()
-    {
+    let mut object_i = 0;
+    for (mesh_handle, material_handle, material, transform, previous_transform) in objects {
         if let Some(blas) = blas_storage.get(mesh_handle) {
             let mesh_index = get_mesh_index(mesh_handle);
             let material_index = get_material_index(material_handle, material);
@@ -120,7 +119,7 @@ pub fn queue_scene_bind_group(
             previous_transforms.push(previous_transform);
 
             if material.emission.is_some() || material.emission_map.is_some() {
-                emissive_object_indices.push(i as u32);
+                emissive_object_indices.push(object_i as u32);
                 emissive_object_triangle_counts.push(
                     match mesh_assets.get(mesh_handle).unwrap().buffer_info {
                         GpuBufferInfo::Indexed { count, .. } => count / 3,
@@ -129,12 +128,14 @@ pub fn queue_scene_bind_group(
                 );
             }
 
-            *tlas.get_mut_single(i).unwrap() = Some(TlasInstance::new(
+            *tlas.get_mut_single(object_i).unwrap() = Some(TlasInstance::new(
                 blas,
                 tlas_transform(&transform),
-                i as u32, // TODO: Max 24 bits?
+                object_i as u32, // TODO: Max 24 bits?
                 0xFF,
             ));
+
+            object_i += 1;
         }
     }
 
