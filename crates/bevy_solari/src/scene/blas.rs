@@ -1,5 +1,5 @@
 use bevy_asset::{Handle, HandleId};
-use bevy_ecs::system::{Query, Res, ResMut, Resource};
+use bevy_ecs::system::{Res, ResMut, Resource};
 use bevy_render::{
     mesh::GpuBufferInfo,
     prelude::Mesh,
@@ -27,16 +27,14 @@ impl BlasStorage {
 // TODO: Async compute queue for BLAS creation
 // TODO: Ensure this system runs in parallel with other rendering stuff / in the background
 pub fn prepare_blas(
-    meshes: Query<&Handle<Mesh>>,
     mut blas_storage: ResMut<BlasStorage>,
     render_meshes: Res<RenderAssets<Mesh>>,
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
 ) {
-    // Get GpuMeshes and filter to compatible meshes without an existing BLAS
-    let meshes = meshes
+    // Iterate all GpuMeshes and filter to compatible meshes without an existing BLAS
+    let meshes = render_meshes
         .iter()
-        .filter_map(|mesh| render_meshes.get(mesh).map(|gpu_mesh| (mesh, gpu_mesh)))
         .filter(|(mesh, gpu_mesh)| {
             !blas_storage.storage.contains_key(&mesh.id())
                 && gpu_mesh.primitive_topology == PrimitiveTopology::TriangleList
@@ -136,6 +134,6 @@ fn map_buffer_info(
             count,
             index_format,
         } => (Some(buffer), Some(*count), Some(*index_format), Some(0)),
-        GpuBufferInfo::NonIndexed => (None, None, None, None),
+        GpuBufferInfo::NonIndexed => unreachable!(),
     }
 }
