@@ -45,7 +45,8 @@ pub struct SolariCamera3dBundle {
     pub global_transform: GlobalTransform,
     pub tonemapping: Tonemapping,
     pub color_grading: ColorGrading,
-    pub taa_jitter: TemporalJitter,
+    // TODO: Enable TAA
+    // pub taa_jitter: TemporalJitter,
 }
 
 impl Default for SolariCamera3dBundle {
@@ -62,7 +63,7 @@ impl Default for SolariCamera3dBundle {
             global_transform: Default::default(),
             tonemapping: Default::default(),
             color_grading: Default::default(),
-            taa_jitter: TemporalJitter::default(),
+            // taa_jitter: TemporalJitter::default(),
         }
     }
 }
