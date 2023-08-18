@@ -1,10 +1,12 @@
-use super::{material::GpuSolariMaterial, scene::PreviousGlobalTransform};
+use super::{
+    material::GpuSolariMaterial, scene::PreviousGlobalTransform, uniforms::SolariUniforms,
+};
 use bevy_ecs::{
     system::Resource,
     world::{FromWorld, World},
 };
 use bevy_math::Mat4;
-use bevy_render::{globals::GlobalsUniform, render_resource::*, renderer::RenderDevice};
+use bevy_render::{render_resource::*, renderer::RenderDevice};
 use std::num::NonZeroU32;
 
 #[derive(Resource)]
@@ -133,14 +135,14 @@ fn create_scene_bind_group_layout(render_device: &RenderDevice) -> BindGroupLayo
             },
             count: None,
         },
-        // Globals
+        // Uniforms
         BindGroupLayoutEntry {
             binding: 11,
             visibility: ShaderStages::COMPUTE,
             ty: BindingType::Buffer {
                 ty: BufferBindingType::Uniform,
                 has_dynamic_offset: false,
-                min_binding_size: Some(GlobalsUniform::min_size()),
+                min_binding_size: Some(SolariUniforms::min_size()),
             },
             count: None,
         },

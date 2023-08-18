@@ -1,7 +1,6 @@
 #define_import_path bevy_solari::scene_bindings
 
 #import bevy_solari::scene_types
-#import bevy_render::globals
 
 @group(0) @binding(0) var tlas: acceleration_structure;
 @group(0) @binding(1) var<storage> mesh_material_indices: array<u32>;
@@ -14,4 +13,4 @@
 @group(0) @binding(8) var texture_map_samplers: binding_array<sampler>;
 @group(0) @binding(9) var<storage> emissive_object_indices: array<u32>;
 @group(0) @binding(10) var<storage> emissive_object_triangle_counts: array<u32>;
-@group(0) @binding(11) var<uniform> globals: Globals;
+@group(0) @binding(11) var<uniform> uniforms: SolariUniforms;

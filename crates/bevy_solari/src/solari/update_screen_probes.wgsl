@@ -14,7 +14,7 @@ fn update_screen_probes(
     @builtin(local_invocation_index) local_index: u32,
 ) {
     let pixel_index = global_id.x + global_id.y * u32(view.viewport.z);
-    let frame_index = globals.frame_count * 5782582u;
+    let frame_index = uniforms.frame_count * 5782582u;
     var rng = pixel_index + frame_index;
     var rng2 = frame_index;
 

@@ -4,7 +4,10 @@ mod solari;
 
 pub use crate::{
     path_tracer::camera::{SolariPathTracer, SolariPathTracerCamera3dBundle},
-    scene::material::{SolariMaterial, SolariMaterialMeshBundle},
+    scene::{
+        material::{SolariMaterial, SolariMaterialMeshBundle},
+        uniforms::SolariSun,
+    },
     solari::camera::{SolariCamera3dBundle, SolariDebugView, SolariSettings},
 };
 

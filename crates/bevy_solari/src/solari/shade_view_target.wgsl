@@ -14,7 +14,7 @@ fn shade_view_target(
     if any(global_id.xy >= screen_size) { return; }
 
     let pixel_index = global_id.x + global_id.y * screen_size.x;
-    let frame_index = globals.frame_count * 5782582u;
+    let frame_index = uniforms.frame_count * 5782582u;
     var rng = pixel_index + frame_index;
 
     let g_buffer_pixel = textureLoad(g_buffer, global_id.xy);

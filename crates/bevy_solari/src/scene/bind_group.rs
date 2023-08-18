@@ -4,11 +4,13 @@ use super::{
     material::{GpuSolariMaterial, SolariMaterial},
     misc::{new_storage_buffer, pack_object_indices, tlas_transform, IndexedVec},
     scene::PreviousGlobalTransform,
+    uniforms::{SolariSun, SolariUniforms},
 };
 use bevy_asset::Handle;
+use bevy_core::FrameCount;
 use bevy_ecs::system::{Query, Res, ResMut, Resource};
+use bevy_math::Vec3;
 use bevy_render::{
-    globals::GlobalsBuffer,
     mesh::GpuBufferInfo,
     prelude::{Color, Mesh},
     render_asset::RenderAssets,
@@ -30,13 +32,14 @@ pub fn queue_scene_bind_group(
         &GlobalTransform,
         &PreviousGlobalTransform,
     )>,
+    sun: Query<&SolariSun>,
     mut scene_bind_group: ResMut<SolariSceneBindGroup>,
     scene_bind_group_layout: Res<SolariSceneBindGroupLayout>,
     mesh_assets: Res<RenderAssets<Mesh>>,
     image_assets: Res<RenderAssets<Image>>,
     blas_storage: Res<BlasStorage>,
-    globals_buffer: Res<GlobalsBuffer>,
     fallback_image: Res<FallbackImage>,
+    frame_count: Res<FrameCount>,
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
 ) {
@@ -196,6 +199,14 @@ pub fn queue_scene_bind_group(
         samplers.push(&fallback_image.sampler);
     }
 
+    // Build uniforms
+    let sun = sun.get_single().unwrap_or(&SolariSun {
+        direction: Vec3::ZERO,
+        illuminance: 0.0,
+        color: Color::BLACK,
+    });
+    let uniforms = &SolariUniforms::new(&frame_count, sun, &render_device, &render_queue);
+
     // Create scene bind group
     scene_bind_group.0 = Some(render_device.create_bind_group(&BindGroupDescriptor {
         label: Some("solari_scene_bind_group"),
@@ -247,7 +258,7 @@ pub fn queue_scene_bind_group(
             },
             BindGroupEntry {
                 binding: 11,
-                resource: globals_buffer.buffer.binding().unwrap(), // TODO
+                resource: uniforms.binding().unwrap(),
             },
         ],
     }));

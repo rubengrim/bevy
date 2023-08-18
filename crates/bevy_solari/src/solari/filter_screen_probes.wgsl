@@ -35,7 +35,7 @@ fn filter_screen_probes(
 ) {
     let probe_index = workgroup_id.x + workgroup_id.y * workgroup_count.x;
     let pixel_index = global_id.x + global_id.y * u32(view.viewport.z);
-    let frame_index = globals.frame_count * 5782582u;
+    let frame_index = uniforms.frame_count * 5782582u;
     var rng = pixel_index + frame_index;
     var rng2 = frame_index;
 

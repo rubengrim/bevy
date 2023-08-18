@@ -8,7 +8,7 @@ fn sample_direct_diffuse(@builtin(global_invocation_id) global_id: vec3<u32>) {
     if any(global_id.xy >= screen_size) { return; }
 
     let pixel_index = global_id.x + global_id.y * screen_size.x;
-    let frame_index = globals.frame_count * 5782582u;
+    let frame_index = uniforms.frame_count * 5782582u;
     var rng = pixel_index + frame_index;
 
     var reservoir = Reservoir(vec3(0.0), vec3(0.0), 0.0, 0.0, 0.0, 0u);

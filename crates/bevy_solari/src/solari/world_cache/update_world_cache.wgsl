@@ -10,7 +10,7 @@ fn world_cache_sample_irradiance(@builtin(global_invocation_id) active_cell_id: 
         let cell_index = world_cache_active_cell_indices[active_cell_id.x];
         let cell_data = world_cache_cell_data[cell_index];
 
-        let frame_index = globals.frame_count * 5782582u;
+        let frame_index = uniforms.frame_count * 5782582u;
         var rng = cell_index + frame_index;
 
         var irradiance = vec3(0.0);

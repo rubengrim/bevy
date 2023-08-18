@@ -1,5 +1,11 @@
 #define_import_path bevy_solari::scene_types
 
+struct SolariUniforms {
+    frame_count: u32,
+    sun_direction: vec3<f32>,
+    sun_color: vec3<f32>,
+}
+
 struct SolariIndexBuffer {
     buffer: array<u32>,
 }

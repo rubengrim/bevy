@@ -49,8 +49,7 @@ pub fn new_storage_buffer<T: ShaderSize + WriteInto>(
     render_device: &RenderDevice,
     render_queue: &RenderQueue,
 ) -> StorageBuffer<Vec<T>> {
-    let mut buffer = StorageBuffer::default();
-    buffer.set(vec);
+    let mut buffer = StorageBuffer::from(vec);
     buffer.set_label(Some(label));
     buffer.write_buffer(render_device, render_queue);
     buffer

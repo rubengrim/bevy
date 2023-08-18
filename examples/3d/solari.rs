@@ -4,7 +4,7 @@ use bevy::{
     prelude::*,
     solari::{
         SolariCamera3dBundle, SolariDebugView, SolariMaterial, SolariPathTracer, SolariSettings,
-        SolariSupported,
+        SolariSun, SolariSupported,
     },
 };
 
@@ -48,6 +48,8 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..default()
         }),
     );
+
+    commands.spawn(SolariSun::default());
 
     commands.spawn((
         SolariCamera3dBundle {
