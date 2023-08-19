@@ -6,7 +6,7 @@ pub use crate::{
     path_tracer::camera::{SolariPathTracer, SolariPathTracerCamera3dBundle},
     scene::{
         material::{SolariMaterial, SolariMaterialMeshBundle},
-        uniforms::SolariSun,
+        uniforms::{SolariSun, SolariSunBundle},
     },
     solari::camera::{SolariCamera3dBundle, SolariDebugView, SolariSettings},
 };

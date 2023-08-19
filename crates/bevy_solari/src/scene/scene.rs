@@ -1,4 +1,4 @@
-use crate::SolariMaterial;
+use crate::{SolariMaterial, SolariSun};
 use bevy_asset::{AssetEvent, Assets, Handle};
 use bevy_ecs::{
     prelude::{Component, Entity, EventReader},
@@ -24,6 +24,7 @@ pub fn extract_scene(
         )>,
     >,
     materials: Extract<Res<Assets<SolariMaterial>>>,
+    suns: Extract<Query<(Entity, &SolariSun, &GlobalTransform)>>,
     mut commands: Commands,
 ) {
     commands.insert_or_spawn_batch(
@@ -45,6 +46,12 @@ pub fn extract_scene(
                     })
                 },
             )
+            .collect::<Vec<_>>(),
+    );
+
+    commands.insert_or_spawn_batch(
+        suns.iter()
+            .map(|(entity, sun, transform)| (entity, (sun.clone(), transform.clone())))
             .collect::<Vec<_>>(),
     );
 }

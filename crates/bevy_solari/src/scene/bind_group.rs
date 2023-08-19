@@ -9,7 +9,6 @@ use super::{
 use bevy_asset::Handle;
 use bevy_core::FrameCount;
 use bevy_ecs::system::{Query, Res, ResMut, Resource};
-use bevy_math::Vec3;
 use bevy_render::{
     mesh::GpuBufferInfo,
     prelude::{Color, Mesh},
@@ -32,7 +31,7 @@ pub fn queue_scene_bind_group(
         &GlobalTransform,
         &PreviousGlobalTransform,
     )>,
-    sun: Query<&SolariSun>,
+    sun: Query<(&SolariSun, &GlobalTransform)>,
     mut scene_bind_group: ResMut<SolariSceneBindGroup>,
     scene_bind_group_layout: Res<SolariSceneBindGroupLayout>,
     mesh_assets: Res<RenderAssets<Mesh>>,
@@ -200,11 +199,14 @@ pub fn queue_scene_bind_group(
     }
 
     // Build uniforms
-    let sun = sun.get_single().unwrap_or(&SolariSun {
-        direction: Vec3::ZERO,
-        illuminance: 0.0,
-        color: Color::BLACK,
-    });
+    let dummy_sun_transform = GlobalTransform::default();
+    let sun = sun.get_single().unwrap_or((
+        &SolariSun {
+            illuminance: 0.0,
+            color: Color::BLACK,
+        },
+        &dummy_sun_transform,
+    ));
     let uniforms = &SolariUniforms::new(&frame_count, sun, &render_device, &render_queue);
 
     // Create scene bind group

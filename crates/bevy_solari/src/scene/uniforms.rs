@@ -1,16 +1,22 @@
 use bevy_core::FrameCount;
-use bevy_ecs::prelude::Component;
+use bevy_ecs::prelude::{Bundle, Component};
 use bevy_math::Vec3;
 use bevy_render::{
-    extract_component::ExtractComponent,
     prelude::Color,
     render_resource::{ShaderType, UniformBuffer},
     renderer::{RenderDevice, RenderQueue},
 };
+use bevy_transform::prelude::{GlobalTransform, Transform};
 
-#[derive(Component, ExtractComponent, Clone)]
+#[derive(Bundle, Default)]
+pub struct SolariSunBundle {
+    pub sun: SolariSun,
+    pub transform: Transform,
+    pub global_transform: GlobalTransform,
+}
+
+#[derive(Component, Clone)]
 pub struct SolariSun {
-    pub direction: Vec3,
     pub illuminance: f32,
     pub color: Color,
 }
@@ -18,7 +24,6 @@ pub struct SolariSun {
 impl Default for SolariSun {
     fn default() -> Self {
         Self {
-            direction: Vec3::new(-0.24868992, 0.94525665, 0.21128981),
             illuminance: 100000.0,
             color: Color::rgb_linear(1.0, 1.0, 1.0),
         }
@@ -35,15 +40,15 @@ pub struct SolariUniforms {
 impl SolariUniforms {
     pub fn new(
         frame_count: &FrameCount,
-        sun: &SolariSun,
+        sun: (&SolariSun, &GlobalTransform),
         render_device: &RenderDevice,
         render_queue: &RenderQueue,
     ) -> UniformBuffer<SolariUniforms> {
-        let sun_color = sun.color.as_linear_rgba_f32();
+        let sun_color = sun.0.color.as_linear_rgba_f32();
         let uniforms = Self {
             frame_count: frame_count.0,
-            sun_direction: sun.direction,
-            sun_color: Vec3::new(sun_color[0], sun_color[1], sun_color[2]) * sun.illuminance,
+            sun_direction: sun.1.back(),
+            sun_color: Vec3::new(sun_color[0], sun_color[1], sun_color[2]) * sun.0.illuminance,
         };
 
         let mut buffer = UniformBuffer::from(uniforms);

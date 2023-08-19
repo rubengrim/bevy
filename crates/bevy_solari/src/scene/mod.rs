@@ -14,16 +14,12 @@ use self::{
     scene::{
         ensure_necessary_vertex_attributes, extract_scene, update_mesh_previous_global_transforms,
     },
-    uniforms::SolariSun,
 };
 use bevy_app::{App, Plugin, PreUpdate, Update};
 use bevy_asset::{load_internal_asset, AddAsset, HandleUntyped};
 use bevy_ecs::schedule::IntoSystemConfigs;
 use bevy_reflect::TypeUuid;
-use bevy_render::{
-    extract_component::ExtractComponentPlugin, render_resource::Shader, ExtractSchedule, Render,
-    RenderApp, RenderSet,
-};
+use bevy_render::{render_resource::Shader, ExtractSchedule, Render, RenderApp, RenderSet};
 
 // TODO: Document valid mesh attributes + layout + indices
 
@@ -49,8 +45,7 @@ impl Plugin for SolariScenePlugin {
             Shader::from_wgsl
         );
 
-        app.add_plugin(ExtractComponentPlugin::<SolariSun>::default())
-            .add_asset::<SolariMaterial>()
+        app.add_asset::<SolariMaterial>()
             .add_systems(PreUpdate, update_mesh_previous_global_transforms)
             .add_systems(Update, ensure_necessary_vertex_attributes);
 

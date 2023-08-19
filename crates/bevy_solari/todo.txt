@@ -1,4 +1,4 @@
-* Skylight https://github.com/sebh/UnrealEngineSkyAtmosphere
+* Sun light
 * World cache improvements
     * Short trace distance
     * Tie world cache to camera, use a log scale for cell size
