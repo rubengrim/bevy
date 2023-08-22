@@ -135,7 +135,8 @@ pub mod gltf {
 
 #[cfg(feature = "bevy_pbr")]
 pub mod pbr {
-    //! Physically based rendering.
+    //! Physically based 3D rendering.
+    #![doc = include_str!("../../bevy_pbr/module_docs.md")]
     pub use bevy_pbr::*;
 }
 
