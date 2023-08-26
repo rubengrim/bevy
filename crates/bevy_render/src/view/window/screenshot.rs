@@ -301,6 +301,8 @@ pub(crate) fn submit_screenshot_commands(world: &World, encoder: &mut CommandEnc
                         },
                     })],
                     depth_stencil_attachment: None,
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
                 });
                 pass.set_pipeline(pipeline);
                 pass.set_bind_group(0, &memory.bind_group, &[]);

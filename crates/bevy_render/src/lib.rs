@@ -45,7 +45,7 @@ use bevy_window::{PrimaryWindow, RawHandleWrapper};
 use globals::GlobalsPlugin;
 pub use once_cell;
 use renderer::{RenderAdapter, RenderAdapterInfo, RenderDevice, RenderQueue};
-use wgpu::Instance;
+use wgpu::{Gles3MinorVersion, Instance};
 
 use crate::{
     camera::CameraPlugin,
@@ -232,6 +232,7 @@ impl Plugin for RenderPlugin {
                     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
                         backends,
                         dx12_shader_compiler: settings.dx12_shader_compiler.clone(),
+                        gles_minor_version: Gles3MinorVersion::default(),
                     });
                     let surface = primary_window.map(|wrapper| unsafe {
                         // SAFETY: Plugins should be set up on the main thread.

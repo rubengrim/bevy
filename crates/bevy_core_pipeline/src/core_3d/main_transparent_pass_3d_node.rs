@@ -58,6 +58,8 @@ impl ViewNode for MainTransparentPass3dNode {
                     }),
                     stencil_ops: None,
                 }),
+                timestamp_writes: None,
+                occlusion_query_set: None,
             });
 
             if let Some(viewport) = camera.viewport.as_ref() {
@@ -80,6 +82,8 @@ impl ViewNode for MainTransparentPass3dNode {
                     store: true,
                 }))],
                 depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
             };
 
             render_context

@@ -107,6 +107,7 @@ impl ViewNode for SolariNode {
         let command_encoder = render_context.command_encoder();
         let mut solari_pass = command_encoder.begin_compute_pass(&ComputePassDescriptor {
             label: Some("solari_pass"),
+            timestamp_writes: None,
         });
 
         solari_pass.push_debug_group("world_cache_update");

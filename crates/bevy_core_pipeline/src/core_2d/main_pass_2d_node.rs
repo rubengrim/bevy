@@ -70,6 +70,8 @@ impl Node for MainPass2dNode {
                     store: true,
                 }))],
                 depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
             });
 
             if let Some(viewport) = camera.viewport.as_ref() {
@@ -92,6 +94,8 @@ impl Node for MainPass2dNode {
                     store: true,
                 }))],
                 depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
             };
 
             render_context

@@ -88,6 +88,8 @@ impl Node for MsaaWritebackNode {
                     store: true,
                 }))],
                 depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
             };
 
             let bind_group =

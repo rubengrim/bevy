@@ -96,6 +96,8 @@ impl ViewNode for UpscalingNode {
                 },
             })],
             depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
         };
 
         let mut render_pass = render_context

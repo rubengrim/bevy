@@ -77,6 +77,8 @@ impl Node for UiPassNode {
                 store: true,
             }))],
             depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
         });
 
         transparent_phase.render(&mut render_pass, world, view_entity);

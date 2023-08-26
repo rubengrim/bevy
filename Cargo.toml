@@ -15,6 +15,9 @@ rust-version = "1.70.0"
 [patch.crates-io]
 naga = { git = "https://github.com/kvark/naga", branch = "array-length" }
 
+[patch."https://github.com/gfx-rs/naga"]
+naga = { git = "https://github.com/kvark/naga", branch = "array-length" }
+
 [workspace]
 exclude = [
   "benches",

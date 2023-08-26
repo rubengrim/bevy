@@ -67,6 +67,7 @@ impl ViewNode for SolariPathTracerNode {
             let command_encoder = render_context.command_encoder();
             let mut solari_pass = command_encoder.begin_compute_pass(&ComputePassDescriptor {
                 label: Some("solari_path_tracer_pass"),
+                timestamp_writes: None,
             });
 
             solari_pass.set_pipeline(pipeline);

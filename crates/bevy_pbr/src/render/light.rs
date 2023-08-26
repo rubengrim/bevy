@@ -1738,6 +1738,8 @@ impl Node for ShadowPassNode {
                             }),
                             stencil_ops: None,
                         }),
+                        timestamp_writes: None,
+                        occlusion_query_set: None,
                     });
 
                 shadow_phase.render(&mut render_pass, world, view_light_entity);
