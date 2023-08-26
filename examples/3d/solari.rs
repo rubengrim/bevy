@@ -4,7 +4,7 @@ use bevy::{
     prelude::*,
     solari::{
         SolariCamera3dBundle, SolariDebugView, SolariMaterial, SolariPathTracer, SolariSettings,
-        SolariSun, SolariSupported,
+        SolariSun, SolariSunBundle, SolariSupported,
     },
 };
 
@@ -20,7 +20,12 @@ fn main() {
         )
         .add_systems(
             Update,
-            (update, add_solari_materials, camera_controller)
+            (
+                update,
+                add_solari_materials,
+                camera_controller,
+                update_sun_direction,
+            )
                 .run_if(resource_exists::<SolariSupported>()),
         )
         .run();
@@ -49,7 +54,15 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         }),
     );
 
-    commands.spawn(SolariSun::default());
+    commands.spawn(SolariSunBundle {
+        transform: Transform::from_rotation(Quat::from_euler(
+            EulerRot::XYZ,
+            PI * -0.43,
+            PI * -0.08,
+            0.0,
+        )),
+        ..default()
+    });
 
     commands.spawn((
         SolariCamera3dBundle {
@@ -231,6 +244,27 @@ fn add_solari_materials(
                     commands.entity(entity).insert(solari_material.clone());
                 }
             }
+        }
+    }
+}
+
+fn update_sun_direction(
+    key_input: Res<Input<KeyCode>>,
+    time: Res<Time>,
+    mut query: Query<(&mut Transform, &mut SolariSun)>,
+    mut animate_sun_direction: Local<bool>,
+) {
+    if key_input.just_pressed(KeyCode::L) {
+        *animate_sun_direction = !*animate_sun_direction;
+    }
+    if *animate_sun_direction {
+        for (mut transform, _) in &mut query {
+            transform.rotation = Quat::from_euler(
+                EulerRot::ZYX,
+                0.0,
+                time.elapsed_seconds() * PI / 3.0,
+                -FRAC_PI_4,
+            );
         }
     }
 }

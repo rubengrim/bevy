@@ -37,6 +37,47 @@ fn trace_light_visibility(ray_origin: vec3<f32>, light_position: vec3<f32>, ligh
     return f32(ray_hit.kind == RAY_QUERY_INTERSECTION_NONE);
 }
 
+fn generate_tbn(normal: vec3<f32>) -> mat3x3<f32> {
+    var bitangent = vec3(0.0, 1.0, 0.0);
+
+    let n_dot_up = dot(normal, bitangent);
+    if 1.0 - abs(n_dot_up) <= 0.0000001 {
+        if n_dot_up > 0.0 {
+            bitangent = vec3(0.0, 0.0, 1.0);
+        } else {
+            bitangent = vec3(0.0, 0.0, -1.0);
+        }
+    }
+
+    let tangent = normalize(cross(bitangent, normal));
+    bitangent = cross(normal, tangent);
+
+    return mat3x3(tangent, bitangent, normal);
+}
+
+fn sample_sunlight(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>, state: ptr<function, u32>) -> vec3<f32> {
+    if all(uniforms.sun_color == 0.0) {
+        return vec3(0.0);
+    }
+
+    let r = rand_vec2(state);
+    let cos_theta = (1.0 - r.x) + r.x * 0.99998918271;
+    let sin_theta = sqrt(1.0 - cos_theta * cos_theta);
+    let phi = r.y * 2.0 * PI;
+    var ray_direction = vec3(vec2(cos(phi), sin(phi)) * sin_theta, cos_theta);
+
+    ray_direction = generate_tbn(uniforms.sun_direction) * ray_direction;
+
+    let ray = RayDesc(RAY_FLAG_TERMINATE_ON_FIRST_HIT, 0xFFu, 0.0, MAX_DEPTH, ray_origin + (0.001 * origin_world_normal), ray_direction);
+    var rq: ray_query;
+    rayQueryInitialize(&rq, tlas, ray);
+    rayQueryProceed(&rq);
+    let ray_hit = rayQueryGetCommittedIntersection(&rq);
+    let sun_visible = f32(ray_hit.kind == RAY_QUERY_INTERSECTION_NONE);
+
+    return uniforms.sun_color * sun_visible * 0.00006796703;
+}
+
 struct RandomLightSample {
     world_position: vec3<f32>,
     light_distance: f32,
@@ -107,7 +148,11 @@ fn sample_direct_lighting(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>,
     let light_count = arrayLength(&emissive_object_indices);
     let unshadowed_light = sample_unshadowed_direct_lighting(ray_origin, origin_world_normal, light_count, state);
     let visibility = trace_light_visibility(ray_origin, unshadowed_light.world_position, unshadowed_light.light_distance);
-    return unshadowed_light.light * unshadowed_light.inverse_pdf * visibility;
+    let emissive_light = unshadowed_light.light * unshadowed_light.inverse_pdf * visibility;
+
+    let sunlight = sample_sunlight(ray_origin, origin_world_normal, state);
+
+    return emissive_light + sunlight;
 }
 
 fn rand_u(state: ptr<function, u32>) -> u32 {

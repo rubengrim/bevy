@@ -96,6 +96,8 @@ fn sample_direct_diffuse(@builtin(global_invocation_id) global_id: vec3<u32>) {
     direct_light *= direct_light_weight;
     direct_light = max(vec3(0.0), direct_light);
 
+    direct_light += sample_sunlight(pixel_world_position, pixel_world_normal, &rng);
+
     direct_diffuse_reservoirs[pixel_index] = reservoir;
     textureStore(direct_diffuse, global_id.xy, vec4(direct_light, 1.0));
 }
