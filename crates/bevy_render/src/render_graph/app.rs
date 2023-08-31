@@ -2,7 +2,10 @@ use bevy_app::App;
 use bevy_ecs::world::FromWorld;
 use bevy_log::warn;
 
-use super::{Node, RenderGraph};
+use super::{
+    render_task::{add_render_task_to_render_app, RenderTask},
+    Node, RenderGraph,
+};
 
 /// Adds common [`RenderGraph`] operations to [`App`].
 pub trait RenderGraphApp {
@@ -22,13 +25,15 @@ pub trait RenderGraphApp {
         sub_graph_name: &'static str,
         edges: &[&'static str],
     ) -> &mut Self;
-    /// Add node edge to the specified graph
+    /// Add a node edge to the specified graph
     fn add_render_graph_edge(
         &mut self,
         sub_graph_name: &'static str,
         output_edge: &'static str,
         input_edge: &'static str,
     ) -> &mut Self;
+    /// Add a [`RenderTask`] to the render app
+    fn add_render_task<R: RenderTask>(&mut self) -> &mut Self;
 }
 
 impl RenderGraphApp for App {
@@ -87,6 +92,11 @@ impl RenderGraphApp for App {
             "RenderGraph not found. Make sure you are using add_render_sub_graph on the RenderApp",
         );
         render_graph.add_sub_graph(sub_graph_name, RenderGraph::default());
+        self
+    }
+
+    fn add_render_task<R: RenderTask>(&mut self) -> &mut Self {
+        add_render_task_to_render_app::<R>(self);
         self
     }
 }
