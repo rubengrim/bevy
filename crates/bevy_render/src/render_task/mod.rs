@@ -23,6 +23,7 @@ use bevy_utils::HashMap;
 use wgpu::CommandEncoder;
 
 // TODO: Write prepare systems
+// TODO: Figure out how to allow the user to specialize shaders
 // TODO: Dedup pipelines / bind group layouts
 // TODO: Replace hashmaps with compile time hashmaps over strings or marker types
 // TODO: Support buffers
