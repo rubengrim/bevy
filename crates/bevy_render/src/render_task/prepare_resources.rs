@@ -9,37 +9,75 @@ use bevy_utils::HashMap;
 use wgpu::{SamplerDescriptor, TextureDimension, TextureFormat, TextureView};
 
 pub enum RenderTaskResource {
-    TextureRead(RenderTaskTexture),
-    TextureWrite(RenderTaskTexture),
-    TextureReadWrite(RenderTaskTexture),
-    ExternalTextureRead(&'static str),
-    ExternalTextureWrite(&'static str),
-    ExternalTextureReadWrite(&'static str),
+    Texture {
+        name: &'static str,
+        format: TextureFormat,
+        width: u32,
+        height: u32,
+        mip_count: u32,
+        layer_count: u32,
+        double_buffered: bool, // TODO: Can infer this from RenderTask::passes()
+        dimension: TextureDimension,
+    },
     Sampler(Box<SamplerDescriptor<'static>>),
 }
 
-pub struct RenderTaskTexture {
-    pub label: &'static str,
-    pub format: TextureFormat,
-    pub width: u32,
-    pub height: u32,
-    pub mip: u32,
-    pub layer: u32,
-    pub from_previous_frame: bool,
-    pub dimension: TextureDimension,
-}
-
-impl RenderTaskTexture {
-    pub fn new(label: &'static str, format: TextureFormat, size: UVec2) -> Self {
-        Self {
-            label,
+impl RenderTaskResource {
+    pub fn texture_2d(name: &'static str, size: UVec2, format: TextureFormat) -> Self {
+        Self::Texture {
+            name,
             format,
             width: size.x,
             height: size.y,
+            mip_count: 1,
+            layer_count: 1,
+            double_buffered: false,
+            dimension: TextureDimension::D2,
+        }
+    }
+}
+
+pub enum RenderTaskResourceView {
+    SampledTexture {
+        name: &'static str,
+        mip: u32,
+        layer: u32,
+    },
+    StorageTextureWrite {
+        name: &'static str,
+        mip: u32,
+        layer: u32,
+    },
+    StorageTextureReadWrite {
+        name: &'static str,
+        mip: u32,
+        layer: u32,
+    },
+    Sampler(&'static str),
+}
+
+impl RenderTaskResourceView {
+    pub fn sampled_texture(name: &'static str) -> Self {
+        Self::SampledTexture {
+            name,
             mip: 0,
             layer: 0,
-            from_previous_frame: false,
-            dimension: TextureDimension::D2,
+        }
+    }
+
+    pub fn storage_texture_write(name: &'static str) -> Self {
+        Self::StorageTextureWrite {
+            name,
+            mip: 0,
+            layer: 0,
+        }
+    }
+
+    pub fn storage_texture_read_write(name: &'static str) -> Self {
+        Self::StorageTextureReadWrite {
+            name,
+            mip: 0,
+            layer: 0,
         }
     }
 }
@@ -72,5 +110,6 @@ impl RenderTaskResourceRegistry {
 }
 
 pub fn prepare_resources<R: RenderTask>() {
-    // TODO: Loop over all R::pipelines(), build up wgpu::TextureDescriptors and then create textures/views
+    // TODO: Loop over resources, map to texture descriptors
+    // TODO: Loop over entities, then loop over texture descriptors, create textures, put in internal registry
 }

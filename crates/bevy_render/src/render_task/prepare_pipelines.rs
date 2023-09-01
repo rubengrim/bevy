@@ -36,9 +36,11 @@ impl<R: RenderTask> RenderTaskPipelinesResource<R> {
         for entity in &query {
             let mut pipeline_ids = HashMap::new();
 
-            for key in R::pipelines().keys() {
-                let pipeline_id = special_pipeline.specialize(&pipeline_cache, &pipeline, key);
-                pipeline_ids.insert(*key, pipeline_id);
+            for pass_name in R::passes().keys() {
+                pipeline_ids.insert(
+                    *pass_name,
+                    special_pipeline.specialize(&pipeline_cache, &pipeline, pass_name),
+                );
             }
 
             commands.entity(entity).insert(RenderTaskPipelineIds::<R> {
@@ -52,16 +54,16 @@ impl<R: RenderTask> RenderTaskPipelinesResource<R> {
 impl<R: RenderTask> SpecializedComputePipeline for RenderTaskPipelinesResource<R> {
     type Key = &'static str;
 
-    fn specialize(&self, key: Self::Key) -> ComputePipelineDescriptor {
-        let render_task_pipeline = &R::pipelines()[key];
+    fn specialize(&self, pass_name: Self::Key) -> ComputePipelineDescriptor {
+        let pass = &R::passes()[pass_name];
 
         ComputePipelineDescriptor {
-            label: Some(format!("{}_{key}", R::name()).into()),
-            layout: vec![self.bind_group_layouts[key].clone()],
+            label: Some(format!("{}_{pass_name}", R::name()).into()),
+            layout: vec![self.bind_group_layouts[pass_name].clone()],
             push_constant_ranges: vec![],
-            shader: render_task_pipeline.shader.clone(),
+            shader: pass.shader.clone(),
             shader_defs: vec![], // TODO: Allow the user to specialize their shaders
-            entry_point: render_task_pipeline.entry_point.unwrap_or(key).into(),
+            entry_point: pass.entry_point.unwrap_or(pass_name).into(),
         }
     }
 }

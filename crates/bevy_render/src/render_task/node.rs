@@ -26,9 +26,9 @@ impl<R: RenderTask> Node for RenderTaskNode<R> {
             .unwrap();
 
         let mut pipelines = HashMap::new();
-        for (key, pipeline_id) in &pipeline_ids.ids {
+        for (pass_name, pipeline_id) in &pipeline_ids.ids {
             pipelines.insert(
-                *key,
+                *pass_name,
                 pipeline_cache.get_compute_pipeline(*pipeline_id).unwrap(),
             );
         }

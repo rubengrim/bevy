@@ -4,7 +4,7 @@ mod prepare_pipelines;
 mod prepare_resources;
 
 pub use self::prepare_resources::{
-    RenderTaskResource, RenderTaskResourceRegistry, RenderTaskTexture,
+    RenderTaskResource, RenderTaskResourceRegistry, RenderTaskResourceView,
 };
 
 use self::{
@@ -22,12 +22,12 @@ use bevy_ecs::{component::Component, schedule::IntoSystemConfigs};
 use bevy_utils::HashMap;
 use wgpu::CommandEncoder;
 
-// TODO: Textures meant to be exported outside to the ECS need extra TextureUsages specified by the external consumer
+// TODO: Let external consumers pre-register extra resource usages for resources
 // TODO: Write prepare systems
-// TODO: Figure out how to allow the user to specialize shaders
-// TODO: Dedup pipelines / bind group layouts
-// TODO: Replace hashmaps with compile time hashmaps over strings or marker types
 // TODO: Support buffers
+// TODO: Figure out how to allow the user to specialize shaders
+// TODO: Dedup pipelines / bind group layouts / bind groups
+// TODO: Replace hashmaps with compile time hashmaps over strings or marker types
 // TODO: Automate generating shader binding wgsl code and loading shaders
 // TODO: Docs
 
@@ -43,22 +43,25 @@ pub trait RenderTask: Send + Sync + 'static {
 
     fn render_node_edges() -> &'static [&'static str];
 
-    fn pipelines() -> HashMap<&'static str, RenderTaskPipelines>;
+    fn resources() -> HashMap<&'static str, RenderTaskResource>;
 
+    fn passes() -> HashMap<&'static str, RenderTaskPass>;
+
+    // TODO: better API
     fn encode_commands(
         encoder: &mut CommandEncoder,
         pipelines: HashMap<&'static str, &ComputePipeline>,
     );
 }
 
-pub struct RenderTaskPipelines {
+pub struct RenderTaskPass {
     pub shader: Handle<Shader>,
     /// Assumed to be the same as the pipeline name if None.
     pub entry_point: Option<&'static str>,
     pub resources: &'static [RenderTaskResource],
 }
 
-impl RenderTaskPipelines {
+impl RenderTaskPass {
     pub fn new(shader: Handle<Shader>, resources: &'static [RenderTaskResource]) -> Self {
         Self {
             shader,
