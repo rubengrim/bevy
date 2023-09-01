@@ -6,32 +6,31 @@ use bevy_ecs::{
 };
 use bevy_math::UVec2;
 use bevy_utils::HashMap;
-use wgpu::{SamplerDescriptor, TextureDimension, TextureFormat, TextureView};
+use wgpu::{
+    SamplerDescriptor, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
+    TextureView,
+};
 
 pub enum RenderTaskResource {
     Texture {
-        name: &'static str,
         format: TextureFormat,
         width: u32,
         height: u32,
         mip_count: u32,
         layer_count: u32,
-        double_buffered: bool, // TODO: Can infer this from RenderTask::passes()
         dimension: TextureDimension,
     },
     Sampler(Box<SamplerDescriptor<'static>>),
 }
 
 impl RenderTaskResource {
-    pub fn texture_2d(name: &'static str, size: UVec2, format: TextureFormat) -> Self {
+    pub fn texture_2d(size: UVec2, format: TextureFormat) -> Self {
         Self::Texture {
-            name,
             format,
             width: size.x,
             height: size.y,
             mip_count: 1,
             layer_count: 1,
-            double_buffered: false,
             dimension: TextureDimension::D2,
         }
     }
@@ -110,6 +109,41 @@ impl RenderTaskResourceRegistry {
 }
 
 pub fn prepare_resources<R: RenderTask>() {
-    // TODO: Loop over resources, map to texture descriptors
+    let mut texture_descriptors = HashMap::new();
+    let mut sampler_descriptors = HashMap::new();
+    for (name, resource) in R::resources() {
+        match resource {
+            RenderTaskResource::Texture {
+                format,
+                width,
+                height,
+                mip_count,
+                layer_count,
+                dimension,
+            } => {
+                let descriptor = TextureDescriptor {
+                    label: Some(name),
+                    size: wgpu::Extent3d {
+                        width,
+                        height,
+                        depth_or_array_layers: layer_count,
+                    },
+                    mip_level_count: mip_count,
+                    sample_count: 1,
+                    dimension,
+                    format,
+                    // TODO: Infer additional usages from passes I guess? Or fill this in in the second loop or something
+                    usage: TextureUsages::TEXTURE_BINDING,
+                    view_formats: &[],
+                };
+                texture_descriptors.insert(name, descriptor);
+            }
+            RenderTaskResource::Sampler(descriptor) => {
+                sampler_descriptors.insert(name, *descriptor);
+            }
+        }
+    }
+
     // TODO: Loop over entities, then loop over texture descriptors, create textures, put in internal registry
+    // Will also need to handle double buffering
 }

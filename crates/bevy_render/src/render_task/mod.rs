@@ -22,7 +22,6 @@ use bevy_ecs::{component::Component, schedule::IntoSystemConfigs};
 use bevy_utils::HashMap;
 use wgpu::CommandEncoder;
 
-// TODO: Let external consumers pre-register extra resource usages for resources
 // TODO: Write prepare systems
 // TODO: Support buffers
 // TODO: Figure out how to allow the user to specialize shaders
