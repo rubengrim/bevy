@@ -1,4 +1,4 @@
-use super::RenderTask;
+use super::{prepare_bind_groups::create_bind_group_layouts, RenderTask};
 use crate::render_resource::{
     BindGroupLayout, CachedComputePipelineId, ComputePipelineDescriptor, PipelineCache,
     SpecializedComputePipeline, SpecializedComputePipelines,
@@ -21,7 +21,7 @@ pub struct RenderTaskPipelinesResource<R: RenderTask> {
 impl<R: RenderTask> RenderTaskPipelinesResource<R> {
     pub fn new() -> Self {
         Self {
-            bind_group_layouts: todo!(),
+            bind_group_layouts: create_bind_group_layouts::<R>(),
             _marker: PhantomData,
         }
     }

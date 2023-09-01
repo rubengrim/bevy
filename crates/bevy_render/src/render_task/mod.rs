@@ -1,8 +1,13 @@
 mod node;
+mod prepare_bind_groups;
 mod prepare_pipelines;
-mod resource;
+mod prepare_resources;
 
-use self::{node::RenderTaskNode, prepare_pipelines::RenderTaskPipelinesResource};
+pub use self::prepare_resources::{RenderTaskResource, RenderTaskTexture};
+use self::{
+    node::RenderTaskNode, prepare_bind_groups::prepare_bind_groups,
+    prepare_pipelines::RenderTaskPipelinesResource, prepare_resources::prepare_resources,
+};
 use crate::{
     render_graph::RenderGraphApp,
     render_resource::{ComputePipeline, Shader},
@@ -12,7 +17,6 @@ use bevy_app::App;
 use bevy_asset::Handle;
 use bevy_ecs::{component::Component, schedule::IntoSystemConfigs};
 use bevy_utils::HashMap;
-pub use resource::{RenderTaskResource, RenderTaskTexture};
 use wgpu::CommandEncoder;
 
 // TODO: Replace hashmaps with compile time hashmaps over strings or marker types
@@ -68,11 +72,11 @@ pub(crate) fn add_render_task_to_render_app<R: RenderTask>(render_app: &mut App)
             (
                 RenderTaskPipelinesResource::<R>::prepare_pipelines
                     .in_set(RenderSet::PrepareResources),
-                // (
-                //     prepare_resources.in_set(RenderSet::PrepareResources),
-                //     prepare_bind_groups.in_set(RenderSet::PrepareBindGroups),
-                // )
-                //     .chain(),
+                (
+                    prepare_resources::<R>.in_set(RenderSet::PrepareResources),
+                    prepare_bind_groups::<R>.in_set(RenderSet::PrepareBindGroups),
+                )
+                    .chain(),
             ),
         );
 }

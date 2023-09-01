@@ -1,3 +1,4 @@
+use super::RenderTask;
 use crate::render_resource::TextureView;
 use bevy_math::UVec2;
 use wgpu::{SamplerDescriptor, TextureDimension, TextureFormat};
@@ -36,4 +37,8 @@ impl RenderTaskTexture {
             dimension: TextureDimension::D2,
         }
     }
+}
+
+pub fn prepare_resources<R: RenderTask>() {
+    // TODO: Loop over all R::pipelines(), build up wgpu::TextureDescriptors and then create textures/views
 }
