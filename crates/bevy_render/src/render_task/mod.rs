@@ -9,7 +9,7 @@ pub use self::prepare_resources::{
 
 use self::{
     node::RenderTaskNode, prepare_bind_groups::prepare_bind_groups,
-    prepare_pipelines::RenderTaskPipelinesResource, prepare_resources::prepare_resources,
+    prepare_pipelines::RenderTaskPipelinesWrapper, prepare_resources::prepare_resources,
 };
 use crate::{
     render_graph::RenderGraphApp,
@@ -73,13 +73,13 @@ impl RenderTaskPass {
 
 pub(crate) fn add_render_task_to_render_app<R: RenderTask>(render_app: &mut App) {
     render_app
-        .insert_resource(RenderTaskPipelinesResource::<R>::new())
+        .insert_resource(RenderTaskPipelinesWrapper::<R>::new())
         .add_render_graph_node::<RenderTaskNode<R>>(R::render_node_sub_graph(), R::name())
         .add_render_graph_edges(R::render_node_sub_graph(), R::render_node_edges())
         .add_systems(
             Render,
             (
-                RenderTaskPipelinesResource::<R>::prepare_pipelines
+                RenderTaskPipelinesWrapper::<R>::prepare_pipelines
                     .in_set(RenderSet::PrepareResources),
                 (
                     prepare_resources::<R>.in_set(RenderSet::PrepareResources),
