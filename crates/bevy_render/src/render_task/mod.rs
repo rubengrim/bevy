@@ -22,6 +22,7 @@ use bevy_ecs::{component::Component, schedule::IntoSystemConfigs};
 use bevy_utils::HashMap;
 use wgpu::CommandEncoder;
 
+// TODO: Textures meant to be exported outside to the ECS need extra TextureUsages specified by the external consumer
 // TODO: Write prepare systems
 // TODO: Figure out how to allow the user to specialize shaders
 // TODO: Dedup pipelines / bind group layouts
