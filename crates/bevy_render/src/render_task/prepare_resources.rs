@@ -1,6 +1,9 @@
 use super::RenderTask;
 use crate::texture::CachedTexture;
-use bevy_ecs::{entity::Entity, system::Resource};
+use bevy_ecs::{
+    entity::Entity,
+    system::{ResMut, Resource},
+};
 use bevy_math::UVec2;
 use bevy_utils::HashMap;
 use wgpu::{SamplerDescriptor, TextureDimension, TextureFormat, TextureView};
@@ -62,9 +65,9 @@ impl RenderTaskResourceRegistry {
         self.external.get(&(entity, label))
     }
 
-    fn clear(&mut self) {
-        self.internal.clear();
-        self.external.clear();
+    pub(crate) fn clear(mut this: ResMut<Self>) {
+        this.internal.clear();
+        this.external.clear();
     }
 }
 

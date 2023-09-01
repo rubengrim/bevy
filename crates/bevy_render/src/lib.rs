@@ -317,7 +317,8 @@ impl Plugin for RenderPlugin {
                             render_system,
                         )
                             .in_set(RenderSet::Render),
-                        World::clear_entities.in_set(RenderSet::Cleanup),
+                        (World::clear_entities, RenderTaskResourceRegistry::clear)
+                            .in_set(RenderSet::Cleanup),
                     ),
                 );
 
