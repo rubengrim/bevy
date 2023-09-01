@@ -46,15 +46,15 @@ impl RenderTaskTexture {
 
 #[derive(Resource, Default)]
 pub struct RenderTaskResourceRegistry {
-    internal: HashMap<(Entity, &'static str), TextureView>,
-    external: HashMap<(Entity, &'static str), CachedTexture>,
+    internal: HashMap<(Entity, &'static str), CachedTexture>,
+    external: HashMap<(Entity, &'static str), TextureView>,
 }
 
 impl RenderTaskResourceRegistry {
     pub fn register_external(&mut self, label: &'static str, entity: Entity, texture: TextureView) {
         let key = (entity, label);
-        debug_assert!(!self.internal.contains_key(&key));
-        self.internal.insert(key, texture);
+        debug_assert!(!self.external.contains_key(&key));
+        self.external.insert(key, texture);
     }
 
     pub fn get_render_task_resource(
@@ -62,7 +62,7 @@ impl RenderTaskResourceRegistry {
         label: &'static str,
         entity: Entity,
     ) -> Option<&CachedTexture> {
-        self.external.get(&(entity, label))
+        self.internal.get(&(entity, label))
     }
 
     pub(crate) fn clear(mut this: ResMut<Self>) {
