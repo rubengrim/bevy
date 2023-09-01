@@ -12,7 +12,7 @@ use bevy_app::App;
 use bevy_asset::Handle;
 use bevy_ecs::{component::Component, schedule::IntoSystemConfigs};
 use bevy_utils::HashMap;
-pub use resource::RenderTaskResource;
+pub use resource::{RenderTaskResource, RenderTaskTexture};
 use wgpu::CommandEncoder;
 
 // TODO: Replace hashmaps with compile time hashmaps over strings or marker types
