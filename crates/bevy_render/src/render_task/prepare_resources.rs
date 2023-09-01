@@ -7,7 +7,7 @@ use bevy_ecs::{
 use bevy_math::UVec2;
 use bevy_utils::HashMap;
 use wgpu::{
-    SamplerDescriptor, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
+    Extent3d, SamplerDescriptor, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
     TextureView,
 };
 
@@ -123,7 +123,7 @@ pub fn prepare_resources<R: RenderTask>() {
             } => {
                 let descriptor = TextureDescriptor {
                     label: Some(name),
-                    size: wgpu::Extent3d {
+                    size: Extent3d {
                         width,
                         height,
                         depth_or_array_layers: layer_count,
