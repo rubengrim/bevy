@@ -58,11 +58,11 @@ pub struct RenderTaskPass {
     pub shader: Handle<Shader>,
     /// Assumed to be the same as the pipeline name if None.
     pub entry_point: Option<&'static str>,
-    pub resources: &'static [RenderTaskResource],
+    pub resources: &'static [RenderTaskResourceView],
 }
 
 impl RenderTaskPass {
-    pub fn new(shader: Handle<Shader>, resources: &'static [RenderTaskResource]) -> Self {
+    pub fn new(shader: Handle<Shader>, resources: &'static [RenderTaskResourceView]) -> Self {
         Self {
             shader,
             entry_point: None,
