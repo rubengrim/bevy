@@ -1,11 +1,12 @@
 use super::RenderTask;
 use crate::texture::CachedTexture;
+use bevy_core::FrameCount;
 use bevy_ecs::{
     entity::Entity,
-    system::{ResMut, Resource},
+    system::{Res, ResMut, Resource},
 };
 use bevy_math::UVec2;
-use bevy_utils::HashMap;
+use bevy_utils::{HashMap, HashSet};
 use wgpu::{
     Extent3d, SamplerDescriptor, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
     TextureView,
@@ -41,16 +42,19 @@ pub enum RenderTaskResourceView {
         name: &'static str,
         mip: u32,
         layer: u32,
+        previous_frame: bool,
     },
     StorageTextureWrite {
         name: &'static str,
         mip: u32,
         layer: u32,
+        previous_frame: bool,
     },
     StorageTextureReadWrite {
         name: &'static str,
         mip: u32,
         layer: u32,
+        previous_frame: bool,
     },
     Sampler(&'static str),
 }
@@ -61,6 +65,7 @@ impl RenderTaskResourceView {
             name,
             mip: 0,
             layer: 0,
+            previous_frame: false,
         }
     }
 
@@ -69,6 +74,7 @@ impl RenderTaskResourceView {
             name,
             mip: 0,
             layer: 0,
+            previous_frame: false,
         }
     }
 
@@ -77,6 +83,7 @@ impl RenderTaskResourceView {
             name,
             mip: 0,
             layer: 0,
+            previous_frame: false,
         }
     }
 }
@@ -108,9 +115,10 @@ impl RenderTaskResourceRegistry {
     }
 }
 
-pub fn prepare_resources<R: RenderTask>() {
+pub fn prepare_resources<R: RenderTask>(frame_count: Res<FrameCount>) {
     let mut texture_descriptors = HashMap::new();
     let mut sampler_descriptors = HashMap::new();
+
     for (name, resource) in R::resources() {
         match resource {
             RenderTaskResource::Texture {
@@ -132,7 +140,6 @@ pub fn prepare_resources<R: RenderTask>() {
                     sample_count: 1,
                     dimension,
                     format,
-                    // TODO: Infer additional usages from passes I guess? Or fill this in in the second loop or something
                     usage: TextureUsages::TEXTURE_BINDING,
                     view_formats: &[],
                 };
@@ -144,6 +151,65 @@ pub fn prepare_resources<R: RenderTask>() {
         }
     }
 
-    // TODO: Loop over entities, then loop over texture descriptors, create textures, put in internal registry
-    // Will also need to handle double buffering
+    let mut double_buffer = HashSet::new();
+    for (_, pass) in R::passes() {
+        for resource_view in pass.bindings {
+            match resource_view {
+                RenderTaskResourceView::SampledTexture {
+                    name,
+                    previous_frame,
+                    ..
+                } => {
+                    if *previous_frame {
+                        double_buffer.insert(name);
+                    }
+                }
+                RenderTaskResourceView::StorageTextureWrite {
+                    name,
+                    previous_frame,
+                    ..
+                } => {
+                    texture_descriptors.get_mut(name).unwrap().usage |=
+                        TextureUsages::STORAGE_BINDING;
+                    if *previous_frame {
+                        double_buffer.insert(name);
+                    }
+                }
+                RenderTaskResourceView::StorageTextureReadWrite {
+                    name,
+                    previous_frame,
+                    ..
+                } => {
+                    texture_descriptors.get_mut(name).unwrap().usage |=
+                        TextureUsages::STORAGE_BINDING;
+                    if *previous_frame {
+                        double_buffer.insert(name);
+                    }
+                }
+                RenderTaskResourceView::Sampler(_) => {}
+            }
+        }
+    }
+
+    for name in double_buffer {
+        let descriptor = texture_descriptors.remove(name).unwrap();
+        let descriptor_1 = TextureDescriptor {
+            label: Some(&format!("{name}_1")),
+            ..descriptor
+        };
+        let descriptor_2 = TextureDescriptor {
+            label: Some(&format!("{name}_2")),
+            ..descriptor
+        };
+
+        if frame_count.0 % 2 == 0 {
+            texture_descriptors.insert(&format!("{name}_previous"), descriptor_1);
+            texture_descriptors.insert(&format!("{name}_current"), descriptor_2);
+        } else {
+            texture_descriptors.insert(&format!("{name}_previous"), descriptor_2);
+            texture_descriptors.insert(&format!("{name}_current"), descriptor_1);
+        }
+    }
+
+    // TODO: Loop over entities, then loop over resource descriptors, create resources, put in internal registry
 }
