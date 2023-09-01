@@ -3,7 +3,10 @@ mod prepare_bind_groups;
 mod prepare_pipelines;
 mod prepare_resources;
 
-pub use self::prepare_resources::{RenderTaskResource, RenderTaskTexture};
+pub use self::prepare_resources::{
+    RenderTaskResource, RenderTaskResourceRegistry, RenderTaskTexture,
+};
+
 use self::{
     node::RenderTaskNode, prepare_bind_groups::prepare_bind_groups,
     prepare_pipelines::RenderTaskPipelinesResource, prepare_resources::prepare_resources,
@@ -19,18 +22,22 @@ use bevy_ecs::{component::Component, schedule::IntoSystemConfigs};
 use bevy_utils::HashMap;
 use wgpu::CommandEncoder;
 
+// TODO: Write prepare systems
+// TODO: Dedup pipelines / bind group layouts
 // TODO: Replace hashmaps with compile time hashmaps over strings or marker types
+// TODO: Support buffers
+// TODO: Automate generating shader binding wgsl code and loading shaders
 // TODO: Docs
 
 pub trait RenderTask: Send + Sync + 'static {
     type RenderTaskSettings: Component;
 
+    fn name() -> &'static str;
+
     fn render_node_sub_graph() -> &'static str {
         // bevy_core_pipeline::core_3d::CORE_3D
         "core_3d"
     }
-
-    fn render_node_label() -> &'static str;
 
     fn render_node_edges() -> &'static [&'static str];
 
@@ -62,10 +69,7 @@ impl RenderTaskPipelines {
 pub(crate) fn add_render_task_to_render_app<R: RenderTask>(render_app: &mut App) {
     render_app
         .insert_resource(RenderTaskPipelinesResource::<R>::new())
-        .add_render_graph_node::<RenderTaskNode<R>>(
-            R::render_node_sub_graph(),
-            R::render_node_label(),
-        )
+        .add_render_graph_node::<RenderTaskNode<R>>(R::render_node_sub_graph(), R::name())
         .add_render_graph_edges(R::render_node_sub_graph(), R::render_node_edges())
         .add_systems(
             Render,

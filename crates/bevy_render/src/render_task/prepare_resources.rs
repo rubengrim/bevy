@@ -1,16 +1,18 @@
 use super::RenderTask;
-use crate::render_resource::TextureView;
+use crate::texture::CachedTexture;
+use bevy_ecs::{entity::Entity, system::Resource};
 use bevy_math::UVec2;
-use wgpu::{SamplerDescriptor, TextureDimension, TextureFormat};
+use bevy_utils::HashMap;
+use wgpu::{SamplerDescriptor, TextureDimension, TextureFormat, TextureView};
 
 pub enum RenderTaskResource {
     TextureRead(RenderTaskTexture),
     TextureWrite(RenderTaskTexture),
     TextureReadWrite(RenderTaskTexture),
-    ExternalTextureRead(TextureView),
-    ExternalTextureWrite(TextureView),
-    ExternalTextureReadWrite(TextureView),
-    Sampler(SamplerDescriptor<'static>),
+    ExternalTextureRead(&'static str),
+    ExternalTextureWrite(&'static str),
+    ExternalTextureReadWrite(&'static str),
+    Sampler(Box<SamplerDescriptor<'static>>),
 }
 
 pub struct RenderTaskTexture {
@@ -36,6 +38,33 @@ impl RenderTaskTexture {
             from_previous_frame: false,
             dimension: TextureDimension::D2,
         }
+    }
+}
+
+#[derive(Resource, Default)]
+pub struct RenderTaskResourceRegistry {
+    internal: HashMap<(Entity, &'static str), TextureView>,
+    external: HashMap<(Entity, &'static str), CachedTexture>,
+}
+
+impl RenderTaskResourceRegistry {
+    pub fn register_external(&mut self, label: &'static str, entity: Entity, texture: TextureView) {
+        let key = (entity, label);
+        debug_assert!(!self.internal.contains_key(&key));
+        self.internal.insert(key, texture);
+    }
+
+    pub fn get_render_task_resource(
+        &self,
+        label: &'static str,
+        entity: Entity,
+    ) -> Option<&CachedTexture> {
+        self.external.get(&(entity, label))
+    }
+
+    fn clear(&mut self) {
+        self.internal.clear();
+        self.external.clear();
     }
 }
 

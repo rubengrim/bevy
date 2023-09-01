@@ -54,6 +54,7 @@ use crate::{
     mesh::{morph::MorphPlugin, Mesh, MeshPlugin},
     render_asset::prepare_assets,
     render_resource::{PipelineCache, Shader, ShaderLoader},
+    render_task::RenderTaskResourceRegistry,
     renderer::{render_system, RenderInstance},
     settings::WgpuSettings,
     view::{ViewPlugin, WindowRenderPlugin},
@@ -408,6 +409,7 @@ impl Plugin for RenderPlugin {
             render_app
                 .insert_resource(RenderInstance(instance))
                 .insert_resource(PipelineCache::new(device.clone()))
+                .init_resource::<RenderTaskResourceRegistry>()
                 .insert_resource(device)
                 .insert_resource(queue)
                 .insert_resource(render_adapter)

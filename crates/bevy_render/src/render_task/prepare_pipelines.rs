@@ -56,7 +56,7 @@ impl<R: RenderTask> SpecializedComputePipeline for RenderTaskPipelinesResource<R
         let render_task_pipeline = &R::pipelines()[key];
 
         ComputePipelineDescriptor {
-            label: Some(key.into()),
+            label: Some(format!("{}_{key}", R::name()).into()),
             layout: vec![self.bind_group_layouts[key].clone()],
             push_constant_ranges: vec![],
             shader: render_task_pipeline.shader.clone(),
