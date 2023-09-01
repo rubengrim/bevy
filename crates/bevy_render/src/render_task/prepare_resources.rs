@@ -1,9 +1,10 @@
 use super::RenderTask;
-use crate::texture::CachedTexture;
+use crate::texture::{CachedTexture, TextureCache};
 use bevy_core::FrameCount;
 use bevy_ecs::{
     entity::Entity,
-    system::{Res, ResMut, Resource},
+    query::With,
+    system::{Query, Res, ResMut, Resource},
 };
 use bevy_math::UVec2;
 use bevy_utils::{HashMap, HashSet};
@@ -115,7 +116,11 @@ impl RenderTaskResourceRegistry {
     }
 }
 
-pub fn prepare_resources<R: RenderTask>(frame_count: Res<FrameCount>) {
+pub fn prepare_resources<R: RenderTask>(
+    query: Query<Entity, With<R::RenderTaskSettings>>,
+    texture_cache: TextureCache,
+    frame_count: Res<FrameCount>,
+) {
     let mut texture_descriptors = HashMap::new();
     let mut sampler_descriptors = HashMap::new();
 
@@ -143,7 +148,7 @@ pub fn prepare_resources<R: RenderTask>(frame_count: Res<FrameCount>) {
                     usage: TextureUsages::TEXTURE_BINDING,
                     view_formats: &[],
                 };
-                texture_descriptors.insert(name, descriptor);
+                texture_descriptors.insert(name.to_string(), descriptor);
             }
             RenderTaskResource::Sampler(descriptor) => {
                 sampler_descriptors.insert(name, *descriptor);
@@ -169,7 +174,7 @@ pub fn prepare_resources<R: RenderTask>(frame_count: Res<FrameCount>) {
                     previous_frame,
                     ..
                 } => {
-                    texture_descriptors.get_mut(name).unwrap().usage |=
+                    texture_descriptors.get_mut(*name).unwrap().usage |=
                         TextureUsages::STORAGE_BINDING;
                     if *previous_frame {
                         double_buffer.insert(name);
@@ -180,7 +185,7 @@ pub fn prepare_resources<R: RenderTask>(frame_count: Res<FrameCount>) {
                     previous_frame,
                     ..
                 } => {
-                    texture_descriptors.get_mut(name).unwrap().usage |=
+                    texture_descriptors.get_mut(*name).unwrap().usage |=
                         TextureUsages::STORAGE_BINDING;
                     if *previous_frame {
                         double_buffer.insert(name);
@@ -192,7 +197,7 @@ pub fn prepare_resources<R: RenderTask>(frame_count: Res<FrameCount>) {
     }
 
     for name in double_buffer {
-        let descriptor = texture_descriptors.remove(name).unwrap();
+        let descriptor = texture_descriptors.remove(*name).unwrap();
         let descriptor_1 = TextureDescriptor {
             label: Some(&format!("{name}_1")),
             ..descriptor
@@ -203,13 +208,20 @@ pub fn prepare_resources<R: RenderTask>(frame_count: Res<FrameCount>) {
         };
 
         if frame_count.0 % 2 == 0 {
-            texture_descriptors.insert(&format!("{name}_previous"), descriptor_1);
-            texture_descriptors.insert(&format!("{name}_current"), descriptor_2);
+            texture_descriptors.insert(format!("{name}_previous"), descriptor_1);
+            texture_descriptors.insert(format!("{name}_current"), descriptor_2);
         } else {
-            texture_descriptors.insert(&format!("{name}_previous"), descriptor_2);
-            texture_descriptors.insert(&format!("{name}_current"), descriptor_1);
+            texture_descriptors.insert(format!("{name}_previous"), descriptor_2);
+            texture_descriptors.insert(format!("{name}_current"), descriptor_1);
         }
     }
 
-    // TODO: Loop over entities, then loop over resource descriptors, create resources, put in internal registry
+    for (name, sampler_descriptor) in sampler_descriptors {
+        // TODO: Sampler creation needs to be moved to static resources or something
+    }
+    for entity in &query {
+        for (name, texture_descriptor) in texture_descriptors {
+            // TODO: Create textures and put in internal registry
+        }
+    }
 }
