@@ -4,7 +4,6 @@ mod edge;
 mod graph;
 mod node;
 mod node_slot;
-pub mod render_task;
 
 pub use app::*;
 pub use context::*;

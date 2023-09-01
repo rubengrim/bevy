@@ -1,11 +1,8 @@
+use super::{Node, RenderGraph};
+use crate::render_task::{add_render_task_to_render_app, RenderTask};
 use bevy_app::App;
 use bevy_ecs::world::FromWorld;
 use bevy_log::warn;
-
-use super::{
-    render_task::{add_render_task_to_render_app, RenderTask},
-    Node, RenderGraph,
-};
 
 /// Adds common [`RenderGraph`] operations to [`App`].
 pub trait RenderGraphApp {
