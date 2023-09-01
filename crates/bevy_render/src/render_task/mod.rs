@@ -28,6 +28,7 @@ use wgpu::CommandEncoder;
 // TODO: Dedup pipelines / bind group layouts / bind groups
 // TODO: Replace hashmaps with compile time hashmaps over strings or marker types
 // TODO: Automate generating shader binding wgsl code and loading shaders
+// TODO: Replace unwraps with expects
 // TODO: Docs
 
 pub trait RenderTask: Send + Sync + 'static {
@@ -57,7 +58,7 @@ pub struct RenderTaskPass {
     pub shader: Handle<Shader>,
     /// Assumed to be the same as the pipeline name if None.
     pub entry_point: Option<&'static str>,
-    pub resources: &'static [RenderTaskResourceView],
+    pub bindings: &'static [RenderTaskResourceView],
 }
 
 impl RenderTaskPass {
@@ -65,7 +66,7 @@ impl RenderTaskPass {
         Self {
             shader,
             entry_point: None,
-            resources,
+            bindings: resources,
         }
     }
 }
