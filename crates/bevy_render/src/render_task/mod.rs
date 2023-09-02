@@ -19,6 +19,7 @@ use crate::{
 use bevy_app::App;
 use bevy_asset::Handle;
 use bevy_ecs::{component::Component, schedule::IntoSystemConfigs};
+use bevy_math::UVec2;
 use bevy_utils::HashMap;
 use wgpu::CommandEncoder;
 
@@ -41,9 +42,11 @@ pub trait RenderTask: Send + Sync + 'static {
         "core_3d"
     }
 
+    // TODO: Optional static resource initialization API
+
     fn render_node_edges() -> &'static [&'static str];
 
-    fn resources() -> HashMap<&'static str, RenderTaskResource>;
+    fn resources(camera_size: UVec2) -> HashMap<&'static str, RenderTaskResource>;
 
     fn passes() -> HashMap<&'static str, RenderTaskPass>;
 

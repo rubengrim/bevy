@@ -1,5 +1,8 @@
 use super::RenderTask;
-use crate::texture::{CachedTexture, TextureCache};
+use crate::{
+    camera::ExtractedCamera,
+    texture::{CachedTexture, TextureCache},
+};
 use bevy_core::FrameCount;
 use bevy_ecs::{
     entity::Entity,
@@ -117,7 +120,7 @@ impl RenderTaskResourceRegistry {
 }
 
 pub fn prepare_resources<R: RenderTask>(
-    query: Query<Entity, With<R::RenderTaskSettings>>,
+    query: Query<(Entity, &ExtractedCamera), With<R::RenderTaskSettings>>,
     texture_cache: TextureCache,
     frame_count: Res<FrameCount>,
 ) {
@@ -145,7 +148,7 @@ pub fn prepare_resources<R: RenderTask>(
                     sample_count: 1,
                     dimension,
                     format,
-                    usage: TextureUsages::TEXTURE_BINDING,
+                    usage: TextureUsages::empty(),
                     view_formats: &[],
                 };
                 texture_descriptors.insert(name.to_string(), descriptor);
@@ -165,6 +168,8 @@ pub fn prepare_resources<R: RenderTask>(
                     previous_frame,
                     ..
                 } => {
+                    texture_descriptors.get_mut(*name).unwrap().usage |=
+                        TextureUsages::TEXTURE_BINDING;
                     if *previous_frame {
                         double_buffer.insert(name);
                     }
