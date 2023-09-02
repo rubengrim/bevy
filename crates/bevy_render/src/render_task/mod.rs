@@ -50,7 +50,7 @@ pub trait RenderTask: Send + Sync + 'static {
 
     fn passes() -> HashMap<&'static str, RenderTaskPass>;
 
-    // TODO: better API
+    // TODO: Instead of command encoder, provide tracked compute pass
     fn encode_commands(
         encoder: &mut CommandEncoder,
         pipelines: HashMap<&'static str, &ComputePipeline>,

@@ -120,6 +120,7 @@ impl RenderTaskResourceRegistry {
     }
 }
 
+// TODO: Use a custom texture cache inside of RenderTaskResourceRegistry
 pub fn prepare_resources<R: RenderTask>(
     query: Query<(Entity, &ExtractedCamera), With<R::RenderTaskSettings>>,
     mut resource_registry: ResMut<RenderTaskResourceRegistry>,
