@@ -33,7 +33,7 @@ impl<R: RenderTask> Node for RenderTaskNode<R> {
             );
         }
 
-        R::encode_commands(render_context.command_encoder(), pipelines);
+        R::encode_commands(render_context.command_encoder(), pipelines, todo!());
 
         Ok(())
     }

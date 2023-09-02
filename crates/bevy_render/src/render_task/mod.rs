@@ -13,7 +13,7 @@ use self::{
 };
 use crate::{
     render_graph::RenderGraphApp,
-    render_resource::{ComputePipeline, Shader},
+    render_resource::{BindGroup, ComputePipeline, Shader},
     Render, RenderSet,
 };
 use bevy_app::App;
@@ -46,7 +46,7 @@ pub trait RenderTask: Send + Sync + 'static {
 
     fn render_node_edges() -> &'static [&'static str];
 
-    fn resources(camera_size: UVec2) -> HashMap<&'static str, RenderTaskResource>;
+    fn resources(physical_viewport_size: UVec2) -> HashMap<&'static str, RenderTaskResource>;
 
     fn passes() -> HashMap<&'static str, RenderTaskPass>;
 
@@ -54,6 +54,7 @@ pub trait RenderTask: Send + Sync + 'static {
     fn encode_commands(
         encoder: &mut CommandEncoder,
         pipelines: HashMap<&'static str, &ComputePipeline>,
+        bind_groups: HashMap<&'static str, &BindGroup>,
     );
 }
 

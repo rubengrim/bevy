@@ -1,6 +1,8 @@
 use super::RenderTask;
 use crate::{
     camera::ExtractedCamera,
+    render_resource::TextureDescriptorOwned,
+    renderer::RenderDevice,
     texture::{CachedTexture, TextureCache},
 };
 use bevy_core::FrameCount;
@@ -12,8 +14,7 @@ use bevy_ecs::{
 use bevy_math::UVec2;
 use bevy_utils::{HashMap, HashSet};
 use wgpu::{
-    Extent3d, SamplerDescriptor, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
-    TextureView,
+    Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView,
 };
 
 pub enum RenderTaskResource {
@@ -25,7 +26,6 @@ pub enum RenderTaskResource {
         layer_count: u32,
         dimension: TextureDimension,
     },
-    Sampler(Box<SamplerDescriptor<'static>>),
 }
 
 impl RenderTaskResource {
@@ -94,7 +94,7 @@ impl RenderTaskResourceView {
 
 #[derive(Resource, Default)]
 pub struct RenderTaskResourceRegistry {
-    internal: HashMap<(Entity, &'static str), CachedTexture>,
+    internal: HashMap<(Entity, String), CachedTexture>,
     external: HashMap<(Entity, &'static str), TextureView>,
 }
 
@@ -105,12 +105,13 @@ impl RenderTaskResourceRegistry {
         self.external.insert(key, texture);
     }
 
-    pub fn get_render_task_resource(
+    pub fn get_render_task_resource<R: RenderTask>(
         &self,
-        label: &'static str,
+        name: &str,
         entity: Entity,
     ) -> Option<&CachedTexture> {
-        self.internal.get(&(entity, label))
+        self.internal
+            .get(&(entity, format!("{}_{name}", R::name())))
     }
 
     pub(crate) fn clear(mut this: ResMut<Self>) {
@@ -121,112 +122,126 @@ impl RenderTaskResourceRegistry {
 
 pub fn prepare_resources<R: RenderTask>(
     query: Query<(Entity, &ExtractedCamera), With<R::RenderTaskSettings>>,
-    texture_cache: TextureCache,
+    mut resource_registry: ResMut<RenderTaskResourceRegistry>,
+    texture_cache: Res<TextureCache>,
+    render_device: Res<RenderDevice>,
     frame_count: Res<FrameCount>,
 ) {
-    let mut texture_descriptors = HashMap::new();
-    let mut sampler_descriptors = HashMap::new();
+    for (entity, camera) in &query {
+        let Some(physical_viewport_size) = camera.physical_viewport_size else { continue };
+        let mut texture_descriptors = HashMap::new();
 
-    for (name, resource) in R::resources() {
-        match resource {
-            RenderTaskResource::Texture {
-                format,
-                width,
-                height,
-                mip_count,
-                layer_count,
-                dimension,
-            } => {
-                let descriptor = TextureDescriptor {
-                    label: Some(name),
-                    size: Extent3d {
-                        width,
-                        height,
-                        depth_or_array_layers: layer_count,
-                    },
-                    mip_level_count: mip_count,
-                    sample_count: 1,
-                    dimension,
+        // Setup initial resource descriptors
+        for (name, resource) in R::resources(physical_viewport_size) {
+            match resource {
+                RenderTaskResource::Texture {
                     format,
-                    usage: TextureUsages::empty(),
-                    view_formats: &[],
-                };
-                texture_descriptors.insert(name.to_string(), descriptor);
-            }
-            RenderTaskResource::Sampler(descriptor) => {
-                sampler_descriptors.insert(name, *descriptor);
-            }
-        }
-    }
-
-    let mut double_buffer = HashSet::new();
-    for (_, pass) in R::passes() {
-        for resource_view in pass.bindings {
-            match resource_view {
-                RenderTaskResourceView::SampledTexture {
-                    name,
-                    previous_frame,
-                    ..
+                    width,
+                    height,
+                    mip_count,
+                    layer_count,
+                    dimension,
                 } => {
-                    texture_descriptors.get_mut(*name).unwrap().usage |=
-                        TextureUsages::TEXTURE_BINDING;
-                    if *previous_frame {
-                        double_buffer.insert(name);
-                    }
+                    let descriptor = TextureDescriptorOwned {
+                        label: format!("{}_{name}", R::name()),
+                        size: Extent3d {
+                            width,
+                            height,
+                            depth_or_array_layers: layer_count,
+                        },
+                        mip_level_count: mip_count,
+                        sample_count: 1,
+                        dimension,
+                        format,
+                        usage: TextureUsages::empty(),
+                        view_formats: &[],
+                    };
+                    texture_descriptors.insert(name.to_string(), descriptor);
                 }
-                RenderTaskResourceView::StorageTextureWrite {
-                    name,
-                    previous_frame,
-                    ..
-                } => {
-                    texture_descriptors.get_mut(*name).unwrap().usage |=
-                        TextureUsages::STORAGE_BINDING;
-                    if *previous_frame {
-                        double_buffer.insert(name);
-                    }
-                }
-                RenderTaskResourceView::StorageTextureReadWrite {
-                    name,
-                    previous_frame,
-                    ..
-                } => {
-                    texture_descriptors.get_mut(*name).unwrap().usage |=
-                        TextureUsages::STORAGE_BINDING;
-                    if *previous_frame {
-                        double_buffer.insert(name);
-                    }
-                }
-                RenderTaskResourceView::Sampler(_) => {}
             }
         }
-    }
 
-    for name in double_buffer {
-        let descriptor = texture_descriptors.remove(*name).unwrap();
-        let descriptor_1 = TextureDescriptor {
-            label: Some(&format!("{name}_1")),
-            ..descriptor
-        };
-        let descriptor_2 = TextureDescriptor {
-            label: Some(&format!("{name}_2")),
-            ..descriptor
-        };
-
-        if frame_count.0 % 2 == 0 {
-            texture_descriptors.insert(format!("{name}_previous"), descriptor_1);
-            texture_descriptors.insert(format!("{name}_current"), descriptor_2);
-        } else {
-            texture_descriptors.insert(format!("{name}_previous"), descriptor_2);
-            texture_descriptors.insert(format!("{name}_current"), descriptor_1);
+        // Fill out resource usages and find double buffered resources based on passes
+        let mut double_buffer = HashSet::new();
+        for (_, pass) in R::passes() {
+            for resource_view in pass.bindings {
+                match resource_view {
+                    RenderTaskResourceView::SampledTexture {
+                        name,
+                        previous_frame,
+                        ..
+                    } => {
+                        texture_descriptors.get_mut(*name).unwrap().usage |=
+                            TextureUsages::TEXTURE_BINDING;
+                        if *previous_frame {
+                            double_buffer.insert(name);
+                        }
+                    }
+                    RenderTaskResourceView::StorageTextureWrite {
+                        name,
+                        previous_frame,
+                        ..
+                    } => {
+                        texture_descriptors.get_mut(*name).unwrap().usage |=
+                            TextureUsages::STORAGE_BINDING;
+                        if *previous_frame {
+                            double_buffer.insert(name);
+                        }
+                    }
+                    RenderTaskResourceView::StorageTextureReadWrite {
+                        name,
+                        previous_frame,
+                        ..
+                    } => {
+                        texture_descriptors.get_mut(*name).unwrap().usage |=
+                            TextureUsages::STORAGE_BINDING;
+                        if *previous_frame {
+                            double_buffer.insert(name);
+                        }
+                    }
+                    RenderTaskResourceView::Sampler(_) => {}
+                }
+            }
         }
-    }
 
-    for (name, sampler_descriptor) in sampler_descriptors {
-        // TODO: Sampler creation needs to be moved to static resources or something
-    }
-    for entity in &query {
-        for (name, texture_descriptor) in texture_descriptors {
-            // TODO: Create textures and put in internal registry
+        // Split double buffered resources into two descriptors
+        for name in double_buffer {
+            let descriptor = texture_descriptors.remove(*name).unwrap();
+
+            let descriptor_1 = TextureDescriptorOwned {
+                label: format!("{}_{name}_1", R::name()),
+                ..descriptor
+            };
+            let descriptor_2 = TextureDescriptorOwned {
+                label: format!("{}_{name}_2", R::name()),
+                ..descriptor
+            };
+
+            if frame_count.0 % 2 == 0 {
+                texture_descriptors.insert(format!("{name}_previous"), descriptor_1);
+                texture_descriptors.insert(format!("{name}_current"), descriptor_2);
+            } else {
+                texture_descriptors.insert(format!("{name}_previous"), descriptor_2);
+                texture_descriptors.insert(format!("{name}_current"), descriptor_1);
+            }
+        }
+
+        // Create resources and put in internal registry
+        for (name, descriptor) in texture_descriptors {
+            let descriptor = TextureDescriptor {
+                label: Some(&descriptor.label),
+                size: descriptor.size,
+                mip_level_count: descriptor.mip_level_count,
+                sample_count: descriptor.sample_count,
+                dimension: descriptor.dimension,
+                format: descriptor.format,
+                usage: descriptor.usage,
+                view_formats: descriptor.view_formats,
+            };
+            let texture = texture_cache.get(&*render_device, descriptor);
+            resource_registry
+                .internal
+                .insert((entity, format!("{}_{name}", R::name())), texture);
         }
     }
 }

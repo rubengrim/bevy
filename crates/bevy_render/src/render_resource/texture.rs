@@ -150,3 +150,28 @@ impl Deref for Sampler {
         &self.value
     }
 }
+
+pub struct TextureDescriptorOwned {
+    /// Debug label of the texture. This will show up in graphics debuggers for easy identification.
+    pub label: String,
+    /// Size of the texture. All components must be greater than zero. For a
+    /// regular 1D/2D texture, the unused sizes will be 1. For 2DArray textures,
+    /// Z is the number of 2D textures in that array.
+    pub size: wgpu::Extent3d,
+    /// Mip count of texture. For a texture with no extra mips, this must be 1.
+    pub mip_level_count: u32,
+    /// Sample count of texture. If this is not 1, texture must have [`BindingType::Texture::multisampled`] set to true.
+    pub sample_count: u32,
+    /// Dimensions of the texture.
+    pub dimension: wgpu::TextureDimension,
+    /// Format of the texture.
+    pub format: wgpu::TextureFormat,
+    /// Allowed usages of the texture. If used in other ways, the operation will panic.
+    pub usage: wgpu::TextureUsages,
+    /// Specifies what view formats will be allowed when calling create_view() on this texture.
+    ///
+    /// View formats of the same format as the texture are always allowed.
+    ///
+    /// Note: currently, only the srgb-ness is allowed to change. (ex: Rgba8Unorm texture + Rgba8UnormSrgb view)
+    pub view_formats: &'static [wgpu::TextureFormat],
+}
