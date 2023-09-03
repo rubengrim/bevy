@@ -319,7 +319,10 @@ impl Plugin for RenderPlugin {
                             render_system,
                         )
                             .in_set(RenderSet::Render),
-                        (World::clear_entities, RenderTaskResourceRegistry::cleanup)
+                        (
+                            World::clear_entities,
+                            RenderTaskResourceRegistry::clear_external,
+                        )
                             .in_set(RenderSet::Cleanup),
                     ),
                 );

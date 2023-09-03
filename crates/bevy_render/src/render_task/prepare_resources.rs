@@ -7,7 +7,7 @@ use crate::{
 use bevy_ecs::{
     entity::Entity,
     query::With,
-    system::{Query, Res, ResMut, Resource},
+    system::{Local, Query, Res, ResMut, Resource},
 };
 use bevy_math::UVec2;
 use bevy_utils::{HashMap, HashSet};
@@ -112,21 +112,30 @@ impl RenderTaskResourceRegistry {
         self.internal.get(&(entity, name))
     }
 
-    pub(crate) fn cleanup(mut this: ResMut<Self>) {
+    pub(crate) fn clear_external(mut this: ResMut<Self>) {
         this.external.clear();
-
-        // TODO: Clear this.internal values that are no longer needed
     }
 }
 
 pub fn prepare_resources<R: RenderTask>(
     query: Query<(Entity, &ExtractedCamera), With<R::RenderTaskSettings>>,
     mut resource_registry: ResMut<RenderTaskResourceRegistry>,
+    mut previous_viewport_sizes: Local<HashMap<Entity, UVec2>>,
     render_device: Res<RenderDevice>,
 ) {
     let task_name = R::name();
     for (entity, camera) in &query {
+        // Skip creating resources for views with the same viewport as last frame
         let Some(physical_viewport_size) = camera.physical_viewport_size else { continue };
+        match previous_viewport_sizes.get(&entity) {
+            Some(previous_viewport_size) if *previous_viewport_size == physical_viewport_size => {
+                continue;
+            }
+            _ => {
+                previous_viewport_sizes.insert(entity, physical_viewport_size);
+            }
+        }
+
         let mut texture_descriptors = HashMap::new();
 
         // Setup initial resource descriptors
@@ -234,10 +243,10 @@ pub fn prepare_resources<R: RenderTask>(
                 view_formats: descriptor.view_formats,
             };
 
-            resource_registry
-                .internal
-                .entry((entity, format!("{task_name}_{name}")))
-                .or_insert_with(|| render_device.create_texture(&descriptor));
+            resource_registry.internal.insert(
+                (entity, format!("{task_name}_{name}")),
+                render_device.create_texture(&descriptor),
+            );
         }
     }
 }
