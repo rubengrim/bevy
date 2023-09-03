@@ -8,6 +8,7 @@ use bevy_ecs::{
     entity::Entity,
     query::With,
     system::{Local, Query, Res, ResMut, Resource},
+    world::World,
 };
 use bevy_math::UVec2;
 use bevy_utils::{HashMap, HashSet};
@@ -112,8 +113,11 @@ impl RenderTaskResourceRegistry {
         self.internal.get(&(entity, name))
     }
 
-    pub(crate) fn clear_external(mut this: ResMut<Self>) {
+    pub(crate) fn cleanup(mut this: ResMut<Self>, world: &World) {
         this.external.clear();
+
+        this.internal
+            .retain(|(entity, _), _| world.get_entity(*entity).is_some())
     }
 }
 
