@@ -1,11 +1,9 @@
 use super::RenderTask;
 use crate::{
     camera::ExtractedCamera,
-    render_resource::TextureDescriptorOwned,
+    render_resource::{Texture, TextureDescriptorOwned},
     renderer::RenderDevice,
-    texture::{CachedTexture, TextureCache},
 };
-use bevy_core::FrameCount;
 use bevy_ecs::{
     entity::Entity,
     query::With,
@@ -94,7 +92,7 @@ impl RenderTaskResourceView {
 
 #[derive(Resource, Default)]
 pub struct RenderTaskResourceRegistry {
-    internal: HashMap<(Entity, String), CachedTexture>,
+    internal: HashMap<(Entity, String), Texture>,
     external: HashMap<(Entity, &'static str), TextureView>,
 }
 
@@ -109,25 +107,24 @@ impl RenderTaskResourceRegistry {
         &self,
         name: &str,
         entity: Entity,
-    ) -> Option<&CachedTexture> {
-        self.internal
-            .get(&(entity, format!("{}_{name}", R::name())))
+    ) -> Option<&Texture> {
+        let name = format!("{}_{name}", R::name());
+        self.internal.get(&(entity, name))
     }
 
-    pub(crate) fn clear(mut this: ResMut<Self>) {
-        this.internal.clear();
+    pub(crate) fn cleanup(mut this: ResMut<Self>) {
         this.external.clear();
+
+        // TODO: Clear this.internal values that are no longer needed
     }
 }
 
-// TODO: Use a custom texture cache inside of RenderTaskResourceRegistry
 pub fn prepare_resources<R: RenderTask>(
     query: Query<(Entity, &ExtractedCamera), With<R::RenderTaskSettings>>,
     mut resource_registry: ResMut<RenderTaskResourceRegistry>,
-    texture_cache: Res<TextureCache>,
     render_device: Res<RenderDevice>,
-    frame_count: Res<FrameCount>,
 ) {
+    let task_name = R::name();
     for (entity, camera) in &query {
         let Some(physical_viewport_size) = camera.physical_viewport_size else { continue };
         let mut texture_descriptors = HashMap::new();
@@ -144,7 +141,7 @@ pub fn prepare_resources<R: RenderTask>(
                     dimension,
                 } => {
                     let descriptor = TextureDescriptorOwned {
-                        label: format!("{}_{name}", R::name()),
+                        label: format!("{task_name}_{name}"),
                         size: Extent3d {
                             width,
                             height,
@@ -209,22 +206,19 @@ pub fn prepare_resources<R: RenderTask>(
         for name in double_buffer {
             let descriptor = texture_descriptors.remove(*name).unwrap();
 
+            let name_1 = format!("{task_name}_{name}_1");
             let descriptor_1 = TextureDescriptorOwned {
-                label: format!("{}_{name}_1", R::name()),
+                label: name_1.clone(),
                 ..descriptor
             };
+            let name_2 = format!("{task_name}_{name}_2");
             let descriptor_2 = TextureDescriptorOwned {
-                label: format!("{}_{name}_2", R::name()),
+                label: name_2.clone(),
                 ..descriptor
             };
 
-            if frame_count.0 % 2 == 0 {
-                texture_descriptors.insert(format!("{name}_previous"), descriptor_1);
-                texture_descriptors.insert(format!("{name}_current"), descriptor_2);
-            } else {
-                texture_descriptors.insert(format!("{name}_previous"), descriptor_2);
-                texture_descriptors.insert(format!("{name}_current"), descriptor_1);
-            }
+            texture_descriptors.insert(name_1, descriptor_1);
+            texture_descriptors.insert(name_2, descriptor_2);
         }
 
         // Create resources and put in internal registry
@@ -239,10 +233,11 @@ pub fn prepare_resources<R: RenderTask>(
                 usage: descriptor.usage,
                 view_formats: descriptor.view_formats,
             };
-            let texture = texture_cache.get(&*render_device, descriptor);
+
             resource_registry
                 .internal
-                .insert((entity, format!("{}_{name}", R::name())), texture);
+                .entry((entity, format!("{task_name}_{name}")))
+                .or_insert_with(|| render_device.create_texture(&descriptor));
         }
     }
 }
