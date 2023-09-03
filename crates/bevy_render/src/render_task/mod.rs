@@ -13,7 +13,7 @@ use self::{
 };
 use crate::{
     render_graph::RenderGraphApp,
-    render_resource::{BindGroup, ComputePipeline, Shader},
+    render_resource::{BindGroup, ComputePipeline, Shader, ShaderDefVal},
     Render, RenderSet,
 };
 use bevy_app::App;
@@ -25,7 +25,6 @@ use wgpu::CommandEncoder;
 
 // TODO: Write prepare systems
 // TODO: Support buffers
-// TODO: Figure out how to allow the user to specialize shaders
 // TODO: Dedup pipelines / bind group layouts / bind groups
 // TODO: Replace hashmaps with compile time hashmaps over strings or marker types
 // TODO: Automate generating shader binding wgsl code and loading shaders
@@ -62,6 +61,7 @@ pub struct RenderTaskPass {
     pub shader: Handle<Shader>,
     /// Assumed to be the same as the pipeline name if None.
     pub entry_point: Option<&'static str>,
+    pub shader_defs: &'static [ShaderDefVal],
     pub bindings: &'static [RenderTaskResourceView],
 }
 
@@ -70,6 +70,7 @@ impl RenderTaskPass {
         Self {
             shader,
             entry_point: None,
+            shader_defs: &[],
             bindings: resources,
         }
     }

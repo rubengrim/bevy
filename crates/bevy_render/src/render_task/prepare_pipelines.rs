@@ -62,7 +62,7 @@ impl<R: RenderTask> SpecializedComputePipeline for RenderTaskPipelines<R> {
             layout: vec![self.bind_group_layouts[pass_name].clone()],
             push_constant_ranges: vec![],
             shader: pass.shader.clone(),
-            shader_defs: vec![], // TODO: Allow the user to specialize their shaders
+            shader_defs: pass.shader_defs.to_vec(),
             entry_point: pass.entry_point.unwrap_or(pass_name).into(),
         }
     }
