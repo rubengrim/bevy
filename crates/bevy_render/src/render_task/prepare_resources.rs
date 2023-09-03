@@ -123,7 +123,7 @@ impl RenderTaskResourceRegistry {
 pub fn prepare_resources<R: RenderTask>(
     query: Query<(Entity, &ExtractedCamera), With<R::RenderTaskSettings>>,
     mut resource_registry: ResMut<RenderTaskResourceRegistry>,
-    mut previous_viewport_sizes: Local<HashMap<Entity, UVec2>>,
+    mut previous_viewport_sizes: Local<HashMap<Entity, UVec2>>, // TODO: Deleted entities never get cleaned up here
     render_device: Res<RenderDevice>,
 ) {
     let task_name = R::name();

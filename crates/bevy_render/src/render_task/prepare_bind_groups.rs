@@ -86,7 +86,7 @@ pub fn create_bind_group_layouts<R: RenderTask>(
 pub fn prepare_bind_groups<R: RenderTask>(
     query: Query<(Entity, &ExtractedCamera), With<R::RenderTaskSettings>>,
     mut resource_registry: ResMut<RenderTaskResourceRegistry>,
-    mut previous_viewport_sizes: Local<HashMap<Entity, UVec2>>,
+    mut previous_viewport_sizes: Local<HashMap<Entity, UVec2>>, // TODO: Deleted entities never get cleaned up here
     pipelines: Res<RenderTaskPipelines<R>>,
     frame_count: Res<FrameCount>,
     render_device: Res<RenderDevice>,
