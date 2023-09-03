@@ -8,6 +8,7 @@ use bevy_ecs::{
     entity::Entity,
     query::With,
     system::{Commands, Query, Res, ResMut, Resource},
+    world::{FromWorld, World},
 };
 use bevy_utils::HashMap;
 use std::marker::PhantomData;
@@ -18,14 +19,16 @@ pub struct RenderTaskPipelines<R: RenderTask> {
     _marker: PhantomData<R>,
 }
 
-impl<R: RenderTask> RenderTaskPipelines<R> {
-    pub fn new() -> Self {
+impl<R: RenderTask> FromWorld for RenderTaskPipelines<R> {
+    fn from_world(world: &mut World) -> Self {
         Self {
-            bind_group_layouts: create_bind_group_layouts::<R>(),
+            bind_group_layouts: create_bind_group_layouts::<R>(world.resource()),
             _marker: PhantomData,
         }
     }
+}
 
+impl<R: RenderTask> RenderTaskPipelines<R> {
     pub fn prepare_pipelines(
         mut commands: Commands,
         pipeline_cache: Res<PipelineCache>,

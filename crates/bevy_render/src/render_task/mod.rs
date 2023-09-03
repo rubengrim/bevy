@@ -78,7 +78,7 @@ impl RenderTaskPass {
 
 pub(crate) fn add_render_task_to_render_app<R: RenderTask>(render_app: &mut App) {
     render_app
-        .insert_resource(RenderTaskPipelines::<R>::new())
+        .init_resource::<RenderTaskPipelines<R>>()
         .add_render_graph_node::<RenderTaskNode<R>>(R::render_node_sub_graph(), R::name())
         .add_render_graph_edges(R::render_node_sub_graph(), R::render_node_edges())
         .add_systems(
