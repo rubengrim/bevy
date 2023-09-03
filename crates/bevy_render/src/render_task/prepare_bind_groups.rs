@@ -1,4 +1,5 @@
 use crate::{
+    camera::ExtractedCamera,
     render_resource::BindGroupLayout,
     render_task::{
         prepare_pipelines::RenderTaskPipelines, RenderTask, RenderTaskResource,
@@ -10,7 +11,7 @@ use bevy_core::FrameCount;
 use bevy_ecs::{
     entity::Entity,
     query::With,
-    system::{Query, Res, ResMut},
+    system::{Local, Query, Res, ResMut},
 };
 use bevy_math::UVec2;
 use bevy_utils::HashMap;
@@ -83,15 +84,27 @@ pub fn create_bind_group_layouts<R: RenderTask>(
 }
 
 pub fn prepare_bind_groups<R: RenderTask>(
-    query: Query<Entity, With<R::RenderTaskSettings>>,
+    query: Query<(Entity, &ExtractedCamera), With<R::RenderTaskSettings>>,
     mut resource_registry: ResMut<RenderTaskResourceRegistry>,
+    mut previous_viewport_sizes: Local<HashMap<Entity, UVec2>>,
     pipelines: Res<RenderTaskPipelines<R>>,
     frame_count: Res<FrameCount>,
     render_device: Res<RenderDevice>,
 ) {
     let task_name = R::name();
 
-    for entity in &query {
+    for (entity, camera) in &query {
+        // Skip creating bind groups for views with the same viewport as last frame
+        let Some(physical_viewport_size) = camera.physical_viewport_size else { continue };
+        match previous_viewport_sizes.get(&entity) {
+            Some(previous_viewport_size) if *previous_viewport_size == physical_viewport_size => {
+                continue;
+            }
+            _ => {
+                previous_viewport_sizes.insert(entity, physical_viewport_size);
+            }
+        }
+
         for (pass_name, pass) in R::passes() {
             let mut entries = Vec::new();
             for (i, resource_view) in pass.bindings.iter().enumerate() {
