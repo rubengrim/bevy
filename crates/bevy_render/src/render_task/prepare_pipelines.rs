@@ -13,12 +13,12 @@ use bevy_utils::HashMap;
 use std::marker::PhantomData;
 
 #[derive(Resource)]
-pub struct RenderTaskPipelinesWrapper<R: RenderTask> {
+pub struct RenderTaskPipelines<R: RenderTask> {
     bind_group_layouts: HashMap<&'static str, BindGroupLayout>,
     _marker: PhantomData<R>,
 }
 
-impl<R: RenderTask> RenderTaskPipelinesWrapper<R> {
+impl<R: RenderTask> RenderTaskPipelines<R> {
     pub fn new() -> Self {
         Self {
             bind_group_layouts: create_bind_group_layouts::<R>(),
@@ -51,7 +51,7 @@ impl<R: RenderTask> RenderTaskPipelinesWrapper<R> {
     }
 }
 
-impl<R: RenderTask> SpecializedComputePipeline for RenderTaskPipelinesWrapper<R> {
+impl<R: RenderTask> SpecializedComputePipeline for RenderTaskPipelines<R> {
     type Key = &'static str;
 
     fn specialize(&self, pass_name: Self::Key) -> ComputePipelineDescriptor {
