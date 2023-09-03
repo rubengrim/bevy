@@ -23,7 +23,7 @@ use bevy_math::UVec2;
 use bevy_utils::HashMap;
 use wgpu::CommandEncoder;
 
-// TODO: Write prepare systems
+// TODO: Finish prepare_bind_groups()
 // TODO: Support buffers
 // TODO: Dedup pipelines / bind group layouts / bind groups
 // TODO: Replace hashmaps with compile time hashmaps over strings or marker types

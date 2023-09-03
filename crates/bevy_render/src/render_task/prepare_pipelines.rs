@@ -15,7 +15,7 @@ use std::marker::PhantomData;
 
 #[derive(Resource)]
 pub struct RenderTaskPipelines<R: RenderTask> {
-    bind_group_layouts: HashMap<&'static str, BindGroupLayout>,
+    pub bind_group_layouts: HashMap<&'static str, BindGroupLayout>,
     _marker: PhantomData<R>,
 }
 

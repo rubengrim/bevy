@@ -1,14 +1,23 @@
-use super::RenderTask;
 use crate::{
     render_resource::BindGroupLayout,
-    render_task::{RenderTaskResource, RenderTaskResourceView},
+    render_task::{
+        prepare_pipelines::RenderTaskPipelines, RenderTask, RenderTaskResource,
+        RenderTaskResourceRegistry, RenderTaskResourceView,
+    },
     renderer::RenderDevice,
+};
+use bevy_core::FrameCount;
+use bevy_ecs::{
+    entity::Entity,
+    query::With,
+    system::{Query, Res, ResMut},
 };
 use bevy_math::UVec2;
 use bevy_utils::HashMap;
 use wgpu::{
-    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, SamplerBindingType, ShaderStages,
-    StorageTextureAccess, TextureViewDimension,
+    BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry,
+    BindingResource, BindingType, SamplerBindingType, ShaderStages, StorageTextureAccess,
+    TextureViewDimension,
 };
 
 pub fn create_bind_group_layouts<R: RenderTask>(
@@ -73,6 +82,51 @@ pub fn create_bind_group_layouts<R: RenderTask>(
     layouts
 }
 
-pub fn prepare_bind_groups<R: RenderTask>() {
-    // TODO
+pub fn prepare_bind_groups<R: RenderTask>(
+    query: Query<Entity, With<R::RenderTaskSettings>>,
+    mut resource_registry: ResMut<RenderTaskResourceRegistry>,
+    pipelines: Res<RenderTaskPipelines<R>>,
+    frame_count: Res<FrameCount>,
+    render_device: Res<RenderDevice>,
+) {
+    let task_name = R::name();
+
+    for entity in &query {
+        for (pass_name, pass) in R::passes() {
+            let mut entries = Vec::new();
+            for (i, resource_view) in pass.bindings.iter().enumerate() {
+                entries.push(BindGroupEntry {
+                    binding: i as u32,
+                    resource: match resource_view {
+                        RenderTaskResourceView::SampledTexture {
+                            name,
+                            mip,
+                            layer,
+                            previous_frame,
+                        } => BindingResource::TextureView(todo!()),
+                        RenderTaskResourceView::StorageTextureWrite {
+                            name,
+                            mip,
+                            layer,
+                            previous_frame,
+                        } => BindingResource::TextureView(todo!()),
+                        RenderTaskResourceView::StorageTextureReadWrite {
+                            name,
+                            mip,
+                            layer,
+                            previous_frame,
+                        } => BindingResource::TextureView(todo!()),
+                        RenderTaskResourceView::Sampler(name) => BindingResource::Sampler(todo!()),
+                    },
+                });
+            }
+
+            let descriptor = BindGroupDescriptor {
+                label: Some(&format!("{task_name}_{pass_name}_bind_group")),
+                layout: pipelines.bind_group_layouts.get(pass_name).unwrap(),
+                entries: &entries,
+            };
+            // TODO: Store/cache bind groups in RenderTaskResourceRegistry
+        }
+    }
 }
