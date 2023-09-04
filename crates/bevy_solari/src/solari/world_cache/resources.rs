@@ -22,171 +22,51 @@ impl FromWorld for SolariWorldCacheResources {
 
         let bind_group_layout_entries = &[
             // Checksums
-            BindGroupLayoutEntry {
-                binding: 0,
-                visibility: ShaderStages::COMPUTE,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Storage { read_only: false },
-                    has_dynamic_offset: false,
-                    min_binding_size: Some(unsafe { NonZeroU64::new_unchecked(4) }),
-                },
-                count: None,
-            },
+            bgl_entry(0, 4),
             // Life
-            BindGroupLayoutEntry {
-                binding: 1,
-                visibility: ShaderStages::COMPUTE,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Storage { read_only: false },
-                    has_dynamic_offset: false,
-                    min_binding_size: Some(unsafe { NonZeroU64::new_unchecked(4) }),
-                },
-                count: None,
-            },
+            bgl_entry(1, 4),
             // Irradiance
-            BindGroupLayoutEntry {
-                binding: 2,
-                visibility: ShaderStages::COMPUTE,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Storage { read_only: false },
-                    has_dynamic_offset: false,
-                    min_binding_size: Some(unsafe { NonZeroU64::new_unchecked(16) }),
-                },
-                count: None,
-            },
+            bgl_entry(2, 16),
             // Cell data
-            BindGroupLayoutEntry {
-                binding: 3,
-                visibility: ShaderStages::COMPUTE,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Storage { read_only: false },
-                    has_dynamic_offset: false,
-                    min_binding_size: Some(unsafe { NonZeroU64::new_unchecked(32) }),
-                },
-                count: None,
-            },
+            bgl_entry(3, 32),
             // Active cells new irradiance
-            BindGroupLayoutEntry {
-                binding: 4,
-                visibility: ShaderStages::COMPUTE,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Storage { read_only: false },
-                    has_dynamic_offset: false,
-                    min_binding_size: Some(unsafe { NonZeroU64::new_unchecked(16) }),
-                },
-                count: None,
-            },
+            bgl_entry(4, 16),
             // B1
-            BindGroupLayoutEntry {
-                binding: 5,
-                visibility: ShaderStages::COMPUTE,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Storage { read_only: false },
-                    has_dynamic_offset: false,
-                    min_binding_size: Some(unsafe { NonZeroU64::new_unchecked(4) }),
-                },
-                count: None,
-            },
+            bgl_entry(5, 4),
             // B2
-            BindGroupLayoutEntry {
-                binding: 6,
-                visibility: ShaderStages::COMPUTE,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Storage { read_only: false },
-                    has_dynamic_offset: false,
-                    min_binding_size: Some(unsafe { NonZeroU64::new_unchecked(4) }),
-                },
-                count: None,
-            },
+            bgl_entry(6, 4),
             // Active cell indices
-            BindGroupLayoutEntry {
-                binding: 7,
-                visibility: ShaderStages::COMPUTE,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Storage { read_only: false },
-                    has_dynamic_offset: false,
-                    min_binding_size: Some(unsafe { NonZeroU64::new_unchecked(4) }),
-                },
-                count: None,
-            },
+            bgl_entry(7, 4),
             // Active cells count
-            BindGroupLayoutEntry {
-                binding: 8,
-                visibility: ShaderStages::COMPUTE,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Storage { read_only: false },
-                    has_dynamic_offset: false,
-                    min_binding_size: Some(unsafe { NonZeroU64::new_unchecked(4) }),
-                },
-                count: None,
-            },
+            bgl_entry(8, 4),
             // Active cells dispatch
-            BindGroupLayoutEntry {
-                binding: 9,
-                visibility: ShaderStages::COMPUTE,
-                ty: BindingType::Buffer {
-                    ty: BufferBindingType::Storage { read_only: false },
-                    has_dynamic_offset: false,
-                    min_binding_size: Some(unsafe { NonZeroU64::new_unchecked(12) }),
-                },
-                count: None,
-            },
+            bgl_entry(9, 12),
         ];
 
-        let checksums = render_device.create_buffer(&BufferDescriptor {
-            label: Some("bevy_solari_world_cache_checksums"),
-            size: 4 * WORLD_CACHE_SIZE,
-            usage: BufferUsages::STORAGE,
-            mapped_at_creation: false,
-        });
-        let life = render_device.create_buffer(&BufferDescriptor {
-            label: Some("bevy_solari_world_cache_life"),
-            size: 4 * WORLD_CACHE_SIZE,
-            usage: BufferUsages::STORAGE,
-            mapped_at_creation: false,
-        });
-        let irradiance = render_device.create_buffer(&BufferDescriptor {
-            label: Some("bevy_solari_world_cache_irradiance"),
-            size: 16 * WORLD_CACHE_SIZE,
-            usage: BufferUsages::STORAGE,
-            mapped_at_creation: false,
-        });
-        let cell_data = render_device.create_buffer(&BufferDescriptor {
-            label: Some("bevy_solari_world_cache_cell_data"),
-            size: 32 * WORLD_CACHE_SIZE,
-            usage: BufferUsages::STORAGE,
-            mapped_at_creation: false,
-        });
-        let active_cells_new_irradiance = render_device.create_buffer(&BufferDescriptor {
-            label: Some("bevy_solari_world_cache_active_cells_new_irradiance"),
-            size: 16 * WORLD_CACHE_SIZE,
-            usage: BufferUsages::STORAGE,
-            mapped_at_creation: false,
-        });
-        let b1 = render_device.create_buffer(&BufferDescriptor {
-            label: Some("bevy_solari_world_cache_b1"),
-            size: 4 * WORLD_CACHE_SIZE,
-            usage: BufferUsages::STORAGE,
-            mapped_at_creation: false,
-        });
-        let b2 = render_device.create_buffer(&BufferDescriptor {
-            label: Some("bevy_solari_world_cache_b2"),
-            size: 4 * 1024,
-            usage: BufferUsages::STORAGE,
-            mapped_at_creation: false,
-        });
-        let active_cell_indices = render_device.create_buffer(&BufferDescriptor {
-            label: Some("bevy_solari_world_cache_active_cell_indices"),
-            size: 4 * WORLD_CACHE_SIZE,
-            usage: BufferUsages::STORAGE,
-            mapped_at_creation: false,
-        });
-        let active_cells_count = render_device.create_buffer(&BufferDescriptor {
-            label: Some("bevy_solari_world_cache_active_cells_count"),
-            size: 4,
-            usage: BufferUsages::STORAGE,
-            mapped_at_creation: false,
-        });
+        let create_buffer = |label, size| {
+            render_device.create_buffer(&BufferDescriptor {
+                label: Some(label),
+                size,
+                usage: BufferUsages::STORAGE,
+                mapped_at_creation: false,
+            })
+        };
+
+        let checksums = create_buffer("bevy_solari_world_cache_checksums", 4 * WORLD_CACHE_SIZE);
+        let life = create_buffer("bevy_solari_world_cache_life", 4 * WORLD_CACHE_SIZE);
+        let irradiance = create_buffer("bevy_solari_world_cache_irradiance", 16 * WORLD_CACHE_SIZE);
+        let cell_data = create_buffer("bevy_solari_world_cache_cell_data", 32 * WORLD_CACHE_SIZE);
+        let active_cells_new_irradiance = create_buffer(
+            "bevy_solari_world_cache_active_cells_new_irradiance",
+            16 * WORLD_CACHE_SIZE,
+        );
+        let b1 = create_buffer("bevy_solari_world_cache_b1", 4 * WORLD_CACHE_SIZE);
+        let b2 = create_buffer("bevy_solari_world_cache_b2", 4 * 1024);
+        let active_cell_indices = create_buffer(
+            "bevy_solari_world_cache_active_cell_indices",
+            4 * WORLD_CACHE_SIZE,
+        );
+        let active_cells_count = create_buffer("bevy_solari_world_cache_active_cells_count", 4);
         let active_cells_dispatch_buffer = render_device.create_buffer(&BufferDescriptor {
             label: Some("bevy_solari_world_cache_active_cells_dispatch_buffer"),
             size: 12,
@@ -195,46 +75,16 @@ impl FromWorld for SolariWorldCacheResources {
         });
 
         let bind_group_entries = &[
-            BindGroupEntry {
-                binding: 0,
-                resource: checksums.as_entire_binding(),
-            },
-            BindGroupEntry {
-                binding: 1,
-                resource: life.as_entire_binding(),
-            },
-            BindGroupEntry {
-                binding: 2,
-                resource: irradiance.as_entire_binding(),
-            },
-            BindGroupEntry {
-                binding: 3,
-                resource: cell_data.as_entire_binding(),
-            },
-            BindGroupEntry {
-                binding: 4,
-                resource: active_cells_new_irradiance.as_entire_binding(),
-            },
-            BindGroupEntry {
-                binding: 5,
-                resource: b1.as_entire_binding(),
-            },
-            BindGroupEntry {
-                binding: 6,
-                resource: b2.as_entire_binding(),
-            },
-            BindGroupEntry {
-                binding: 7,
-                resource: active_cell_indices.as_entire_binding(),
-            },
-            BindGroupEntry {
-                binding: 8,
-                resource: active_cells_count.as_entire_binding(),
-            },
-            BindGroupEntry {
-                binding: 9,
-                resource: active_cells_dispatch_buffer.as_entire_binding(),
-            },
+            bg_entry(0, &checksums),
+            bg_entry(1, &life),
+            bg_entry(2, &irradiance),
+            bg_entry(3, &cell_data),
+            bg_entry(4, &active_cells_new_irradiance),
+            bg_entry(5, &b1),
+            bg_entry(6, &b2),
+            bg_entry(7, &active_cell_indices),
+            bg_entry(8, &active_cells_count),
+            bg_entry(9, &active_cells_dispatch_buffer),
         ];
 
         let bind_group_layout =
@@ -268,5 +118,25 @@ impl FromWorld for SolariWorldCacheResources {
             bind_group_no_dispatch,
             active_cells_dispatch_buffer,
         }
+    }
+}
+
+fn bgl_entry(binding: u32, min_binding_size: u64) -> BindGroupLayoutEntry {
+    BindGroupLayoutEntry {
+        binding,
+        visibility: ShaderStages::COMPUTE,
+        ty: BindingType::Buffer {
+            ty: BufferBindingType::Storage { read_only: false },
+            has_dynamic_offset: false,
+            min_binding_size: Some(unsafe { NonZeroU64::new_unchecked(min_binding_size) }),
+        },
+        count: None,
+    }
+}
+
+fn bg_entry(binding: u32, buffer: &Buffer) -> BindGroupEntry {
+    BindGroupEntry {
+        binding,
+        resource: buffer.as_entire_binding(),
     }
 }
