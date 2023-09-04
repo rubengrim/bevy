@@ -1,4 +1,7 @@
-* Sun light
+* Get TAA working
+* Reprojecting screen probes
+    * Temporal accumulation
+    * Ray guiding using last-frame's probes
 * World cache improvements
     * Short trace distance
     * Tie world cache to camera, use a log scale for cell size
@@ -6,22 +9,17 @@
         * Light sources and other cache entries via choosing a random slice of world_cache_active_cell_indices
     * World cache position jitter within each cell(?)
     * Variance driven world cache update rate, skipping very stable cells, and adapting to lighting changes faster
-* Get TAA working
 
 * Hierarchal debug menu: A for gbuffer, then 1/2/3/4 for specific textures, etc
-* ReSTIR for per-pixel direct light sampling
-    * https://benedikt-bitterli.me/restir/bitterli20restir.pdf
-    * https://d1qx31qr3h6wln.cloudfront.net/publications/hpg21_rearchitectingReSTIR.pdf
-* Reprojecting screen probes
-    * Temporal accumulation
-    * Ray guiding using last-frame's probes
 * Improve spatiotemporal denoiser
     * Spatial weights
     * Early return for denoise passes for sky pixels or 0 spatial denoising
     * Experiment with mixing spatial denoise into temporal history, either before or after
-
-* Add screenspace GI (SSAO/SSIL)
+* ReSTIR for per-pixel direct light sampling
+    * https://benedikt-bitterli.me/restir/bitterli20restir.pdf
+    * https://d1qx31qr3h6wln.cloudfront.net/publications/hpg21_rearchitectingReSTIR.pdf
 * Specular lighting
+* Add screenspace GI (SSAO/SSIL)
 * Cleanup, remaining TODOs, performance profiling, documentation, etc
     * "A Fast and Robust Method for Avoiding Self-Intersection"
     * Cull or simplify BLAS/TLAS entries for far away meshes

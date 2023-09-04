@@ -2,7 +2,7 @@
 #import bevy_solari::view_bindings
 #import bevy_solari::utils
 #import bevy_solari::world_cache::bindings
-#import bevy_solari::world_cache::utils
+#import bevy_solari::world_cache::query
 
 @compute @workgroup_size(1024, 1, 1)
 fn world_cache_sample_irradiance(@builtin(global_invocation_id) active_cell_id: vec3<u32>) {

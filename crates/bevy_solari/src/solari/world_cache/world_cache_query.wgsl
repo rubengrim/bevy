@@ -1,4 +1,4 @@
-#define_import_path bevy_solari::world_cache::utils
+#define_import_path bevy_solari::world_cache::query
 
 fn pcg_hash(input: u32) -> u32 {
     let state = input * 747796405u + 2891336453u;

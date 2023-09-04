@@ -2,7 +2,7 @@
 #import bevy_solari::view_bindings
 #import bevy_solari::utils
 #import bevy_solari::world_cache::bindings
-#import bevy_solari::world_cache::utils
+#import bevy_solari::world_cache::query
 
 var<workgroup> probe_g_pixel: vec4<u32>;
 var<workgroup> probe_pixel_uv: vec2<f32>;

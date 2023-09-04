@@ -49,7 +49,7 @@ const SOLARI_TAA_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 1617171717171759);
 const SOLARI_WORLD_CACHE_BINDINGS_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 1717171717171756);
-const SOLARI_WORLD_CACHE_UTILS_SHADER: HandleUntyped =
+const SOLARI_WORLD_CACHE_QUERY_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 2717171717171756);
 const SOLARI_WORLD_CACHE_COMPACT_ACTIVE_CELLS_SHADER: HandleUntyped =
     HandleUntyped::weak_from_u64(Shader::TYPE_UUID, 3717171717171756);
@@ -122,8 +122,8 @@ impl Plugin for SolariRealtimePlugin {
         );
         load_internal_asset!(
             app,
-            SOLARI_WORLD_CACHE_UTILS_SHADER,
-            "world_cache/world_cache_utils.wgsl",
+            SOLARI_WORLD_CACHE_QUERY_SHADER,
+            "world_cache/world_cache_query.wgsl",
             Shader::from_wgsl
         );
         load_internal_asset!(
