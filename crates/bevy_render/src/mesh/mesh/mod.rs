@@ -1,28 +1,21 @@
 mod conversions;
+mod gpu_mesh_manager;
 pub mod skinning;
+
+pub use gpu_mesh_manager::{GpuMeshManager, GpuMeshMetadata};
 pub use wgpu::PrimitiveTopology;
 
-use crate::{
-    prelude::Image,
-    primitives::Aabb,
-    render_asset::{PrepareAssetError, RenderAsset, RenderAssets},
-    render_resource::{Buffer, TextureView, VertexBufferLayout},
-    renderer::RenderDevice,
-};
+use crate::{prelude::Image, primitives::Aabb, render_resource::VertexBufferLayout};
 use bevy_asset::{Asset, Handle};
 use bevy_core::cast_slice;
 use bevy_derive::EnumVariantMeta;
-use bevy_ecs::system::{lifetimeless::SRes, SystemParamItem};
 use bevy_log::warn;
 use bevy_math::*;
 use bevy_reflect::TypePath;
 use bevy_utils::{tracing::error, Hashed};
 use std::{collections::BTreeMap, hash::Hash, iter::FusedIterator};
 use thiserror::Error;
-use wgpu::{
-    util::BufferInitDescriptor, BufferUsages, IndexFormat, VertexAttribute, VertexFormat,
-    VertexStepMode,
-};
+use wgpu::{IndexFormat, VertexAttribute, VertexFormat, VertexStepMode};
 
 pub const INDEX_BUFFER_ASSET_INDEX: u64 = 0;
 pub const VERTEX_ATTRIBUTE_BUFFER_ID: u64 = 10;
@@ -899,82 +892,6 @@ impl From<&Indices> for IndexFormat {
             Indices::U16(_) => IndexFormat::Uint16,
             Indices::U32(_) => IndexFormat::Uint32,
         }
-    }
-}
-
-/// The GPU-representation of a [`Mesh`].
-/// Consists of a vertex data buffer and an optional index data buffer.
-#[derive(Debug, Clone)]
-pub struct GpuMesh {
-    /// Contains all attribute data for each vertex.
-    pub vertex_buffer: Buffer,
-    pub vertex_count: u32,
-    pub morph_targets: Option<TextureView>,
-    pub buffer_info: GpuBufferInfo,
-    pub primitive_topology: PrimitiveTopology,
-    pub layout: MeshVertexBufferLayout,
-}
-
-/// The index/vertex buffer info of a [`GpuMesh`].
-#[derive(Debug, Clone)]
-pub enum GpuBufferInfo {
-    Indexed {
-        /// Contains all index data of a mesh.
-        buffer: Buffer,
-        count: u32,
-        index_format: IndexFormat,
-    },
-    NonIndexed,
-}
-
-impl RenderAsset for Mesh {
-    type ExtractedAsset = Mesh;
-    type PreparedAsset = GpuMesh;
-    type Param = (SRes<RenderDevice>, SRes<RenderAssets<Image>>);
-
-    /// Clones the mesh.
-    fn extract_asset(&self) -> Self::ExtractedAsset {
-        self.clone()
-    }
-
-    /// Converts the extracted mesh a into [`GpuMesh`].
-    fn prepare_asset(
-        mesh: Self::ExtractedAsset,
-        (render_device, images): &mut SystemParamItem<Self::Param>,
-    ) -> Result<Self::PreparedAsset, PrepareAssetError<Self::ExtractedAsset>> {
-        let vertex_buffer_data = mesh.get_vertex_buffer_data();
-        let vertex_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
-            usage: BufferUsages::VERTEX,
-            label: Some("Mesh Vertex Buffer"),
-            contents: &vertex_buffer_data,
-        });
-
-        let buffer_info = if let Some(data) = mesh.get_index_buffer_bytes() {
-            GpuBufferInfo::Indexed {
-                buffer: render_device.create_buffer_with_data(&BufferInitDescriptor {
-                    usage: BufferUsages::INDEX,
-                    contents: data,
-                    label: Some("Mesh Index Buffer"),
-                }),
-                count: mesh.indices().unwrap().len() as u32,
-                index_format: mesh.indices().unwrap().into(),
-            }
-        } else {
-            GpuBufferInfo::NonIndexed
-        };
-
-        let mesh_vertex_buffer_layout = mesh.get_mesh_vertex_buffer_layout();
-
-        Ok(GpuMesh {
-            vertex_buffer,
-            vertex_count: mesh.count_vertices() as u32,
-            buffer_info,
-            primitive_topology: mesh.primitive_topology(),
-            layout: mesh_vertex_buffer_layout,
-            morph_targets: mesh
-                .morph_targets
-                .and_then(|mt| images.get(&mt).map(|i| i.texture_view.clone())),
-        })
     }
 }
 
