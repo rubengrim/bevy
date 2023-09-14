@@ -25,7 +25,7 @@ fn trace_screen_probes(
         textureStore(screen_probes_a, global_id.xy, vec4(0.0, 0.0, 0.0, 1.0));
         return;
     }
-    let probe_pixel_uv = (vec2<f32>(probe_thread_id) + 0.5) / view.viewport.zw;
+    let probe_pixel_uv = (vec2<f32>(probe_thread_id) + 0.5) / vec2<f32>(textureDimensions(screen_probes_a));
     let probe_pixel_world_position = depth_to_world_position(probe_pixel_depth, probe_pixel_uv);
 
     let octahedral_pixel_center = vec2<f32>(local_id.xy) + rand_vec2f(&rng);
