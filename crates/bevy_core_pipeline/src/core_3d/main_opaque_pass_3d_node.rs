@@ -72,7 +72,7 @@ impl ViewNode for MainOpaquePass3dNode {
             color_attachments: &[Some(target.get_color_attachment(Operations {
                 load: match camera_3d.clear_color {
                     ClearColorConfig::Default => {
-                        LoadOp::Clear(world.resource::<ClearColor>().0.into())
+                        LoadOp::Clear(world.resource::<ClearColor>().0.as_rgba_linear().into())
                     }
                     ClearColorConfig::Custom(color) => LoadOp::Clear(color.into()),
                     ClearColorConfig::None => LoadOp::Load,
