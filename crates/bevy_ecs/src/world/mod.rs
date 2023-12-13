@@ -1190,8 +1190,26 @@ impl World {
     pub fn is_resource_added<R: Resource>(&self) -> bool {
         self.components
             .get_resource_id(TypeId::of::<R>())
-            .and_then(|component_id| self.storages.resources.get(component_id)?.get_ticks())
-            .map(|ticks| ticks.is_added(self.last_change_tick(), self.read_change_tick()))
+            .map(|component_id| self.is_resource_added_by_id(component_id))
+            .unwrap_or(false)
+    }
+
+    /// Return's `true` if a resource with id `component_id` exists and was added since the world's
+    /// [`last_change_tick`](World::last_change_tick()). Otherwise, this return's `false`.
+    ///
+    /// This means that:
+    /// - When called from an exclusive system, this will check for additions since the system last ran.
+    /// - When called elsewhere, this will check for additions since the last time that [`World::clear_trackers`]
+    ///   was called.
+    pub fn is_resource_added_by_id(&self, component_id: ComponentId) -> bool {
+        self.storages
+            .resources
+            .get(component_id)
+            .and_then(|resource| {
+                resource
+                    .get_ticks()
+                    .map(|ticks| ticks.is_added(self.last_change_tick(), self.read_change_tick()))
+            })
             .unwrap_or(false)
     }
 
@@ -1205,8 +1223,26 @@ impl World {
     pub fn is_resource_changed<R: Resource>(&self) -> bool {
         self.components
             .get_resource_id(TypeId::of::<R>())
-            .and_then(|component_id| self.storages.resources.get(component_id)?.get_ticks())
-            .map(|ticks| ticks.is_changed(self.last_change_tick(), self.read_change_tick()))
+            .map(|component_id| self.is_resource_changed_by_id(component_id))
+            .unwrap_or(false)
+    }
+
+    /// Return's `true` if a resource with id `component_id` exists and was modified since the world's
+    /// [`last_change_tick`](World::last_change_tick()). Otherwise, this return's `false`.
+    ///
+    /// This means that:
+    /// - When called from an exclusive system, this will check for changes since the system last ran.
+    /// - When called elsewhere, this will check for changes since the last time that [`World::clear_trackers`]
+    ///   was called.
+    pub fn is_resource_changed_by_id(&self, component_id: ComponentId) -> bool {
+        self.storages
+            .resources
+            .get(component_id)
+            .and_then(|resource| {
+                resource
+                    .get_ticks()
+                    .map(|ticks| ticks.is_changed(self.last_change_tick(), self.read_change_tick()))
+            })
             .unwrap_or(false)
     }
 
@@ -1225,8 +1261,8 @@ impl World {
         match self.get_resource() {
             Some(x) => x,
             None => panic!(
-                "Requested resource {} does not exist in the `World`. 
-                Did you forget to add it using `app.insert_resource` / `app.init_resource`? 
+                "Requested resource {} does not exist in the `World`.
+                Did you forget to add it using `app.insert_resource` / `app.init_resource`?
                 Resources are also implicitly added via `app.add_event`,
                 and can be added by plugins.",
                 std::any::type_name::<R>()
@@ -1249,8 +1285,8 @@ impl World {
         match self.get_resource_mut() {
             Some(x) => x,
             None => panic!(
-                "Requested resource {} does not exist in the `World`. 
-                Did you forget to add it using `app.insert_resource` / `app.init_resource`? 
+                "Requested resource {} does not exist in the `World`.
+                Did you forget to add it using `app.insert_resource` / `app.init_resource`?
                 Resources are also implicitly added via `app.add_event`,
                 and can be added by plugins.",
                 std::any::type_name::<R>()
@@ -1320,8 +1356,8 @@ impl World {
         match self.get_non_send_resource() {
             Some(x) => x,
             None => panic!(
-                "Requested non-send resource {} does not exist in the `World`. 
-                Did you forget to add it using `app.insert_non_send_resource` / `app.init_non_send_resource`? 
+                "Requested non-send resource {} does not exist in the `World`.
+                Did you forget to add it using `app.insert_non_send_resource` / `app.init_non_send_resource`?
                 Non-send resources can also be be added by plugins.",
                 std::any::type_name::<R>()
             ),
@@ -1342,8 +1378,8 @@ impl World {
         match self.get_non_send_resource_mut() {
             Some(x) => x,
             None => panic!(
-                "Requested non-send resource {} does not exist in the `World`. 
-                Did you forget to add it using `app.insert_non_send_resource` / `app.init_non_send_resource`? 
+                "Requested non-send resource {} does not exist in the `World`.
+                Did you forget to add it using `app.insert_non_send_resource` / `app.init_non_send_resource`?
                 Non-send resources can also be be added by plugins.",
                 std::any::type_name::<R>()
             ),
