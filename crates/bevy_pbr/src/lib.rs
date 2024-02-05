@@ -16,6 +16,7 @@ mod parallax;
 mod pbr_material;
 mod prepass;
 mod render;
+pub mod solari;
 mod ssao;
 
 pub use alpha::*;

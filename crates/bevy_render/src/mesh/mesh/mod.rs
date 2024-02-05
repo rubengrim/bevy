@@ -21,7 +21,7 @@ use bevy_utils::{tracing::error, Hashed};
 use std::{collections::BTreeMap, hash::Hash, iter::FusedIterator};
 use thiserror::Error;
 use wgpu::{
-    util::BufferInitDescriptor, BufferUsages, IndexFormat, VertexAttribute, VertexFormat,
+    util::BufferInitDescriptor, BufferUsages, Features, IndexFormat, VertexAttribute, VertexFormat,
     VertexStepMode,
 };
 
@@ -124,6 +124,8 @@ pub struct Mesh {
     morph_targets: Option<Handle<Image>>,
     morph_target_names: Option<Vec<String>>,
     pub asset_usage: RenderAssetUsages,
+    /// TODO: Docs
+    pub ray_tracing_support: bool,
 }
 
 impl Mesh {
@@ -192,6 +194,7 @@ impl Mesh {
             morph_targets: None,
             morph_target_names: None,
             asset_usage,
+            ray_tracing_support: true,
         }
     }
 
@@ -1241,6 +1244,7 @@ pub struct GpuMesh {
     pub buffer_info: GpuBufferInfo,
     pub primitive_topology: PrimitiveTopology,
     pub layout: MeshVertexBufferLayout,
+    pub ray_tracing_support: bool,
 }
 
 /// The index/vertex buffer info of a [`GpuMesh`].
@@ -1268,9 +1272,19 @@ impl RenderAsset for Mesh {
         self,
         (render_device, images): &mut SystemParamItem<Self::Param>,
     ) -> Result<Self::PreparedAsset, PrepareAssetError<Self>> {
+        let extra_usages = if self.ray_tracing_support
+            && render_device
+                .features()
+                .contains(Features::RAY_TRACING_ACCELERATION_STRUCTURE)
+        {
+            BufferUsages::BLAS_INPUT | BufferUsages::STORAGE
+        } else {
+            BufferUsages::empty()
+        };
+
         let vertex_buffer_data = self.get_vertex_buffer_data();
         let vertex_buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
-            usage: BufferUsages::VERTEX,
+            usage: BufferUsages::VERTEX | extra_usages,
             label: Some("Mesh Vertex Buffer"),
             contents: &vertex_buffer_data,
         });
@@ -1278,7 +1292,7 @@ impl RenderAsset for Mesh {
         let buffer_info = if let Some(data) = self.get_index_buffer_bytes() {
             GpuBufferInfo::Indexed {
                 buffer: render_device.create_buffer_with_data(&BufferInitDescriptor {
-                    usage: BufferUsages::INDEX,
+                    usage: BufferUsages::INDEX | extra_usages,
                     contents: data,
                     label: Some("Mesh Index Buffer"),
                 }),
@@ -1300,6 +1314,7 @@ impl RenderAsset for Mesh {
             morph_targets: self
                 .morph_targets
                 .and_then(|mt| images.get(&mt).map(|i| i.texture_view.clone())),
+            ray_tracing_support: self.ray_tracing_support,
         })
     }
 }
