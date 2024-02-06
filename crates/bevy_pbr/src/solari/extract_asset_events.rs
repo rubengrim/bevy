@@ -17,12 +17,12 @@ pub struct ExtractedAssetEvents {
 
 pub fn extract_asset_events(
     mut main_world: ResMut<MainWorld>,
-    mut events: ResMut<ExtractedAssetEvents>,
+    mut asset_events: ResMut<ExtractedAssetEvents>,
 ) {
-    events.meshes_changed.clear();
-    events.meshes_removed.clear();
-    events.images_changed.clear();
-    events.images_removed.clear();
+    asset_events.meshes_changed.clear();
+    asset_events.meshes_removed.clear();
+    asset_events.images_changed.clear();
+    asset_events.images_removed.clear();
 
     main_world.resource_scope(
         |main_world, mut state: Mut<ExtractAssetEventsSystemState>| {
@@ -31,11 +31,11 @@ pub fn extract_asset_events(
             for asset_event in mesh_events.read() {
                 match asset_event {
                     AssetEvent::Added { id } | AssetEvent::Modified { id } => {
-                        events.meshes_changed.insert(*id);
+                        asset_events.meshes_changed.insert(*id);
                     }
                     AssetEvent::Unused { id } => {
-                        events.meshes_removed.push(*id);
-                        events.meshes_changed.remove(id);
+                        asset_events.meshes_removed.push(*id);
+                        asset_events.meshes_changed.remove(id);
                     }
                     _ => {}
                 }
@@ -44,11 +44,11 @@ pub fn extract_asset_events(
             for asset_event in image_events.read() {
                 match asset_event {
                     AssetEvent::Added { id } | AssetEvent::Modified { id } => {
-                        events.images_changed.insert(*id);
+                        asset_events.images_changed.insert(*id);
                     }
                     AssetEvent::Unused { id } => {
-                        events.images_removed.push(*id);
-                        events.images_changed.remove(id);
+                        asset_events.images_removed.push(*id);
+                        asset_events.images_changed.remove(id);
                     }
                     _ => {}
                 }

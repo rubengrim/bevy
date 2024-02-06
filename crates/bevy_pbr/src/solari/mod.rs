@@ -1,12 +1,12 @@
-// TODO: Move to bevy_render
-mod extract_asset_events;
+mod asset_binder;
 mod blas_manager;
+mod extract_asset_events;
 
 use bevy_app::{App, Plugin};
 use bevy_ecs::schedule::IntoSystemConfigs;
 use bevy_render::{
     mesh::Mesh, render_asset::prepare_assets, renderer::RenderDevice, settings::WgpuFeatures,
-    ExtractSchedule, Render, RenderApp, RenderSet,
+    texture::Image, ExtractSchedule, Render, RenderApp, RenderSet,
 };
 
 pub struct SolariPlugin {}
@@ -38,12 +38,20 @@ impl Plugin for SolariPlugin {
         render_app
             .init_resource::<extract_asset_events::ExtractedAssetEvents>()
             .init_resource::<blas_manager::BlasManager>()
+            .init_resource::<asset_binder::AssetBindings>()
             .add_systems(ExtractSchedule, extract_asset_events::extract_asset_events)
             .add_systems(
                 Render,
                 blas_manager::prepare_new_blas
                     .in_set(RenderSet::PrepareAssets)
                     .after(prepare_assets::<Mesh>),
+            )
+            .add_systems(
+                Render,
+                asset_binder::update_asset_binding_arrays
+                    .in_set(RenderSet::PrepareAssets)
+                    .after(prepare_assets::<Mesh>)
+                    .after(prepare_assets::<Image>),
             );
     }
 }
