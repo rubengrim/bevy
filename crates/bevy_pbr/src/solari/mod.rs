@@ -1,4 +1,5 @@
 // TODO: Move to bevy_render
+mod extract_asset_events;
 mod blas_manager;
 
 use bevy_app::{App, Plugin};
@@ -28,15 +29,16 @@ impl Plugin for SolariPlugin {
             _ => return,
         }
 
-        app.init_resource::<blas_manager::ExtractMeshAssetEventsSystemState>();
+        app.init_resource::<extract_asset_events::ExtractAssetEventsSystemState>();
 
         let Ok(render_app) = app.get_sub_app_mut(RenderApp) else {
             return;
         };
 
         render_app
+            .init_resource::<extract_asset_events::ExtractedAssetEvents>()
             .init_resource::<blas_manager::BlasManager>()
-            .add_systems(ExtractSchedule, blas_manager::extract_mesh_asset_events)
+            .add_systems(ExtractSchedule, extract_asset_events::extract_asset_events)
             .add_systems(
                 Render,
                 blas_manager::prepare_new_blas

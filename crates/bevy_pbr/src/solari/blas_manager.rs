@@ -1,9 +1,6 @@
-use bevy_asset::{AssetEvent, AssetId, Handle};
-use bevy_ecs::{
-    event::EventReader,
-    system::{Res, ResMut, Resource, SystemState},
-    world::{FromWorld, Mut, World},
-};
+use super::extract_asset_events::ExtractedAssetEvents;
+use bevy_asset::{AssetId, Handle};
+use bevy_ecs::system::{Res, ResMut, Resource};
 use bevy_render::{
     mesh::{GpuBufferInfo, GpuMesh, Mesh},
     render_asset::RenderAssets,
@@ -11,15 +8,12 @@ use bevy_render::{
         ray_tracing::*, Buffer, CommandEncoderDescriptor, IndexFormat, PrimitiveTopology,
     },
     renderer::{RenderDevice, RenderQueue},
-    MainWorld,
 };
-use bevy_utils::{HashMap, HashSet};
+use bevy_utils::HashMap;
 
 #[derive(Resource, Default)]
 pub struct BlasManager {
     blas: HashMap<AssetId<Mesh>, Blas>,
-    changed: HashSet<AssetId<Mesh>>,
-    removed: Vec<AssetId<Mesh>>,
 }
 
 impl BlasManager {
@@ -28,45 +22,11 @@ impl BlasManager {
     }
 }
 
-#[derive(Resource)]
-pub struct ExtractMeshAssetEventsSystemState {
-    state: SystemState<EventReader<'static, 'static, AssetEvent<Mesh>>>,
-}
-
-impl FromWorld for ExtractMeshAssetEventsSystemState {
-    fn from_world(world: &mut World) -> Self {
-        Self {
-            state: SystemState::new(world),
-        }
-    }
-}
-
-pub fn extract_mesh_asset_events(
-    mut main_world: ResMut<MainWorld>,
-    mut blas_manager: ResMut<BlasManager>,
-) {
-    main_world.resource_scope(
-        |main_world, mut state: Mut<ExtractMeshAssetEventsSystemState>| {
-            for asset_event in state.state.get(main_world).read() {
-                match asset_event {
-                    AssetEvent::Added { id } | AssetEvent::Modified { id } => {
-                        blas_manager.changed.insert(*id);
-                    }
-                    AssetEvent::Unused { id } => {
-                        blas_manager.removed.push(*id);
-                        blas_manager.changed.remove(id);
-                    }
-                    _ => {}
-                }
-            }
-        },
-    );
-}
-
 // TODO: BLAS compaction
 // TODO: Async compute queue for BLAS creation
 pub fn prepare_new_blas(
     mut blas_manager: ResMut<BlasManager>,
+    asset_events: Res<ExtractedAssetEvents>,
     render_meshes: Res<RenderAssets<Mesh>>,
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
@@ -74,19 +34,19 @@ pub fn prepare_new_blas(
     let blas_manager = blas_manager.as_mut();
 
     // Delete BLAS for removed meshes
-    for asset_id in blas_manager.removed.drain(..) {
-        blas_manager.blas.remove(&asset_id);
+    for asset_id in &asset_events.meshes_removed {
+        blas_manager.blas.remove(asset_id);
     }
 
-    if blas_manager.changed.is_empty() {
+    if asset_events.meshes_changed.is_empty() {
         return;
     }
 
     // Get GpuMeshes and filter to solari-compatible meshes
-    let meshes = blas_manager
-        .changed
-        .drain()
-        .filter_map(|asset_id| match render_meshes.get(asset_id) {
+    let meshes = asset_events
+        .meshes_changed
+        .iter()
+        .filter_map(|asset_id| match render_meshes.get(*asset_id) {
             Some(gpu_mesh) if mesh_compatible(gpu_mesh) => Some((asset_id, gpu_mesh)),
             _ => None,
         })
