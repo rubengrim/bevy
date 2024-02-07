@@ -24,10 +24,8 @@ pub struct AssetBindings {
 
 impl FromWorld for AssetBindings {
     fn from_world(world: &mut World) -> Self {
-        let render_device = world.resource::<RenderDevice>();
-
         Self {
-            bind_group_layout: render_device.create_bind_group_layout(
+            bind_group_layout: world.resource::<RenderDevice>().create_bind_group_layout(
                 "solari_assets_bind_group_layout",
                 &bind_group_layout_entries(),
             ),

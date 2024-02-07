@@ -1,6 +1,7 @@
 mod asset_binder;
 mod blas_manager;
 mod extract_asset_events;
+mod scene_binder;
 
 use self::{
     asset_binder::{update_asset_binding_arrays, AssetBindings},
