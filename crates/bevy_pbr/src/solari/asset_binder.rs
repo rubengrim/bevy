@@ -17,8 +17,8 @@ use std::{num::NonZeroU32, ops::Deref};
 #[derive(Resource)]
 pub struct AssetBindings {
     pub bind_group_layout: BindGroupLayout,
-    pub image_indices: HashMap<AssetId<Image>, u32>,
     pub mesh_indices: HashMap<AssetId<Mesh>, u32>,
+    pub image_indices: HashMap<AssetId<Image>, u32>,
     pub bind_group: Option<BindGroup>,
 }
 
@@ -31,8 +31,8 @@ impl FromWorld for AssetBindings {
                 "solari_assets_bind_group_layout",
                 &bind_group_layout_entries(),
             ),
-            image_indices: HashMap::default(),
             mesh_indices: HashMap::default(),
+            image_indices: HashMap::default(),
             bind_group: None,
         }
     }
@@ -41,35 +41,17 @@ impl FromWorld for AssetBindings {
 pub fn update_asset_binding_arrays(
     mut asset_bindings: ResMut<AssetBindings>,
     asset_events: Res<ExtractedAssetEvents>,
-    render_images: Res<RenderAssets<Image>>,
     render_meshes: Res<RenderAssets<Mesh>>,
+    render_images: Res<RenderAssets<Image>>,
     fallback_image: Res<FallbackImage>,
     render_device: Res<RenderDevice>,
 ) {
-    if asset_events.images_changed.is_empty() && asset_events.meshes_changed.is_empty() {
+    if asset_events.meshes_changed.is_empty() && asset_events.images_changed.is_empty() {
         return;
     }
 
     asset_bindings.image_indices.clear();
     asset_bindings.mesh_indices.clear();
-
-    let device_features = Some(render_device.features());
-    let (mut images, mut samplers) = render_images
-        .iter()
-        .filter(|(_, image)| {
-            image.texture_format.sample_type(None, device_features)
-                == Some(TextureSampleType::Float { filterable: true })
-                && image.texture.dimension() == TextureDimension::D2
-                && image.texture.sample_count() == 1
-        })
-        .enumerate()
-        .map(|(i, (asset_id, image))| {
-            asset_bindings.image_indices.insert(asset_id, i as u32);
-            (image.texture_view.deref(), image.sampler.deref())
-        })
-        .unzip::<_, _, Vec<_>, Vec<_>>();
-    images.push(&fallback_image.d2.texture_view);
-    samplers.push(&fallback_image.d2.sampler);
 
     let (vertex_buffers, index_buffers) = render_meshes
         .iter()
@@ -92,14 +74,32 @@ pub fn update_asset_binding_arrays(
         return;
     }
 
+    let device_features = Some(render_device.features());
+    let (mut images, mut samplers) = render_images
+        .iter()
+        .filter(|(_, image)| {
+            image.texture_format.sample_type(None, device_features)
+                == Some(TextureSampleType::Float { filterable: true })
+                && image.texture.dimension() == TextureDimension::D2
+                && image.texture.sample_count() == 1
+        })
+        .enumerate()
+        .map(|(i, (asset_id, image))| {
+            asset_bindings.image_indices.insert(asset_id, i as u32);
+            (image.texture_view.deref(), image.sampler.deref())
+        })
+        .unzip::<_, _, Vec<_>, Vec<_>>();
+    images.push(&fallback_image.d2.texture_view);
+    samplers.push(&fallback_image.d2.sampler);
+
     asset_bindings.bind_group = Some(render_device.create_bind_group(
         "solari_assets_bind_group",
         &asset_bindings.bind_group_layout,
         &BindGroupEntries::sequential((
-            images.as_slice(),
-            samplers.as_slice(),
             vertex_buffers.as_slice(),
             index_buffers.as_slice(),
+            images.as_slice(),
+            samplers.as_slice(),
         )),
     ));
 }
@@ -129,6 +129,26 @@ fn bind_group_layout_entries() -> [BindGroupLayoutEntry; 4] {
         BindGroupLayoutEntry {
             binding: 0,
             visibility: ShaderStages::COMPUTE,
+            ty: BindingType::Buffer {
+                ty: BufferBindingType::Storage { read_only: true },
+                has_dynamic_offset: false,
+                min_binding_size: None, // TODO
+            },
+            count: NonZeroU32::new(1000),
+        },
+        BindGroupLayoutEntry {
+            binding: 1,
+            visibility: ShaderStages::COMPUTE,
+            ty: BindingType::Buffer {
+                ty: BufferBindingType::Storage { read_only: true },
+                has_dynamic_offset: false,
+                min_binding_size: None, // TODO
+            },
+            count: NonZeroU32::new(1000),
+        },
+        BindGroupLayoutEntry {
+            binding: 2,
+            visibility: ShaderStages::COMPUTE,
             ty: BindingType::Texture {
                 sample_type: TextureSampleType::Float { filterable: true },
                 view_dimension: TextureViewDimension::D2,
@@ -137,29 +157,9 @@ fn bind_group_layout_entries() -> [BindGroupLayoutEntry; 4] {
             count: NonZeroU32::new(1000),
         },
         BindGroupLayoutEntry {
-            binding: 1,
-            visibility: ShaderStages::COMPUTE,
-            ty: BindingType::Sampler(SamplerBindingType::Filtering),
-            count: NonZeroU32::new(1000),
-        },
-        BindGroupLayoutEntry {
-            binding: 2,
-            visibility: ShaderStages::COMPUTE,
-            ty: BindingType::Buffer {
-                ty: BufferBindingType::Storage { read_only: true },
-                has_dynamic_offset: false,
-                min_binding_size: None, // TODO
-            },
-            count: NonZeroU32::new(1000),
-        },
-        BindGroupLayoutEntry {
             binding: 3,
             visibility: ShaderStages::COMPUTE,
-            ty: BindingType::Buffer {
-                ty: BufferBindingType::Storage { read_only: true },
-                has_dynamic_offset: false,
-                min_binding_size: None, // TODO
-            },
+            ty: BindingType::Sampler(SamplerBindingType::Filtering),
             count: NonZeroU32::new(1000),
         },
     ]
