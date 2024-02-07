@@ -17,10 +17,7 @@ impl Plugin for SolariPlugin {
     fn finish(&self, app: &mut App) {
         match app.world.get_resource::<RenderDevice>() {
             Some(render_device) => {
-                if !render_device
-                    .features()
-                    .contains(solari_required_features())
-                {
+                if !render_device.features().contains(Self::required_features()) {
                     panic!("SolariPlugin loaded, but the required GPU features are not supported by this system.")
                 }
             }
@@ -54,14 +51,16 @@ impl Plugin for SolariPlugin {
     }
 }
 
-pub fn solari_required_features() -> WgpuFeatures {
-    WgpuFeatures::RAY_TRACING_ACCELERATION_STRUCTURE
-        | WgpuFeatures::RAY_QUERY
-        | WgpuFeatures::TEXTURE_BINDING_ARRAY
-        | WgpuFeatures::BUFFER_BINDING_ARRAY
-        | WgpuFeatures::STORAGE_RESOURCE_BINDING_ARRAY
-        | WgpuFeatures::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING
-        | WgpuFeatures::PARTIALLY_BOUND_BINDING_ARRAY
-        | WgpuFeatures::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES
-        | WgpuFeatures::PUSH_CONSTANTS
+impl SolariPlugin {
+    pub fn required_features() -> WgpuFeatures {
+        WgpuFeatures::RAY_TRACING_ACCELERATION_STRUCTURE
+            | WgpuFeatures::RAY_QUERY
+            | WgpuFeatures::TEXTURE_BINDING_ARRAY
+            | WgpuFeatures::BUFFER_BINDING_ARRAY
+            | WgpuFeatures::STORAGE_RESOURCE_BINDING_ARRAY
+            | WgpuFeatures::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING
+            | WgpuFeatures::PARTIALLY_BOUND_BINDING_ARRAY
+            | WgpuFeatures::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES
+            | WgpuFeatures::PUSH_CONSTANTS
+    }
 }
