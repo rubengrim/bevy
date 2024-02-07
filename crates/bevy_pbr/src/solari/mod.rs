@@ -2,6 +2,13 @@ mod asset_binder;
 mod blas_manager;
 mod extract_asset_events;
 
+use self::{
+    asset_binder::{update_asset_binding_arrays, AssetBindings},
+    blas_manager::{prepare_new_blas, BlasManager},
+    extract_asset_events::{
+        extract_asset_events, ExtractAssetEventsSystemState, ExtractedAssetEvents,
+    },
+};
 use bevy_app::{App, Plugin};
 use bevy_ecs::schedule::IntoSystemConfigs;
 use bevy_render::{
@@ -24,26 +31,26 @@ impl Plugin for SolariPlugin {
             _ => return,
         }
 
-        app.init_resource::<extract_asset_events::ExtractAssetEventsSystemState>();
+        app.init_resource::<ExtractAssetEventsSystemState>();
 
         let Ok(render_app) = app.get_sub_app_mut(RenderApp) else {
             return;
         };
 
         render_app
-            .init_resource::<extract_asset_events::ExtractedAssetEvents>()
-            .init_resource::<blas_manager::BlasManager>()
-            .init_resource::<asset_binder::AssetBindings>()
-            .add_systems(ExtractSchedule, extract_asset_events::extract_asset_events)
+            .init_resource::<ExtractedAssetEvents>()
+            .init_resource::<BlasManager>()
+            .init_resource::<AssetBindings>()
+            .add_systems(ExtractSchedule, extract_asset_events)
             .add_systems(
                 Render,
-                blas_manager::prepare_new_blas
+                prepare_new_blas
                     .in_set(RenderSet::PrepareAssets)
                     .after(prepare_assets::<Mesh>),
             )
             .add_systems(
                 Render,
-                asset_binder::update_asset_binding_arrays
+                update_asset_binding_arrays
                     .in_set(RenderSet::PrepareAssets)
                     .after(prepare_assets::<Mesh>)
                     .after(prepare_assets::<Image>),
