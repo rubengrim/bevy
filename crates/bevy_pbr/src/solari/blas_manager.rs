@@ -1,12 +1,10 @@
-use super::extract_asset_events::ExtractedAssetEvents;
+use super::{asset_binder::mesh_solari_compatible, extract_asset_events::ExtractedAssetEvents};
 use bevy_asset::{AssetId, Handle};
 use bevy_ecs::system::{Res, ResMut, Resource};
 use bevy_render::{
     mesh::{GpuBufferInfo, GpuMesh, Mesh},
     render_asset::RenderAssets,
-    render_resource::{
-        ray_tracing::*, Buffer, CommandEncoderDescriptor, IndexFormat, PrimitiveTopology,
-    },
+    render_resource::{ray_tracing::*, Buffer, CommandEncoderDescriptor, IndexFormat},
     renderer::{RenderDevice, RenderQueue},
 };
 use bevy_utils::HashMap;
@@ -47,7 +45,7 @@ pub fn prepare_new_blas(
         .meshes_changed
         .iter()
         .filter_map(|asset_id| match render_meshes.get(*asset_id) {
-            Some(gpu_mesh) if mesh_compatible(gpu_mesh) => Some((asset_id, gpu_mesh)),
+            Some(mesh) if mesh_solari_compatible(mesh) => Some((asset_id, mesh)),
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -55,27 +53,25 @@ pub fn prepare_new_blas(
     // Create BLAS, blas size for each mesh
     let blas_resources = meshes
         .iter()
-        .map(|(asset_id, gpu_mesh)| setup_blas(asset_id, gpu_mesh, blas_manager, &render_device))
+        .map(|(asset_id, mesh)| setup_blas(asset_id, mesh, blas_manager, &render_device))
         .collect::<Vec<_>>();
 
     // Create list of BlasBuildEntries using blas_resources
     let build_entries = blas_resources
         .iter()
-        .map(
-            |(asset_id, gpu_mesh, blas_size, index_buffer)| BlasBuildEntry {
-                blas: blas_manager.blas.get(*asset_id).unwrap(),
-                geometry: BlasGeometries::TriangleGeometries(vec![BlasTriangleGeometry {
-                    size: &blas_size,
-                    vertex_buffer: &gpu_mesh.vertex_buffer,
-                    first_vertex: 0,
-                    vertex_stride: gpu_mesh.layout.layout().array_stride,
-                    index_buffer: Some(index_buffer),
-                    index_buffer_offset: Some(0),
-                    transform_buffer: None,
-                    transform_buffer_offset: None,
-                }]),
-            },
-        )
+        .map(|(asset_id, mesh, blas_size, index_buffer)| BlasBuildEntry {
+            blas: blas_manager.blas.get(*asset_id).unwrap(),
+            geometry: BlasGeometries::TriangleGeometries(vec![BlasTriangleGeometry {
+                size: &blas_size,
+                vertex_buffer: &mesh.vertex_buffer,
+                first_vertex: 0,
+                vertex_stride: mesh.layout.layout().array_stride,
+                index_buffer: Some(index_buffer),
+                index_buffer_offset: Some(0),
+                transform_buffer: None,
+                transform_buffer_offset: None,
+            }]),
+        })
         .collect::<Vec<_>>();
 
     // Build geometry into each BLAS
@@ -88,7 +84,7 @@ pub fn prepare_new_blas(
 
 fn setup_blas<'a, 'b>(
     asset_id: &'a AssetId<Mesh>,
-    gpu_mesh: &'a GpuMesh,
+    mesh: &'a GpuMesh,
     blas_manager: &'b mut BlasManager,
     render_device: &'b RenderDevice,
 ) -> (
@@ -98,7 +94,7 @@ fn setup_blas<'a, 'b>(
     &'a Buffer,
 ) {
     let (index_buffer, index_count) = {
-        match &gpu_mesh.buffer_info {
+        match &mesh.buffer_info {
             GpuBufferInfo::Indexed { buffer, count, .. } => (buffer, Some(*count)),
             GpuBufferInfo::NonIndexed => unreachable!(),
         }
@@ -106,7 +102,7 @@ fn setup_blas<'a, 'b>(
 
     let blas_size = BlasTriangleGeometrySizeDescriptor {
         vertex_format: Mesh::ATTRIBUTE_POSITION.format,
-        vertex_count: gpu_mesh.vertex_count,
+        vertex_count: mesh.vertex_count,
         index_format: Some(IndexFormat::Uint32),
         index_count,
         flags: AccelerationStructureGeometryFlags::OPAQUE,
@@ -124,24 +120,5 @@ fn setup_blas<'a, 'b>(
     );
     blas_manager.blas.insert(*asset_id, blas);
 
-    (asset_id, gpu_mesh, blas_size, index_buffer)
-}
-
-fn mesh_compatible(gpu_mesh: &GpuMesh) -> bool {
-    let triangle_list = gpu_mesh.primitive_topology == PrimitiveTopology::TriangleList;
-    let vertex_layout = gpu_mesh.layout.attribute_ids()
-        == &[
-            Mesh::ATTRIBUTE_POSITION.id,
-            Mesh::ATTRIBUTE_NORMAL.id,
-            Mesh::ATTRIBUTE_UV_0.id,
-            Mesh::ATTRIBUTE_TANGENT.id,
-        ];
-    let indexed_32 = matches!(
-        gpu_mesh.buffer_info,
-        GpuBufferInfo::Indexed {
-            index_format: IndexFormat::Uint32,
-            ..
-        }
-    );
-    triangle_list && vertex_layout && indexed_32 && gpu_mesh.ray_tracing_support
+    (asset_id, mesh, blas_size, index_buffer)
 }

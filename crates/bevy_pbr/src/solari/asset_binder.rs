@@ -5,17 +5,14 @@ use bevy_ecs::{
     world::{FromWorld, World},
 };
 use bevy_render::{
-    mesh::{GpuBufferInfo, Mesh},
+    mesh::{GpuBufferInfo, GpuMesh, Mesh},
     render_asset::RenderAssets,
-    render_resource::{
-        binding_types::texture_2d_array, BindGroup, BindGroupEntries, BindGroupLayout,
-        BindGroupLayoutEntries, ShaderStages, TextureSampleType,
-    },
+    render_resource::*,
     renderer::RenderDevice,
     texture::{FallbackImage, Image},
 };
 use bevy_utils::HashMap;
-use std::ops::Deref;
+use std::{num::NonZeroU32, ops::Deref};
 
 #[derive(Resource)]
 pub struct AssetBindings {
@@ -32,14 +29,7 @@ impl FromWorld for AssetBindings {
         Self {
             bind_group_layout: render_device.create_bind_group_layout(
                 "solari_assets_bind_group_layout",
-                &BindGroupLayoutEntries::sequential(
-                    ShaderStages::COMPUTE,
-                    (
-                        texture_2d_array(TextureSampleType::Float { filterable: true }),
-                        todo!("storage_buffer_array_read_only_sized"),
-                        todo!("storage_buffer_array_read_only_sized"),
-                    ),
-                ),
+                &bind_group_layout_entries(),
             ),
             image_indices: HashMap::default(),
             mesh_indices: HashMap::default(),
@@ -63,22 +53,27 @@ pub fn update_asset_binding_arrays(
     asset_bindings.image_indices.clear();
     asset_bindings.mesh_indices.clear();
 
-    let mut images = render_images
+    let device_features = Some(render_device.features());
+    let (mut images, mut samplers) = render_images
         .iter()
         .filter(|(_, image)| {
-            todo!("Verify texture binding usage, d2 dimension, sample_count 1, float")
+            image.texture_format.sample_type(None, device_features)
+                == Some(TextureSampleType::Float { filterable: true })
+                && image.texture.dimension() == TextureDimension::D2
+                && image.texture.sample_count() == 1
         })
         .enumerate()
         .map(|(i, (asset_id, image))| {
             asset_bindings.image_indices.insert(asset_id, i as u32);
-            image.texture_view.deref()
+            (image.texture_view.deref(), image.sampler.deref())
         })
-        .collect::<Vec<_>>();
+        .unzip::<_, _, Vec<_>, Vec<_>>();
     images.push(&fallback_image.d2.texture_view);
+    samplers.push(&fallback_image.d2.sampler);
 
     let (vertex_buffers, index_buffers) = render_meshes
         .iter()
-        .filter(|(_, mesh)| todo!("Filter mesh by indexed with u32s"))
+        .filter(|(_, mesh)| mesh_solari_compatible(mesh))
         .enumerate()
         .map(|(i, (asset_id, mesh))| {
             asset_bindings.mesh_indices.insert(asset_id, i as u32);
@@ -102,8 +97,70 @@ pub fn update_asset_binding_arrays(
         &asset_bindings.bind_group_layout,
         &BindGroupEntries::sequential((
             images.as_slice(),
+            samplers.as_slice(),
             vertex_buffers.as_slice(),
             index_buffers.as_slice(),
         )),
     ));
+}
+
+pub fn mesh_solari_compatible(mesh: &GpuMesh) -> bool {
+    let triangle_list = mesh.primitive_topology == PrimitiveTopology::TriangleList;
+    let vertex_layout = mesh.layout.attribute_ids()
+        == &[
+            Mesh::ATTRIBUTE_POSITION.id,
+            Mesh::ATTRIBUTE_NORMAL.id,
+            Mesh::ATTRIBUTE_UV_0.id,
+            Mesh::ATTRIBUTE_TANGENT.id,
+        ];
+    let indexed_32 = matches!(
+        mesh.buffer_info,
+        GpuBufferInfo::Indexed {
+            index_format: IndexFormat::Uint32,
+            ..
+        }
+    );
+    triangle_list && vertex_layout && indexed_32 && mesh.ray_tracing_support
+}
+
+// TODO: Configurable max resources
+fn bind_group_layout_entries() -> [BindGroupLayoutEntry; 4] {
+    [
+        BindGroupLayoutEntry {
+            binding: 0,
+            visibility: ShaderStages::COMPUTE,
+            ty: BindingType::Texture {
+                sample_type: TextureSampleType::Float { filterable: true },
+                view_dimension: TextureViewDimension::D2,
+                multisampled: false,
+            },
+            count: NonZeroU32::new(1000),
+        },
+        BindGroupLayoutEntry {
+            binding: 1,
+            visibility: ShaderStages::COMPUTE,
+            ty: BindingType::Sampler(SamplerBindingType::Filtering),
+            count: NonZeroU32::new(1000),
+        },
+        BindGroupLayoutEntry {
+            binding: 2,
+            visibility: ShaderStages::COMPUTE,
+            ty: BindingType::Buffer {
+                ty: BufferBindingType::Storage { read_only: true },
+                has_dynamic_offset: false,
+                min_binding_size: None, // TODO
+            },
+            count: NonZeroU32::new(1000),
+        },
+        BindGroupLayoutEntry {
+            binding: 3,
+            visibility: ShaderStages::COMPUTE,
+            ty: BindingType::Buffer {
+                ty: BufferBindingType::Storage { read_only: true },
+                has_dynamic_offset: false,
+                min_binding_size: None, // TODO
+            },
+            count: NonZeroU32::new(1000),
+        },
+    ]
 }
