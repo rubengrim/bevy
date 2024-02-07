@@ -9,7 +9,7 @@ use bevy_render::{
     render_asset::RenderAssets,
     render_resource::{
         binding_types::texture_2d_array, BindGroup, BindGroupEntries, BindGroupLayout,
-        BindGroupLayoutEntries, ShaderStages, TextureDimension, TextureSampleType,
+        BindGroupLayoutEntries, ShaderStages, TextureSampleType,
     },
     renderer::RenderDevice,
     texture::{FallbackImage, Image},
@@ -93,7 +93,7 @@ pub fn update_asset_binding_arrays(
         })
         .unzip::<_, _, Vec<_>, Vec<_>>();
 
-    if (vertex_buffers.is_empty()) {
+    if vertex_buffers.is_empty() {
         return;
     }
 
