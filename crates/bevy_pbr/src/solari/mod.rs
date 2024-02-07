@@ -1,14 +1,18 @@
 mod asset_binder;
 mod blas_manager;
 mod extract_asset_events;
+mod gpu_types;
 mod scene_binder;
+mod scene_extractor;
 
 use self::{
-    asset_binder::{update_asset_binding_arrays, AssetBindings},
+    asset_binder::{prepare_asset_binding_arrays, AssetBindings},
     blas_manager::{prepare_new_blas, BlasManager},
     extract_asset_events::{
         extract_asset_events, ExtractAssetEventsSystemState, ExtractedAssetEvents,
     },
+    scene_binder::prepare_scene_bindings,
+    scene_extractor::{extract_scene, ExtractedScene},
 };
 use bevy_app::{App, Plugin};
 use bevy_ecs::schedule::IntoSystemConfigs;
@@ -40,21 +44,22 @@ impl Plugin for SolariPlugin {
 
         render_app
             .init_resource::<ExtractedAssetEvents>()
+            .init_resource::<ExtractedScene>()
             .init_resource::<BlasManager>()
             .init_resource::<AssetBindings>()
-            .add_systems(ExtractSchedule, extract_asset_events)
+            .add_systems(ExtractSchedule, (extract_asset_events, extract_scene))
             .add_systems(
                 Render,
-                prepare_new_blas
-                    .in_set(RenderSet::PrepareAssets)
-                    .after(prepare_assets::<Mesh>),
-            )
-            .add_systems(
-                Render,
-                update_asset_binding_arrays
-                    .in_set(RenderSet::PrepareAssets)
-                    .after(prepare_assets::<Mesh>)
-                    .after(prepare_assets::<Image>),
+                (
+                    prepare_new_blas
+                        .in_set(RenderSet::PrepareAssets)
+                        .after(prepare_assets::<Mesh>),
+                    prepare_asset_binding_arrays
+                        .in_set(RenderSet::PrepareAssets)
+                        .after(prepare_assets::<Mesh>)
+                        .after(prepare_assets::<Image>),
+                    prepare_scene_bindings.in_set(RenderSet::PrepareBindGroups),
+                ),
             );
     }
 }

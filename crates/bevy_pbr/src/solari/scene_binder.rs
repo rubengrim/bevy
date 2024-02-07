@@ -1,4 +1,3 @@
-use crate::MeshUniform;
 use bevy_ecs::{
     system::Resource,
     world::{FromWorld, World},
@@ -22,7 +21,7 @@ impl FromWorld for SceneBindings {
                     (
                         BindingType::AccelerationStructure,
                         // TODO: AS->mesh/material mapping
-                        GpuArrayBuffer::<MeshUniform>::binding_layout(render_device),
+                        // TODO: Mesh transforms
                         // TODO: Materials
                         // TODO: Lights
                     ),
@@ -31,4 +30,8 @@ impl FromWorld for SceneBindings {
             bind_group: None,
         }
     }
+}
+
+pub fn prepare_scene_bindings() {
+    // TODO
 }

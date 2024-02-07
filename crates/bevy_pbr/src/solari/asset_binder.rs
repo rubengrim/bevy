@@ -29,14 +29,14 @@ impl FromWorld for AssetBindings {
                 "solari_assets_bind_group_layout",
                 &bind_group_layout_entries(),
             ),
-            mesh_indices: HashMap::default(),
-            image_indices: HashMap::default(),
+            mesh_indices: HashMap::new(),
+            image_indices: HashMap::new(),
             bind_group: None,
         }
     }
 }
 
-pub fn update_asset_binding_arrays(
+pub fn prepare_asset_binding_arrays(
     mut asset_bindings: ResMut<AssetBindings>,
     asset_events: Res<ExtractedAssetEvents>,
     render_meshes: Res<RenderAssets<Mesh>>,
