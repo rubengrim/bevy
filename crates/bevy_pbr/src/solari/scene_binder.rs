@@ -77,17 +77,16 @@ pub fn prepare_scene_bindings(
     render_queue: Res<RenderQueue>,
 ) {
     // Build buffer of materials
+    let get_image_id = |asset_id: Option<AssetId<Image>>| match asset_id {
+        Some(asset_id) => *asset_bindings
+            .image_indices
+            .get(&asset_id)
+            .unwrap_or(&u32::MAX),
+        None => u32::MAX,
+    };
     let mut materials = Vec::with_capacity(asset_events.materials.len());
     let mut material_ids = HashMap::with_capacity(asset_events.materials.len());
     for (asset_id, material) in &asset_events.materials {
-        let get_image_id = |asset_id: Option<AssetId<Image>>| match asset_id {
-            Some(asset_id) => *asset_bindings
-                .image_indices
-                .get(&asset_id)
-                .unwrap_or(&u32::MAX),
-            None => u32::MAX,
-        };
-
         material_ids.insert(*asset_id, materials.len() as u32);
         materials.push(GpuSolariMaterial {
             base_color: material.base_color.as_linear_rgba_f32(),
