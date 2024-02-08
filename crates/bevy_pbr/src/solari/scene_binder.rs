@@ -11,7 +11,7 @@ use bevy_ecs::{
 use bevy_math::Mat4;
 use bevy_render::{
     mesh::Mesh,
-    render_resource::*,
+    render_resource::{binding_types::storage_buffer_read_only, encase::internal::WriteInto, *},
     renderer::{RenderDevice, RenderQueue},
     texture::Image,
     Extract,
@@ -54,9 +54,9 @@ impl FromWorld for SceneBindings {
                     ShaderStages::COMPUTE,
                     (
                         BindingType::AccelerationStructure,
-                        // TODO: AS->mesh/material mapping
-                        // TODO: Mesh transforms
-                        // TODO: Materials
+                        storage_buffer_read_only::<u32>(false),
+                        storage_buffer_read_only::<Mat4>(false),
+                        storage_buffer_read_only::<GpuSolariMaterial>(false),
                         // TODO: Lights
                     ),
                 ),
@@ -66,6 +66,7 @@ impl FromWorld for SceneBindings {
     }
 }
 
+// TODO: Optimize buffer management
 pub fn prepare_scene_bindings(
     mut scene_bindings: ResMut<SceneBindings>,
     asset_bindings: Res<AssetBindings>,
@@ -144,15 +145,45 @@ pub fn prepare_scene_bindings(
     command_encoder.build_acceleration_structures(&[], iter::once(&tlas));
     render_queue.submit([command_encoder.finish()]);
 
+    // Upload GPU buffers
+    let mesh_material_ids = &new_storage_buffer(
+        mesh_material_ids,
+        "solari_mesh_material_ids",
+        &render_device,
+        &render_queue,
+    );
+    let transforms = new_storage_buffer(
+        transforms,
+        "solari_transforms",
+        &render_device,
+        &render_queue,
+    );
+    let materials =
+        new_storage_buffer(materials, "solari_materials", &render_device, &render_queue);
+
     // Create a bind group for the created resources
     scene_bindings.bind_group = Some(render_device.create_bind_group(
         "solari_scene_bind_group",
         &scene_bindings.bind_group_layout,
         &BindGroupEntries::sequential((
             tlas.as_binding(),
-            // TODO: Other bindings
+            mesh_material_ids.binding().unwrap(),
+            transforms.binding().unwrap(),
+            materials.binding().unwrap(),
         )),
     ));
+}
+
+fn new_storage_buffer<T: ShaderSize + WriteInto>(
+    vec: Vec<T>,
+    label: &'static str,
+    render_device: &RenderDevice,
+    render_queue: &RenderQueue,
+) -> StorageBuffer<Vec<T>> {
+    let mut buffer = StorageBuffer::from(vec);
+    buffer.set_label(Some(label));
+    buffer.write_buffer(render_device, render_queue);
+    buffer
 }
 
 fn tlas_transform(transform: &Mat4) -> [f32; 12] {
