@@ -3,7 +3,6 @@ mod blas_manager;
 mod extract_asset_events;
 mod gpu_types;
 mod scene_binder;
-mod scene_extractor;
 
 use self::{
     asset_binder::{prepare_asset_binding_arrays, AssetBindings},
@@ -11,8 +10,7 @@ use self::{
     extract_asset_events::{
         extract_asset_events, ExtractAssetEventsSystemState, ExtractedAssetEvents,
     },
-    scene_binder::prepare_scene_bindings,
-    scene_extractor::{extract_scene, ExtractedScene},
+    scene_binder::{extract_scene, prepare_scene_bindings, ExtractedScene},
 };
 use bevy_app::{App, Plugin};
 use bevy_ecs::schedule::IntoSystemConfigs;

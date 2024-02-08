@@ -1,10 +1,10 @@
 use super::{asset_binder::mesh_solari_compatible, extract_asset_events::ExtractedAssetEvents};
-use bevy_asset::{AssetId, Handle};
+use bevy_asset::AssetId;
 use bevy_ecs::system::{Res, ResMut, Resource};
 use bevy_render::{
     mesh::{GpuBufferInfo, GpuMesh, Mesh},
     render_asset::RenderAssets,
-    render_resource::{ray_tracing::*, Buffer, CommandEncoderDescriptor, IndexFormat},
+    render_resource::*,
     renderer::{RenderDevice, RenderQueue},
 };
 use bevy_utils::HashMap;
@@ -15,8 +15,8 @@ pub struct BlasManager {
 }
 
 impl BlasManager {
-    pub fn get(&self, mesh: &Handle<Mesh>) -> Option<&Blas> {
-        self.blas.get(&mesh.id())
+    pub fn get(&self, mesh: &AssetId<Mesh>) -> Option<&Blas> {
+        self.blas.get(mesh)
     }
 }
 

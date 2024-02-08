@@ -32,6 +32,7 @@ pub use uniform_buffer::*;
 
 // TODO: decide where re-exports should go
 pub use wgpu::{
+    ray_tracing::*,
     util::{BufferInitDescriptor, DrawIndexedIndirectArgs, DrawIndirectArgs, TextureDataOrder},
     AdapterInfo as WgpuAdapterInfo, AddressMode, BindGroupDescriptor, BindGroupEntry,
     BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BlendComponent,
@@ -53,8 +54,6 @@ pub use wgpu::{
     VertexBufferLayout as RawVertexBufferLayout, VertexFormat, VertexState as RawVertexState,
     VertexStepMode,
 };
-
-pub use wgpu::ray_tracing;
 
 pub mod encase {
     pub use bevy_encase_derive::ShaderType;
