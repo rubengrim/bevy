@@ -11,12 +11,12 @@ use bevy_utils::HashMap;
 
 #[derive(Resource, Default)]
 pub struct BlasManager {
-    blas: HashMap<AssetId<Mesh>, Blas>,
+    info: HashMap<AssetId<Mesh>, (Blas, u32)>,
 }
 
 impl BlasManager {
-    pub fn get(&self, mesh: &AssetId<Mesh>) -> Option<&Blas> {
-        self.blas.get(mesh)
+    pub fn get_blas_and_triangle_count(&self, mesh: &AssetId<Mesh>) -> Option<&(Blas, u32)> {
+        self.info.get(mesh)
     }
 }
 
@@ -33,7 +33,7 @@ pub fn prepare_new_blas(
 
     // Delete BLAS for removed meshes
     for asset_id in &asset_events.meshes_removed {
-        blas_manager.blas.remove(asset_id);
+        blas_manager.info.remove(asset_id);
     }
 
     if asset_events.meshes_changed.is_empty() {
@@ -60,7 +60,7 @@ pub fn prepare_new_blas(
     let build_entries = blas_resources
         .iter()
         .map(|(asset_id, mesh, blas_size, index_buffer)| BlasBuildEntry {
-            blas: blas_manager.blas.get(*asset_id).unwrap(),
+            blas: &blas_manager.info.get(*asset_id).unwrap().0,
             geometry: BlasGeometries::TriangleGeometries(vec![BlasTriangleGeometry {
                 size: &blas_size,
                 vertex_buffer: &mesh.vertex_buffer,
@@ -95,7 +95,7 @@ fn setup_blas<'a, 'b>(
 ) {
     let (index_buffer, index_count) = {
         match &mesh.buffer_info {
-            GpuBufferInfo::Indexed { buffer, count, .. } => (buffer, Some(*count)),
+            GpuBufferInfo::Indexed { buffer, count, .. } => (buffer, *count),
             GpuBufferInfo::NonIndexed => unreachable!(),
         }
     };
@@ -104,7 +104,7 @@ fn setup_blas<'a, 'b>(
         vertex_format: Mesh::ATTRIBUTE_POSITION.format,
         vertex_count: mesh.vertex_count,
         index_format: Some(IndexFormat::Uint32),
-        index_count,
+        index_count: Some(index_count),
         flags: AccelerationStructureGeometryFlags::OPAQUE,
     };
 
@@ -118,7 +118,7 @@ fn setup_blas<'a, 'b>(
             desc: vec![blas_size.clone()],
         },
     );
-    blas_manager.blas.insert(*asset_id, blas);
+    blas_manager.info.insert(*asset_id, (blas, index_count / 3));
 
     (asset_id, mesh, blas_size, index_buffer)
 }

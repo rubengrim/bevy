@@ -1,8 +1,10 @@
 use super::{
-    asset_binder::AssetBindings, blas_manager::BlasManager,
-    extract_asset_events::ExtractedAssetEvents, gpu_types::GpuSolariMaterial,
+    asset_binder::AssetBindings,
+    blas_manager::BlasManager,
+    extract_asset_events::ExtractedAssetEvents,
+    gpu_types::{DirectionalLight, GpuSolariMaterial, LightSource},
 };
-use crate::StandardMaterial;
+use crate::{ExtractedDirectionalLight, StandardMaterial};
 use bevy_asset::{AssetId, Handle};
 use bevy_ecs::{
     system::{Query, Res, ResMut, Resource},
@@ -57,7 +59,8 @@ impl FromWorld for SceneBindings {
                         storage_buffer_read_only::<u32>(false),
                         storage_buffer_read_only::<Mat4>(false),
                         storage_buffer_read_only::<GpuSolariMaterial>(false),
-                        // TODO: Lights
+                        storage_buffer_read_only::<LightSource>(false),
+                        storage_buffer_read_only::<DirectionalLight>(false),
                     ),
                 ),
             ),
@@ -69,6 +72,7 @@ impl FromWorld for SceneBindings {
 // TODO: Optimize buffer management
 pub fn prepare_scene_bindings(
     mut scene_bindings: ResMut<SceneBindings>,
+    directional_lights_query: Query<&ExtractedDirectionalLight>,
     asset_bindings: Res<AssetBindings>,
     scene: Res<ExtractedScene>,
     asset_events: Res<ExtractedAssetEvents>,
@@ -90,10 +94,25 @@ pub fn prepare_scene_bindings(
         material_ids.insert(*asset_id, materials.len() as u32);
         materials.push(GpuSolariMaterial {
             base_color: material.base_color.as_linear_rgba_f32(),
+            emissive: material.emissive.as_linear_rgba_f32(),
             base_color_texture_id: get_image_id(material.base_color_texture),
             normal_map_texture_id: get_image_id(material.normal_map_texture),
-            emissive: material.emissive.as_linear_rgba_f32(),
             emissive_texture_id: get_image_id(material.emissive_texture),
+        });
+    }
+
+    let mut light_sources = Vec::new();
+
+    // Build buffer of directional lights
+    let mut directional_lights = Vec::new();
+    for directional_light in &directional_lights_query {
+        light_sources.push(LightSource::directional_light(
+            directional_lights.len() as u32
+        ));
+        directional_lights.push(DirectionalLight {
+            direction_to_light: directional_light.transform.back(),
+            color: (directional_light.color.as_rgba_linear() * directional_light.illuminance)
+                .as_linear_rgba_f32(),
         });
     }
 
@@ -111,12 +130,12 @@ pub fn prepare_scene_bindings(
     );
 
     // Build each entity into the TLAS and push its transform/mesh_id/material_id to a GPU buffer
-    let mut entity_i = 0;
+    let mut object_id = 0;
     let mut transforms = Vec::with_capacity(scene.entities.len());
     let mut mesh_material_ids = Vec::with_capacity(scene.entities.len());
     for (mesh_id, material_id, transform) in &scene.entities {
-        if let (Some(blas), Some(mesh_id), Some(material_id)) = (
-            blas_manager.get(mesh_id),
+        if let (Some((blas, triangle_count)), Some(mesh_id), Some(material_id)) = (
+            blas_manager.get_blas_and_triangle_count(mesh_id),
             asset_bindings.mesh_indices.get(mesh_id),
             material_ids.get(material_id),
         ) {
@@ -126,14 +145,22 @@ pub fn prepare_scene_bindings(
             // TODO: Check for ID overflow
             mesh_material_ids.push((*mesh_id << 16) | *material_id);
 
-            *tlas.get_mut_single(entity_i).unwrap() = Some(TlasInstance::new(
+            // For emissive meshes, push each triangle to the light sources buffer
+            let material = &materials[*material_id as usize];
+            if material.emissive != [0.0; 4] || material.emissive_texture_id != u32::MAX {
+                for triangle_id in 0..*triangle_count {
+                    light_sources.push(LightSource::emissive_triangle(object_id, triangle_id));
+                }
+            }
+
+            *tlas.get_mut_single(object_id as usize).unwrap() = Some(TlasInstance::new(
                 blas,
                 tlas_transform(&transform),
-                entity_i as u32, // TODO: Max 24 bits
+                object_id, // TODO: Max 24 bits
                 0xFF,
             ));
 
-            entity_i += 1;
+            object_id += 1;
         }
     }
 
@@ -159,6 +186,18 @@ pub fn prepare_scene_bindings(
     );
     let materials =
         new_storage_buffer(materials, "solari_materials", &render_device, &render_queue);
+    let light_sources = new_storage_buffer(
+        light_sources,
+        "solari_light_sources",
+        &render_device,
+        &render_queue,
+    );
+    let directional_lights = new_storage_buffer(
+        directional_lights,
+        "solari_directional_lights",
+        &render_device,
+        &render_queue,
+    );
 
     // Create a bind group for the created resources
     scene_bindings.bind_group = Some(render_device.create_bind_group(
@@ -169,6 +208,8 @@ pub fn prepare_scene_bindings(
             mesh_material_ids.binding().unwrap(),
             transforms.binding().unwrap(),
             materials.binding().unwrap(),
+            light_sources.binding().unwrap(),
+            directional_lights.binding().unwrap(),
         )),
     ));
 }
