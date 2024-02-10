@@ -15,11 +15,12 @@ use self::{
 use bevy_app::{App, Plugin};
 use bevy_asset::{load_internal_asset, Handle};
 use bevy_ecs::{
-    schedule::{common_conditions::resource_exists, IntoSystemConfigs},
+    component::Component,
+    schedule::{common_conditions::any_with_component, IntoSystemConfigs},
     system::Resource,
 };
 use bevy_render::{
-    extract_resource::{ExtractResource, ExtractResourcePlugin},
+    extract_component::{ExtractComponent, ExtractComponentPlugin},
     mesh::Mesh,
     render_asset::prepare_assets,
     render_resource::Shader,
@@ -52,7 +53,7 @@ impl Plugin for SolariPlugin {
         }
 
         app.insert_resource(SolariSupported)
-            .add_plugins(ExtractResourcePlugin::<SolariEnabled>::default())
+            .add_plugins(ExtractComponentPlugin::<SolariSettings>::default())
             .init_resource::<ExtractAssetEventsSystemState>();
 
         let render_app = app.get_sub_app_mut(RenderApp).unwrap();
@@ -64,7 +65,7 @@ impl Plugin for SolariPlugin {
             .init_resource::<SceneBindings>()
             .add_systems(
                 ExtractSchedule,
-                (extract_asset_events, extract_scene).run_if(resource_exists::<SolariEnabled>),
+                (extract_asset_events, extract_scene).run_if(any_with_component::<SolariSettings>),
             )
             .add_systems(
                 Render,
@@ -78,7 +79,7 @@ impl Plugin for SolariPlugin {
                         .after(prepare_assets::<Image>),
                     prepare_scene_bindings.in_set(RenderSet::PrepareBindGroups),
                 )
-                    .run_if(resource_exists::<SolariEnabled>),
+                    .run_if(any_with_component::<SolariSettings>),
             );
     }
 }
@@ -103,5 +104,5 @@ impl SolariPlugin {
 pub struct SolariSupported;
 
 /// TODO: Docs
-#[derive(Resource, ExtractResource, Clone)]
-pub struct SolariEnabled;
+#[derive(Component, ExtractComponent, Clone, Default)]
+pub struct SolariSettings {}
