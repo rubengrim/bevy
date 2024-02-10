@@ -137,6 +137,7 @@ impl SolariPlugin {
 pub struct SolariSupported;
 
 /// TODO: Docs
+// Requires MSAA off, HDR, CameraMainTextureUsages::with_storage_binding(), and should disable shadows for all lights
 #[derive(Component, ExtractComponent, Clone)]
 pub struct SolariSettings {
     pub debug_path_tracer: bool,
