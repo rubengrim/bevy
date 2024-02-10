@@ -2,6 +2,7 @@ mod asset_binder;
 mod blas_manager;
 mod extract_asset_events;
 mod gpu_types;
+mod path_tracer;
 mod scene_binder;
 
 use self::{
@@ -10,10 +11,13 @@ use self::{
     extract_asset_events::{
         extract_asset_events, ExtractAssetEventsSystemState, ExtractedAssetEvents,
     },
+    graph::LabelsSolari,
+    path_tracer::{prepare_path_tracer_accumulation_texture, PathTracerNode},
     scene_binder::{extract_scene, prepare_scene_bindings, ExtractedScene, SceneBindings},
 };
 use bevy_app::{App, Plugin};
 use bevy_asset::{load_internal_asset, Handle};
+use bevy_core_pipeline::core_3d::graph::{Labels3d, SubGraph3d};
 use bevy_ecs::{
     component::Component,
     schedule::{common_conditions::any_with_component, IntoSystemConfigs},
@@ -23,24 +27,44 @@ use bevy_render::{
     extract_component::{ExtractComponent, ExtractComponentPlugin},
     mesh::Mesh,
     render_asset::prepare_assets,
+    render_graph::{RenderGraphApp, ViewNodeRunner},
     render_resource::Shader,
     renderer::RenderDevice,
     settings::WgpuFeatures,
     texture::Image,
+    view::Msaa,
     ExtractSchedule, Render, RenderApp, RenderSet,
 };
 
+pub mod graph {
+    use bevy_render::render_graph::RenderLabel;
+
+    #[derive(Debug, Hash, PartialEq, Eq, Clone, RenderLabel)]
+    pub enum LabelsSolari {
+        PathTracer,
+    }
+}
+
 const SOLARI_BINDINGS_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(1717171717171717);
+const SOLARI_PATH_TRACER_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(2717171717171717);
 
 /// TODO: Docs
 pub struct SolariPlugin;
 
 impl Plugin for SolariPlugin {
     fn build(&self, app: &mut App) {
+        app.insert_resource(Msaa::Off);
+
         load_internal_asset!(
             app,
             SOLARI_BINDINGS_SHADER_HANDLE,
             "solari_bindings.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            SOLARI_PATH_TRACER_SHADER_HANDLE,
+            "path_tracer.wgsl",
             Shader::from_wgsl
         );
     }
@@ -53,8 +77,8 @@ impl Plugin for SolariPlugin {
         }
 
         app.insert_resource(SolariSupported)
-            .add_plugins(ExtractComponentPlugin::<SolariSettings>::default())
-            .init_resource::<ExtractAssetEventsSystemState>();
+            .init_resource::<ExtractAssetEventsSystemState>()
+            .add_plugins(ExtractComponentPlugin::<SolariSettings>::default());
 
         let render_app = app.get_sub_app_mut(RenderApp).unwrap();
         render_app
@@ -77,9 +101,18 @@ impl Plugin for SolariPlugin {
                         .in_set(RenderSet::PrepareAssets)
                         .after(prepare_assets::<Mesh>)
                         .after(prepare_assets::<Image>),
+                    prepare_path_tracer_accumulation_texture.in_set(RenderSet::PrepareResources),
                     prepare_scene_bindings.in_set(RenderSet::PrepareBindGroups),
                 )
                     .run_if(any_with_component::<SolariSettings>),
+            )
+            .add_render_graph_node::<ViewNodeRunner<PathTracerNode>>(
+                SubGraph3d,
+                LabelsSolari::PathTracer,
+            )
+            .add_render_graph_edges(
+                SubGraph3d,
+                (LabelsSolari::PathTracer, Labels3d::EndMainPass),
             );
     }
 }
@@ -104,5 +137,15 @@ impl SolariPlugin {
 pub struct SolariSupported;
 
 /// TODO: Docs
-#[derive(Component, ExtractComponent, Clone, Default)]
-pub struct SolariSettings {}
+#[derive(Component, ExtractComponent, Clone)]
+pub struct SolariSettings {
+    pub debug_path_tracer: bool,
+}
+
+impl Default for SolariSettings {
+    fn default() -> Self {
+        Self {
+            debug_path_tracer: false,
+        }
+    }
+}
