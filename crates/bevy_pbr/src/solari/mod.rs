@@ -10,19 +10,29 @@ use self::{
     extract_asset_events::{
         extract_asset_events, ExtractAssetEventsSystemState, ExtractedAssetEvents,
     },
-    scene_binder::{extract_scene, prepare_scene_bindings, ExtractedScene},
+    scene_binder::{extract_scene, prepare_scene_bindings, ExtractedScene, SceneBindings},
 };
 use bevy_app::{App, Plugin};
+use bevy_asset::{load_internal_asset, Handle};
 use bevy_ecs::schedule::IntoSystemConfigs;
 use bevy_render::{
-    mesh::Mesh, render_asset::prepare_assets, renderer::RenderDevice, settings::WgpuFeatures,
-    texture::Image, ExtractSchedule, Render, RenderApp, RenderSet,
+    mesh::Mesh, render_asset::prepare_assets, render_resource::Shader, renderer::RenderDevice,
+    settings::WgpuFeatures, texture::Image, ExtractSchedule, Render, RenderApp, RenderSet,
 };
 
-pub struct SolariPlugin {}
+pub const SOLARI_BINDINGS_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(1717171717171717);
+
+pub struct SolariPlugin;
 
 impl Plugin for SolariPlugin {
-    fn build(&self, _app: &mut App) {}
+    fn build(&self, app: &mut App) {
+        load_internal_asset!(
+            app,
+            SOLARI_BINDINGS_SHADER_HANDLE,
+            "solari_bindings.wgsl",
+            Shader::from_wgsl
+        );
+    }
 
     fn finish(&self, app: &mut App) {
         match app.world.get_resource::<RenderDevice>() {
@@ -45,6 +55,7 @@ impl Plugin for SolariPlugin {
             .init_resource::<ExtractedScene>()
             .init_resource::<BlasManager>()
             .init_resource::<AssetBindings>()
+            .init_resource::<SceneBindings>()
             .add_systems(ExtractSchedule, (extract_asset_events, extract_scene))
             .add_systems(
                 Render,
