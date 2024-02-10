@@ -34,7 +34,9 @@ use bevy_utils::{tracing::error, HashMap, HashSet};
 use std::hash::Hash;
 use std::marker::PhantomData;
 
-use self::{irradiance_volume::IrradianceVolume, prelude::EnvironmentMapLight};
+use self::{
+    irradiance_volume::IrradianceVolume, prelude::EnvironmentMapLight, solari::SolariSettings,
+};
 
 /// Materials are used alongside [`MaterialPlugin`] and [`MaterialMeshBundle`]
 /// to spawn entities that are rendered with a specific [`Material`] type. They serve as an easy to use high level
@@ -469,31 +471,34 @@ pub fn queue_material_meshes<M: Material>(
     mut render_mesh_instances: ResMut<RenderMeshInstances>,
     render_material_instances: Res<RenderMaterialInstances<M>>,
     render_lightmaps: Res<RenderLightmaps>,
-    mut views: Query<(
-        &ExtractedView,
-        &VisibleEntities,
-        Option<&Tonemapping>,
-        Option<&DebandDither>,
-        Option<&ShadowFilteringMethod>,
-        Has<ScreenSpaceAmbientOcclusionSettings>,
+    mut views: Query<
         (
-            Has<NormalPrepass>,
-            Has<DepthPrepass>,
-            Has<MotionVectorPrepass>,
-            Has<DeferredPrepass>,
+            &ExtractedView,
+            &VisibleEntities,
+            Option<&Tonemapping>,
+            Option<&DebandDither>,
+            Option<&ShadowFilteringMethod>,
+            Has<ScreenSpaceAmbientOcclusionSettings>,
+            (
+                Has<NormalPrepass>,
+                Has<DepthPrepass>,
+                Has<MotionVectorPrepass>,
+                Has<DeferredPrepass>,
+            ),
+            Option<&Camera3d>,
+            Has<TemporalJitter>,
+            Option<&Projection>,
+            &mut RenderPhase<Opaque3d>,
+            &mut RenderPhase<AlphaMask3d>,
+            &mut RenderPhase<Transmissive3d>,
+            &mut RenderPhase<Transparent3d>,
+            (
+                Has<RenderViewLightProbes<EnvironmentMapLight>>,
+                Has<RenderViewLightProbes<IrradianceVolume>>,
+            ),
         ),
-        Option<&Camera3d>,
-        Has<TemporalJitter>,
-        Option<&Projection>,
-        &mut RenderPhase<Opaque3d>,
-        &mut RenderPhase<AlphaMask3d>,
-        &mut RenderPhase<Transmissive3d>,
-        &mut RenderPhase<Transparent3d>,
-        (
-            Has<RenderViewLightProbes<EnvironmentMapLight>>,
-            Has<RenderViewLightProbes<IrradianceVolume>>,
-        ),
-    )>,
+        Without<SolariSettings>,
+    >,
 ) where
     M::Data: PartialEq + Eq + Hash + Clone,
 {
