@@ -29,7 +29,7 @@ use bevy_render::{
     ExtractSchedule, Render, RenderApp, RenderSet,
 };
 
-pub const SOLARI_BINDINGS_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(1717171717171717);
+const SOLARI_BINDINGS_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(1717171717171717);
 
 /// TODO: Docs
 pub struct SolariPlugin;
