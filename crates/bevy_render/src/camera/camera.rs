@@ -754,6 +754,7 @@ pub fn camera_system<T: CameraProjection + Component>(
 /// This component lets you control the [`TextureUsages`] field of the main texture generated for the camera
 #[derive(Component, ExtractComponent, Clone, Copy)]
 pub struct CameraMainTextureUsages(pub TextureUsages);
+
 impl Default for CameraMainTextureUsages {
     fn default() -> Self {
         Self(
@@ -761,6 +762,12 @@ impl Default for CameraMainTextureUsages {
                 | TextureUsages::TEXTURE_BINDING
                 | TextureUsages::COPY_SRC,
         )
+    }
+}
+
+impl CameraMainTextureUsages {
+    pub fn with_storage_binding() -> Self {
+        Self(Self::default().0 | TextureUsages::STORAGE_BINDING)
     }
 }
 
