@@ -44,7 +44,10 @@ pub fn prepare_asset_binding_arrays(
     fallback_image: Res<FallbackImage>,
     render_device: Res<RenderDevice>,
 ) {
-    if asset_events.meshes_changed.is_empty() && asset_events.images_changed.is_empty() {
+    if asset_events.meshes_changed.is_empty()
+        && asset_events.images_changed.is_empty()
+        && asset_bindings.bind_group.is_some()
+    {
         return;
     }
 

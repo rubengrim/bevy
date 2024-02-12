@@ -696,6 +696,16 @@ category = "3D Rendering"
 wasm = false
 
 [[example]]
+name = "solari"
+path = "examples/3d/solari.rs"
+
+[package.metadata.example.solari]
+name = "Solari"
+description = "Demonstrates realtime dynamic global illumination rendering using Bevy Solari."
+category = "3D Rendering"
+wasm = false
+
+[[example]]
 name = "spotlight"
 path = "examples/3d/spotlight.rs"
 doc-scrape-examples = true
