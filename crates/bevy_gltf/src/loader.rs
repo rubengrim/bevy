@@ -425,7 +425,9 @@ async fn load_gltf<'a, 'b, 'c>(
             if let Some(indices) = reader.read_indices() {
                 mesh.insert_indices(match indices {
                     ReadIndices::U8(is) => Indices::U16(is.map(|x| x as u16).collect()),
-                    ReadIndices::U16(is) => Indices::U16(is.collect()),
+                    // TODO: Hack to get cornell box usable for solari
+                    // ReadIndices::U16(is) => Indices::U16(is.collect()),
+                    ReadIndices::U16(is) => Indices::U32(is.map(|x| x as u32).collect()),
                     ReadIndices::U32(is) => Indices::U32(is.collect()),
                 });
             };

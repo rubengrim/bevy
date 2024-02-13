@@ -44,6 +44,8 @@ pub fn extract_scene(
 pub struct SceneBindings {
     pub bind_group_layout: BindGroupLayout,
     pub bind_group: Option<BindGroup>,
+    // TODO: Needed for now because the bind group isin't properly keeping the tlas alive
+    tlas: Option<TlasPackage>,
 }
 
 impl FromWorld for SceneBindings {
@@ -65,6 +67,7 @@ impl FromWorld for SceneBindings {
                 ),
             ),
             bind_group: None,
+            tlas: None,
         }
     }
 }
@@ -212,6 +215,7 @@ pub fn prepare_scene_bindings(
             directional_lights.binding().unwrap(),
         )),
     ));
+    scene_bindings.tlas = Some(tlas);
 }
 
 fn new_storage_buffer<T: ShaderSize + WriteInto>(

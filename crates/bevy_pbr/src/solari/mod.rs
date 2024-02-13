@@ -89,7 +89,7 @@ impl Plugin for SolariPlugin {
             .init_resource::<SceneBindings>()
             .add_systems(
                 ExtractSchedule,
-                (extract_asset_events, extract_scene).run_if(any_with_component::<SolariSettings>),
+                (extract_asset_events, extract_scene), //.run_if(any_with_component::<SolariSettings>), // TODO: any_with_component is checking the render world here
             )
             .add_systems(
                 Render,
