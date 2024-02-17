@@ -17,7 +17,7 @@ use self::{
 };
 use bevy_app::{App, Plugin};
 use bevy_asset::{load_internal_asset, Handle};
-use bevy_core_pipeline::core_3d::graph::{Labels3d, SubGraph3d};
+use bevy_core_pipeline::core_3d::graph::{Core3d, Node3d};
 use bevy_ecs::{
     component::Component,
     schedule::{common_conditions::any_with_component, IntoSystemConfigs},
@@ -107,13 +107,10 @@ impl Plugin for SolariPlugin {
                     .run_if(any_with_component::<SolariSettings>),
             )
             .add_render_graph_node::<ViewNodeRunner<PathTracerNode>>(
-                SubGraph3d,
+                Core3d,
                 LabelsSolari::PathTracer,
             )
-            .add_render_graph_edges(
-                SubGraph3d,
-                (LabelsSolari::PathTracer, Labels3d::EndMainPass),
-            );
+            .add_render_graph_edges(Core3d, (LabelsSolari::PathTracer, Node3d::EndMainPass));
     }
 }
 
