@@ -246,6 +246,12 @@ pub async fn initialize_renderer(
             max_inter_stage_shader_components: limits
                 .max_inter_stage_shader_components
                 .min(constrained_limits.max_inter_stage_shader_components),
+            max_color_attachments: limits
+                .max_color_attachments
+                .min(constrained_limits.max_color_attachments),
+            max_color_attachment_bytes_per_sample: limits
+                .max_color_attachment_bytes_per_sample
+                .min(constrained_limits.max_color_attachment_bytes_per_sample),
             max_compute_workgroup_storage_size: limits
                 .max_compute_workgroup_storage_size
                 .min(constrained_limits.max_compute_workgroup_storage_size),
