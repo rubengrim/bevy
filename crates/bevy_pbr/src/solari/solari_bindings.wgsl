@@ -27,7 +27,7 @@ struct PackedVertex {
 struct Vertex {
     position: vec3<f32>,
     normal: vec3<f32>,
-    uv_0: vec2<f32>,
+    uv: vec2<f32>,
     tangent: vec4<f32>,
 }
 
@@ -35,13 +35,17 @@ fn unpack_vertex(packed: PackedVertex) -> Vertex {
     var vertex: Vertex;
     vertex.position = packed.a.xyz;
     vertex.normal = vec3(packed.a.w, packed.b.xy);
-    vertex.uv_0 = packed.b.zw;
+    vertex.uv = packed.b.zw;
     vertex.tangent = packed.tangent;
     return vertex;
 }
 
-@group(0) @binding(0) var<storage> vertex_buffers: binding_array<array<PackedVertex>>;
-@group(0) @binding(1) var<storage> index_buffers: binding_array<array<u32>>;
+struct VertexBuffer { vertices: array<PackedVertex> }
+
+struct IndexBuffer { indices: array<u32> }
+
+@group(0) @binding(0) var<storage> vertex_buffers: binding_array<VertexBuffer>;
+@group(0) @binding(1) var<storage> index_buffers: binding_array<IndexBuffer>;
 @group(0) @binding(2) var textures: binding_array<texture_2d<f32>>;
 @group(0) @binding(3) var samplers: binding_array<sampler>;
 
