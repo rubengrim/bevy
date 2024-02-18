@@ -13,14 +13,18 @@ use bevy_ecs::{
 use bevy_math::Mat4;
 use bevy_render::{
     mesh::Mesh,
-    render_resource::{binding_types::storage_buffer_read_only, encase::internal::WriteInto, *},
+    render_resource::{
+        binding_types::{storage_buffer_read_only, storage_buffer_read_only_sized},
+        encase::internal::WriteInto,
+        *,
+    },
     renderer::{RenderDevice, RenderQueue},
     texture::Image,
     Extract,
 };
 use bevy_transform::components::GlobalTransform;
 use bevy_utils::HashMap;
-use std::iter;
+use std::{iter, num::NonZeroU64};
 
 #[derive(Resource, Default)]
 pub struct ExtractedScene {
@@ -60,7 +64,7 @@ impl FromWorld for SceneBindings {
                         BindingType::AccelerationStructure,
                         storage_buffer_read_only::<u32>(false),
                         storage_buffer_read_only::<Mat4>(false),
-                        storage_buffer_read_only::<GpuSolariMaterial>(false),
+                        storage_buffer_read_only_sized(false, NonZeroU64::new(48)), // https://github.com/teoxoy/encase/issues/64
                         storage_buffer_read_only::<LightSource>(false),
                         storage_buffer_read_only::<DirectionalLight>(false),
                     ),
