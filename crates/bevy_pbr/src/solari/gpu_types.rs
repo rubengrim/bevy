@@ -17,6 +17,7 @@ pub struct GpuSolariMaterial {
     pub base_color_texture_id: u32,
     pub normal_map_texture_id: u32,
     pub emissive_texture_id: u32,
+    pub _padding: u32,
 }
 
 #[derive(ShaderType)]

@@ -6,6 +6,7 @@ struct Material {
     base_color_texture_id: u32,
     normal_map_texture_id: u32,
     emissive_texture_id: u32,
+    _padding: u32,
 }
 
 struct LightSource {
