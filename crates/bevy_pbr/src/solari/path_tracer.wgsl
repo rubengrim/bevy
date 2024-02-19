@@ -47,6 +47,8 @@ fn path_trace(@builtin(global_invocation_id) global_id: vec3<u32>) {
         } else { break; }
     }
 
+    color *= view.exposure;
+
     let new_color = (color + old_color.a * old_color.rgb) / (old_color.a + 1.0);
     textureStore(accumulation_texture, global_id.xy, vec4(new_color, old_color.a + 1.0));
     textureStore(output_texture, global_id.xy, vec4(new_color, 1.0));
