@@ -161,21 +161,13 @@ fn sample_cosine_hemisphere(normal: vec3<f32>, state: ptr<function, u32>) -> vec
     return normal + unit_sphere_direction;
 }
 
+// https://jcgt.org/published/0006/01/01/paper.pdf
 fn generate_tbn(normal: vec3<f32>) -> mat3x3<f32> {
-    var bitangent = vec3(0.0, 1.0, 0.0);
-
-    let n_dot_up = dot(normal, bitangent);
-    if 1.0 - abs(n_dot_up) <= 0.0000001 {
-        if n_dot_up > 0.0 {
-            bitangent = vec3(0.0, 0.0, 1.0);
-        } else {
-            bitangent = vec3(0.0, 0.0, -1.0);
-        }
-    }
-
-    let tangent = normalize(cross(bitangent, normal));
-    bitangent = cross(normal, tangent);
-
+    let sign = select(-1.0, 1.0, normal.z >= 0.0);
+    let a = -1.0 / (sign + normal.z);
+    let b = normal.x * normal.y * a;
+    let tangent = float3(1.0 + sign * normal.x * normal.x * a, sign * b, -sign * normal.x);
+    let bitangent = float3(b, sign + normal.y * normal.y * a, -normal.y);
     return mat3x3(tangent, bitangent, normal);
 }
 
