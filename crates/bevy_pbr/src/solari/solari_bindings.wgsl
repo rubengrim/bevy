@@ -238,7 +238,7 @@ fn sample_emissive_triangle(object_id: u32, triangle_id: u32, ray_origin: vec3<f
 }
 
 fn sample_light_sources(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>, state: ptr<function, u32>) -> LightSample {
-    let light_count = arrayLength(light_sources);
+    let light_count = arrayLength(&light_sources);
     let light_id = rand_range_u(light_count, state);
     let light = light_sources[light_id];
 
