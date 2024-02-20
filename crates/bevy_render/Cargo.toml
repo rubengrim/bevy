@@ -76,7 +76,7 @@ naga = { git = "https://github.com/daniel-keitel/wgpu", branch = "ray-tracing", 
   "wgsl-in",
 ] }
 serde = { version = "1", features = ["derive"] }
-bitflags = "2.3"
+bitflags = { version = "2.3", features = ["serde"] }
 bytemuck = { version = "1.5", features = ["derive"] }
 downcast-rs = "1.2.0"
 thread_local = "1.1"
