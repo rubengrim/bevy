@@ -1,5 +1,5 @@
 #import bevy_render::view::View
-#import bevy_pbr::solari::bindings::{trace_ray, resolve_ray_hit, sample_cosine_hemisphere}
+#import bevy_pbr::solari::bindings::{trace_ray, resolve_ray_hit, sample_cosine_hemisphere, RAY_T_MIN, RAY_T_MAX}
 #import bevy_pbr::utils::{rand_f, rand_vec2f}
 
 @group(2) @binding(0) var accumulation_texture: texture_storage_2d<rgba32float, read_write>;
@@ -30,7 +30,7 @@ fn path_trace(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var color = vec3(0.0);
     var throughput = vec3(1.0);
     loop {
-        let ray_hit = trace_ray(ray_origin, ray_direction, ray_t_min, 10000.0);
+        let ray_hit = trace_ray(ray_origin, ray_direction, ray_t_min, RAY_T_MAX);
         if ray_hit.kind != RAY_QUERY_INTERSECTION_NONE {
             let ray_hit = resolve_ray_hit(ray_hit);
 
@@ -43,7 +43,7 @@ fn path_trace(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
             ray_origin = ray_hit.world_position;
             ray_direction = sample_cosine_hemisphere(ray_hit.world_normal, &rng);
-            ray_t_min = 0.001;
+            ray_t_min = RAY_T_MIN;
         } else { break; }
     }
 

@@ -1,6 +1,6 @@
 #define_import_path bevy_pbr::solari::bindings
 
-#import bevy_pbr::utils::{PI, rand_f}
+#import bevy_pbr::utils::{PI, rand_f, rand_vec2f, rand_range_u}
 
 struct Material {
     base_color: vec4<f32>,
@@ -30,6 +30,8 @@ struct LightSource {
     kind: u32,
     id: u32,
 }
+
+const LIGHT_SOURCE_DIRECTIONAL = 0xFFFFFFFFu;
 
 struct DirectionalLight {
     direction_to_light: vec3<f32>,
@@ -65,10 +67,12 @@ struct IndexBuffer { indices: array<u32> }
 @group(1) @binding(4) var<storage> light_sources: array<LightSource>;
 @group(1) @binding(5) var<storage> directional_lights: array<DirectionalLight>;
 
+const RAY_T_MIN = 0.001;
+const RAY_T_MAX = 100000.0;
+const RAY_NO_CULL = 0xFFu;
+
 fn trace_ray(ray_origin: vec3<f32>, ray_direction: vec3<f32>, ray_t_min: f32, ray_t_max: f32) -> RayIntersection {
-    let ray_flags = RAY_FLAG_NONE;
-    let ray_cull_mask = 0xFFu;
-    let ray = RayDesc(ray_flags, ray_cull_mask, ray_t_min, ray_t_max, ray_origin, ray_direction);
+    let ray = RayDesc(RAY_FLAG_NONE, RAY_NO_CULL, ray_t_min, ray_t_max, ray_origin, ray_direction);
     var rq: ray_query;
     rayQueryInitialize(&rq, tlas, ray);
     rayQueryProceed(&rq);
@@ -154,4 +158,22 @@ fn sample_cosine_hemisphere(normal: vec3<f32>, state: ptr<function, u32>) -> vec
     let cos_phi = cos(phi);
     let unit_sphere_direction = normalize(vec3(sin_theta * cos_phi, cos_theta, sin_theta * sin_phi));
     return normal + unit_sphere_direction;
+}
+
+fn generate_tbn(normal: vec3<f32>) -> mat3x3<f32> {
+    var bitangent = vec3(0.0, 1.0, 0.0);
+
+    let n_dot_up = dot(normal, bitangent);
+    if 1.0 - abs(n_dot_up) <= 0.0000001 {
+        if n_dot_up > 0.0 {
+            bitangent = vec3(0.0, 0.0, 1.0);
+        } else {
+            bitangent = vec3(0.0, 0.0, -1.0);
+        }
+    }
+
+    let tangent = normalize(cross(bitangent, normal));
+    bitangent = cross(normal, tangent);
+
+    return mat3x3(tangent, bitangent, normal);
 }
