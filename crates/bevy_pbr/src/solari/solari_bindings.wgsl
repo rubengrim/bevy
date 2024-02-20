@@ -157,13 +157,13 @@ fn resolve_ray_hit(ray_hit: RayIntersection) -> ResolvedRayHit {
 
 // https://www.realtimerendering.com/raytracinggems/unofficial_RayTracingGems_v1.9.pdf#0004286901.INDD%3ASec28%3A303
 fn sample_cosine_hemisphere(normal: vec3<f32>, state: ptr<function, u32>) -> vec3<f32> {
-    let cos_theta = 2.0 * rand_f(state) - 1.0;
+    let cos_theta = 1.0 - 2.0 * rand_f(state);
     let phi = 2.0 * PI * rand_f(state);
     let sin_theta = sqrt(max(1.0 - cos_theta * cos_theta, 0.0));
-    let sin_phi = sin(phi);
-    let cos_phi = cos(phi);
-    let unit_sphere_direction = normalize(vec3(sin_theta * cos_phi, cos_theta, sin_theta * sin_phi));
-    return normal + unit_sphere_direction;
+    let x = normal.x + sin_theta * cos(phi);
+    let y = normal.y + sin_theta * sin(phi);
+    let z = normal.z + cos_theta;
+    return vec3(x, y, z);
 }
 
 // https://jcgt.org/published/0006/01/01/paper.pdf
