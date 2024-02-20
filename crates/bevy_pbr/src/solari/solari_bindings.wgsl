@@ -166,8 +166,8 @@ fn generate_tbn(normal: vec3<f32>) -> mat3x3<f32> {
     let sign = select(-1.0, 1.0, normal.z >= 0.0);
     let a = -1.0 / (sign + normal.z);
     let b = normal.x * normal.y * a;
-    let tangent = float3(1.0 + sign * normal.x * normal.x * a, sign * b, -sign * normal.x);
-    let bitangent = float3(b, sign + normal.y * normal.y * a, -normal.y);
+    let tangent = vec3(1.0 + sign * normal.x * normal.x * a, sign * b, -sign * normal.x);
+    let bitangent = vec3(b, sign + normal.y * normal.y * a, -normal.y);
     return mat3x3(tangent, bitangent, normal);
 }
 
