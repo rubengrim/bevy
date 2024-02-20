@@ -11,7 +11,7 @@ struct Material {
     _padding: u32,
 }
 
-const TEXTURE_MAP_NONE = 0xffffffffu;
+const TEXTURE_MAP_NONE = 0xFFFFFFFFu;
 
 struct ResolvedMaterial {
     base_color: vec3<f32>,
@@ -104,8 +104,8 @@ fn resolve_material(material: Material, uv: vec2<f32>) -> ResolvedMaterial {
     return m;
 }
 
-fn resolve_ray_hit(ray_hit: RayIntersection) -> ResolvedRayHit {
-    let mm_ids = mesh_material_ids[ray_hit.instance_custom_index];
+fn resolve_ray_hit_inner(object_id: u32, triangle_id: u32, barycentrics_input: vec2<f32>) -> ResolvedRayHit {
+    let mm_ids = mesh_material_ids[object_id];
     let mesh_id = mm_ids >> 16u;
     let material_id = mm_ids & 0xFFFFu;
 
@@ -113,17 +113,17 @@ fn resolve_ray_hit(ray_hit: RayIntersection) -> ResolvedRayHit {
     let vertex_buffer = &vertex_buffers[mesh_id].vertices;
     let material = materials[material_id];
 
-    let indices_i = (ray_hit.primitive_index * 3u) + vec3(0u, 1u, 2u);
+    let indices_i = (triangle_id * 3u) + vec3(0u, 1u, 2u);
     let indices = vec3((*index_buffer)[indices_i.x], (*index_buffer)[indices_i.y], (*index_buffer)[indices_i.z]);
     let vertices = array<Vertex, 3>(unpack_vertex((*vertex_buffer)[indices.x]), unpack_vertex((*vertex_buffer)[indices.y]), unpack_vertex((*vertex_buffer)[indices.z]));
-    let barycentrics = vec3(1.0 - ray_hit.barycentrics.x - ray_hit.barycentrics.y, ray_hit.barycentrics);
+    let barycentrics = vec3(1.0 - barycentrics_input.x - barycentrics_input.y, barycentrics_input);
 
+    let transform = transforms[object_id];
     let local_position = mat3x3(vertices[0].position, vertices[1].position, vertices[2].position) * barycentrics;
-    let world_position = (ray_hit.object_to_world * vec4(local_position, 1.0)).xyz;
+    let world_position = (transform * vec4(local_position, 1.0)).xyz;
 
     let uv = mat3x2(vertices[0].uv, vertices[1].uv, vertices[2].uv) * barycentrics;
 
-    let transform = transforms[ray_hit.instance_custom_index];
     let local_normal = mat3x3(vertices[0].normal, vertices[1].normal, vertices[2].normal) * barycentrics;
     var world_normal = normalize(mat3x3(transform[0].xyz, transform[1].xyz, transform[2].xyz) * local_normal);
     let geometric_world_normal = world_normal;
@@ -140,6 +140,10 @@ fn resolve_ray_hit(ray_hit: RayIntersection) -> ResolvedRayHit {
     let resolved_material = resolve_material(material, uv);
 
     return ResolvedRayHit(world_position, world_normal, geometric_world_normal, uv, resolved_material);
+}
+
+fn resolve_ray_hit(ray_hit: RayIntersection) -> ResolvedRayHit {
+    return resolve_ray_hit_inner(ray_hit.instance_custom_index, ray_hit.primitive_index, ray_hit.barycentrics);
 }
 
 fn sample_cosine_hemisphere(normal: vec3<f32>, state: ptr<function, u32>) -> vec3<f32> {
