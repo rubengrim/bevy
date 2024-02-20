@@ -24,6 +24,7 @@ struct ResolvedRayHit {
     geometric_world_normal: vec3<f32>,
     uv: vec2<f32>,
     material: ResolvedMaterial,
+    triangle_area: f32,
 }
 
 struct LightSource {
@@ -143,7 +144,11 @@ fn resolve_ray_hit_inner(object_id: u32, triangle_id: u32, barycentrics_input: v
 
     let resolved_material = resolve_material(material, uv);
 
-    return ResolvedRayHit(world_position, world_normal, geometric_world_normal, uv, resolved_material);
+    let triangle_edge0 = vertices[0].position - vertices[1].position;
+    let triangle_edge1 = vertices[0].position - vertices[2].position;
+    let triangle_area = length(cross(triangle_edge0, triangle_edge1)) / 2.0;
+
+    return ResolvedRayHit(world_position, world_normal, geometric_world_normal, uv, resolved_material, triangle_area);
 }
 
 fn resolve_ray_hit(ray_hit: RayIntersection) -> ResolvedRayHit {
@@ -206,9 +211,30 @@ fn sample_directional_light(id: u32, ray_origin: vec3<f32>, state: ptr<function,
     return LightSample(light.color.rgb * light_visible, pdf);
 }
 
-// https://www.realtimerendering.com/raytracinggems/unofficial_RayTracingGems_v1.9.pdf#0004286901.INDD%3ASec22%3A297
-fn sample_emissive_triangle(object_id: u32, triangle_id: u32, state: ptr<function, u32>) -> LightSample {
-    return LightSample(vec3(0.0), 0.0);
+fn sample_emissive_triangle(object_id: u32, triangle_id: u32, ray_origin: vec3<f32>, origin_world_normal: vec3<f32>, state: ptr<function, u32>) -> LightSample {
+    // https://www.realtimerendering.com/raytracinggems/unofficial_RayTracingGems_v1.9.pdf#0004286901.INDD%3ASec22%3A297
+    var barycentrics = rand_vec2f(state);
+    if barycentrics.x + barycentrics.y > 1.0 { barycentrics = 1.0 - barycentrics; }
+    let light_hit = resolve_ray_hit_inner(object_id, triangle_id, barycentrics);
+
+    let light_distance = distance(ray_origin, light_hit.world_position);
+    let ray_direction = (light_hit.world_position - ray_origin) / light_distance;
+
+    let cos_theta_origin = saturate(dot(ray_direction, origin_world_normal));
+    let cos_theta_light = saturate(dot(-ray_direction, light_hit.world_normal));
+    let light_distance_squared = light_distance * light_distance;
+    let radiance = light_hit.material.emissive.rgb * cos_theta_origin * (cos_theta_light / light_distance_squared);
+    let pdf = 1.0 / light_hit.triangle_area;
+
+    let ray_t_max = light_distance - RAY_T_MIN;
+    let ray = RayDesc(RAY_FLAG_TERMINATE_ON_FIRST_HIT, RAY_NO_CULL, RAY_T_MIN, ray_t_max, ray_origin, ray_direction);
+    var rq: ray_query;
+    rayQueryInitialize(&rq, tlas, ray);
+    rayQueryProceed(&rq);
+    let ray_hit = rayQueryGetCommittedIntersection(&rq);
+    let light_visible = f32(ray_hit.kind == RAY_QUERY_INTERSECTION_NONE);
+
+    return LightSample(radiance * light_visible, pdf);
 }
 
 fn sample_light_sources(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>, state: ptr<function, u32>) -> LightSample {
@@ -220,7 +246,7 @@ fn sample_light_sources(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>, s
     if light.kind == LIGHT_SOURCE_DIRECTIONAL {
         sample = sample_directional_light(light.id, ray_origin, state);
     } else {
-        sample = sample_emissive_triangle(light.id, light.kind, state);
+        sample = sample_emissive_triangle(light.id, light.kind, ray_origin, origin_world_normal, state);
     }
 
     sample.pdf /= f32(light_count);
