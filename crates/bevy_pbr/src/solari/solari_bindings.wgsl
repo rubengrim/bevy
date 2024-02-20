@@ -150,6 +150,7 @@ fn resolve_ray_hit(ray_hit: RayIntersection) -> ResolvedRayHit {
     return resolve_ray_hit_inner(ray_hit.instance_custom_index, ray_hit.primitive_index, ray_hit.barycentrics);
 }
 
+// https://www.realtimerendering.com/raytracinggems/unofficial_RayTracingGems_v1.9.pdf#0004286901.INDD%3ASec28%3A303
 fn sample_cosine_hemisphere(normal: vec3<f32>, state: ptr<function, u32>) -> vec3<f32> {
     let cos_theta = 2.0 * rand_f(state) - 1.0;
     let phi = 2.0 * PI * rand_f(state);
@@ -176,4 +177,61 @@ fn generate_tbn(normal: vec3<f32>) -> mat3x3<f32> {
     bitangent = cross(normal, tangent);
 
     return mat3x3(tangent, bitangent, normal);
+}
+
+struct LightSample {
+    light: vec3<f32>,
+    pdf: f32,
+}
+
+// https://en.wikipedia.org/wiki/Angular_diameter#Use_in_astronomy
+// https://www.realtimerendering.com/raytracinggems/unofficial_RayTracingGems_v1.9.pdf#0004286901.INDD%3ASec30%3A305
+fn sample_directional_light(id: u32, ray_origin: vec3<f32>, state: ptr<function, u32>) -> LightSample {
+    let light = directional_lights[id];
+
+    // Angular diameter of the sun projected onto a disk as viewed from earth = ~0.5 degrees
+    // cos(0.25)
+    let cos_theta_max = 0.99999048072;
+
+    // 1 / (2 * PI * (1 - cos_theta_max))
+    let pdf = 16719.2206859;
+
+    let r = rand_vec2f(state);
+    let cos_theta = (1.0 - r.x) + r.x * cos_theta_max;
+    let sin_theta = sqrt(1.0 - cos_theta * cos_theta);
+    let phi = r.y * 2.0 * PI;
+    var ray_direction = vec3(vec2(cos(phi), sin(phi)) * sin_theta, cos_theta);
+    ray_direction = generate_tbn(light.direction_to_light) * ray_direction;
+
+    let ray = RayDesc(RAY_FLAG_TERMINATE_ON_FIRST_HIT, RAY_NO_CULL, RAY_T_MIN, RAY_T_MAX, ray_origin, ray_direction);
+    var rq: ray_query;
+    rayQueryInitialize(&rq, tlas, ray);
+    rayQueryProceed(&rq);
+    let ray_hit = rayQueryGetCommittedIntersection(&rq);
+
+    let light_visible = f32(ray_hit.kind == RAY_QUERY_INTERSECTION_NONE);
+
+    return LightSample(light.color * light_visible, pdf);
+}
+
+// https://www.realtimerendering.com/raytracinggems/unofficial_RayTracingGems_v1.9.pdf#0004286901.INDD%3ASec22%3A297
+fn sample_emissive_triangle(object_id: u32, triangle_id: u32, state: ptr<function, u32>) -> LightSample {
+    return LightSample(vec3(0.0), 0.0);
+}
+
+fn sample_light_sources(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>, state: ptr<function, u32>) -> LightSample {
+    let light_count = arrayLength(light_sources);
+    let light_id = rand_range_u(light_count, state);
+    let light = light_sources[light_id];
+
+    var sample;
+    if light.kind == LIGHT_SOURCE_DIRECTIONAL {
+        sample = sample_directional_light(light.id, ray_origin, state);
+    } else {
+        sample = sample_emissive_triangle(light.id, light.kind, state);
+    }
+
+    sample.pdf /= f32(light_count);
+
+    return sample;
 }
