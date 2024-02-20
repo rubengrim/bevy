@@ -211,7 +211,7 @@ fn sample_directional_light(id: u32, ray_origin: vec3<f32>, state: ptr<function,
 
     let light_visible = f32(ray_hit.kind == RAY_QUERY_INTERSECTION_NONE);
 
-    return LightSample(light.color * light_visible, pdf);
+    return LightSample(light.color.rgb * light_visible, pdf);
 }
 
 // https://www.realtimerendering.com/raytracinggems/unofficial_RayTracingGems_v1.9.pdf#0004286901.INDD%3ASec22%3A297
@@ -224,7 +224,7 @@ fn sample_light_sources(ray_origin: vec3<f32>, origin_world_normal: vec3<f32>, s
     let light_id = rand_range_u(light_count, state);
     let light = light_sources[light_id];
 
-    var sample;
+    var sample: LightSample;
     if light.kind == LIGHT_SOURCE_DIRECTIONAL {
         sample = sample_directional_light(light.id, ray_origin, state);
     } else {
