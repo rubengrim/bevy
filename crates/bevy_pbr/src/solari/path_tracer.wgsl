@@ -38,7 +38,7 @@ fn path_trace(@builtin(global_invocation_id) global_id: vec3<u32>) {
             color += ray_hit.material.emissive * throughput;
             throughput *= ray_hit.material.base_color;
 
-            let p = tonemapping_luminance(throughput);
+            let p = min(0.95, tonemapping_luminance(throughput));
             if rand_f(&rng) > p { break; }
             throughput /= p;
 
