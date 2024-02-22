@@ -1,6 +1,6 @@
 #import bevy_render::view::View
 #import bevy_pbr::solari::bindings::{trace_ray, resolve_ray_hit, sample_cosine_hemisphere, RAY_T_MIN, RAY_T_MAX}
-#import bevy_pbr::utils::{rand_f, rand_vec2f}
+#import bevy_pbr::utils::{PI, rand_f, rand_vec2f}
 #import bevy_core_pipeline::tonemapping::tonemapping_luminance
 
 @group(2) @binding(0) var accumulation_texture: texture_storage_2d<rgba32float, read_write>;
@@ -36,7 +36,11 @@ fn path_trace(@builtin(global_invocation_id) global_id: vec3<u32>) {
             let ray_hit = resolve_ray_hit(ray_hit);
 
             color += ray_hit.material.emissive * throughput;
-            throughput *= ray_hit.material.base_color;
+
+            let cos_theta = dot(ray_hit.world_normal, -ray_direction);
+            let diffuse_brdf = ray_hit.material.base_color / PI;
+            let cosine_hemisphere_pdf = cos_theta / PI;
+            throughput *= (diffuse_brdf * cos_theta) / cosine_hemisphere_pdf;
 
             let p = min(0.95, tonemapping_luminance(throughput));
             if rand_f(&rng) > p { break; }
