@@ -138,30 +138,33 @@ pub fn prepare_path_tracer_accumulation_texture(
     mut commands: Commands,
 ) {
     for (entity, solari_settings, camera) in &query {
-        if solari_settings.debug_path_tracer {
-            if let Some(viewport) = camera.physical_viewport_size {
-                let descriptor = TextureDescriptor {
-                    label: Some("solari_path_tracer_accumulation_texture"),
-                    size: Extent3d {
-                        width: viewport.x,
-                        height: viewport.y,
-                        depth_or_array_layers: 1,
-                    },
-                    mip_level_count: 1,
-                    sample_count: 1,
-                    dimension: TextureDimension::D2,
-                    format: TextureFormat::Rgba32Float,
-                    usage: TextureUsages::STORAGE_BINDING,
-                    view_formats: &[],
-                };
-
-                commands
-                    .entity(entity)
-                    .insert(PathTracerAccumulationTexture(
-                        texture_cache.get(&render_device, descriptor),
-                    ));
-            }
+        if !solari_settings.debug_path_tracer {
+            continue;
         }
+        let Some(viewport) = camera.physical_viewport_size else {
+            continue;
+        };
+
+        let descriptor = TextureDescriptor {
+            label: Some("solari_path_tracer_accumulation_texture"),
+            size: Extent3d {
+                width: viewport.x,
+                height: viewport.y,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: TextureDimension::D2,
+            format: TextureFormat::Rgba32Float,
+            usage: TextureUsages::STORAGE_BINDING,
+            view_formats: &[],
+        };
+
+        commands
+            .entity(entity)
+            .insert(PathTracerAccumulationTexture(
+                texture_cache.get(&render_device, descriptor),
+            ));
     }
 }
 
