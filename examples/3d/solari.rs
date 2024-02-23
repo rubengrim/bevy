@@ -4,6 +4,7 @@
 mod camera_controller;
 
 use bevy::{
+    core_pipeline::prepass::{DeferredPrepass, DepthPrepass, MotionVectorPrepass},
     pbr::solari::{SolariPlugin, SolariSettings, SolariSupported},
     prelude::*,
     render::camera::CameraMainTextureUsages,
@@ -63,9 +64,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             main_texture_usages: CameraMainTextureUsages::with_storage_binding(),
             ..default()
         },
-        SolariSettings {
-            debug_path_tracer: true,
-        },
+        DeferredPrepass,
+        DepthPrepass,
+        MotionVectorPrepass,
+        SolariSettings::default(),
         CameraController::default(),
     ));
 }

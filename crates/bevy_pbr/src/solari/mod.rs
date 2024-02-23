@@ -4,6 +4,7 @@ mod extract_asset_events;
 mod gpu_types;
 mod path_tracer;
 mod scene_binder;
+mod solari;
 
 use self::{
     asset_binder::{prepare_asset_binding_arrays, AssetBindings},
@@ -14,7 +15,9 @@ use self::{
     graph::LabelsSolari,
     path_tracer::{prepare_path_tracer_accumulation_texture, PathTracerNode},
     scene_binder::{extract_scene, prepare_scene_bindings, ExtractedScene, SceneBindings},
+    solari::{prepare_view_resources, SolariNode},
 };
+use crate::DefaultOpaqueRendererMethod;
 use bevy_app::{App, Plugin};
 use bevy_asset::{load_internal_asset, Handle};
 use bevy_core_pipeline::core_3d::graph::{Core3d, Node3d};
@@ -42,18 +45,22 @@ pub mod graph {
     #[derive(Debug, Hash, PartialEq, Eq, Clone, RenderLabel)]
     pub enum LabelsSolari {
         PathTracer,
+        Solari,
     }
 }
 
 const SOLARI_BINDINGS_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(1717171717171717);
 const SOLARI_PATH_TRACER_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(2717171717171717);
+const SOLARI_SAMPLE_DIRECT_DIFFUSE_SHADER_HANDLE: Handle<Shader> =
+    Handle::weak_from_u128(3717171717171717);
 
 /// TODO: Docs
 pub struct SolariPlugin;
 
 impl Plugin for SolariPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(Msaa::Off);
+        app.insert_resource(Msaa::Off)
+            .insert_resource(DefaultOpaqueRendererMethod::deferred());
 
         load_internal_asset!(
             app,
@@ -65,6 +72,12 @@ impl Plugin for SolariPlugin {
             app,
             SOLARI_PATH_TRACER_SHADER_HANDLE,
             "path_tracer.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            SOLARI_SAMPLE_DIRECT_DIFFUSE_SHADER_HANDLE,
+            "sample_direct_diffuse.wgsl",
             Shader::from_wgsl
         );
     }
@@ -102,6 +115,7 @@ impl Plugin for SolariPlugin {
                         .after(prepare_assets::<Mesh>)
                         .after(prepare_assets::<Image>),
                     prepare_path_tracer_accumulation_texture.in_set(RenderSet::PrepareResources),
+                    prepare_view_resources.in_set(RenderSet::PrepareResources),
                     prepare_scene_bindings.in_set(RenderSet::PrepareBindGroups),
                 )
                     .run_if(any_with_component::<SolariSettings>),
@@ -110,7 +124,16 @@ impl Plugin for SolariPlugin {
                 Core3d,
                 LabelsSolari::PathTracer,
             )
-            .add_render_graph_edges(Core3d, (LabelsSolari::PathTracer, Node3d::EndMainPass));
+            .add_render_graph_node::<ViewNodeRunner<SolariNode>>(Core3d, LabelsSolari::Solari)
+            .add_render_graph_edges(Core3d, (LabelsSolari::PathTracer, Node3d::EndMainPass))
+            .add_render_graph_edges(
+                Core3d,
+                (
+                    Node3d::DeferredPrepass,
+                    LabelsSolari::Solari,
+                    Node3d::EndMainPass,
+                ),
+            );
     }
 }
 
@@ -134,7 +157,8 @@ impl SolariPlugin {
 pub struct SolariSupported;
 
 /// TODO: Docs
-// Requires MSAA off, HDR, CameraMainTextureUsages::with_storage_binding(), and should disable shadows for all lights
+// Requires MSAA off, HDR, CameraMainTextureUsages::with_storage_binding(), deferred + depth + motion vector prepass,
+//   DefaultOpaqueRendererMethod::deferred, and should disable shadows for all lights
 #[derive(Component, ExtractComponent, Clone)]
 pub struct SolariSettings {
     pub debug_path_tracer: bool,
