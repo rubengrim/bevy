@@ -1,11 +1,13 @@
 #import bevy_render::view::View
-#import bevy_pbr::solari::bindings::{trace_ray, resolve_ray_hit, sample_cosine_hemisphere, RAY_T_MIN, RAY_T_MAX}
-#import bevy_pbr::utils::rand_f
-// #import bevy_core_pipeline::tonemapping::tonemapping_luminance
+#import bevy_render::globals::Globals
+#import bevy_pbr::solari::bindings::{trace_ray, resolve_ray_hit, sample_light_sources, RAY_T_MIN, RAY_T_MAX}
+#import bevy_pbr::utils::{rand_f, rand_range_u}
+#import bevy_core_pipeline::tonemapping::tonemapping_luminance
 
 @group(2) @binding(0) var direct_diffuse: texture_storage_2d<rgba16float, read_write>;
 @group(2) @binding(1) var view_output: texture_storage_2d<rgba16float, write>;
 @group(2) @binding(2) var<uniform> view: View;
+@group(2) @binding(3) var<uniform> globals: Globals;
 
 struct Reservoir {
     light_id: u32,
@@ -30,10 +32,34 @@ fn sample_direct_diffuse(@builtin(global_invocation_id) global_id: vec3<u32>) {
         return;
     }
 
+    let pixel_index = global_id.x + global_id.y * u32(view.viewport.z);
+    let frame_index = globals.frame_count * 5782582u;
+    var rng = pixel_index + frame_index;
+
+    let position = vec3(0.0); // TODO
+    let world_normal = vec3(0.0); // TODO
+
     var reservoir = Resevoir(0u, 0u, 0.0, 0.0, 0u);
     let light_count = arrayLength(&light_sources);
     for (var i = 0u; i < 32u; i++) {
-        let light_id = rand_range_u(light_count, state);
+        let light_id = rand_range_u(light_count, &rng);
         let light = light_sources[light_id];
+
+        let light_rng = rng;
+        let sample = sample_light_sources(light_id, light_count, position, world_normal, &rng);
+        let p_hat = tonemapping_luminance(sample.radiance);
+        let light_weight = p_hat / sample.pdf;
+
+        update_reservoir(&reservoir, light_id, light_rng, light_weight, &rng);
     }
+
+    rng = reservoir.light_rng;
+    var sample = sample_light_sources(reservoir.light_id, light_count, position, world_normal, &rng);
+    sample.radiance *= 0.0; // TODO: Check visibility
+
+    let p_hat = tonemapping_luminance(sample.radiance);
+    let w = reservoir.weight_sum / (p_hat * f32(reservoir.sample_count));
+    reservoir.light_weight = select(0.0, w, p_hat > 0.0);
+
+    sample.radiance *= reservoir.light_weight;
 }
