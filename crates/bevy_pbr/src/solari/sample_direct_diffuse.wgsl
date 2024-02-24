@@ -1,6 +1,6 @@
 #import bevy_render::view::View
 #import bevy_render::globals::Globals
-#import bevy_pbr::solari::bindings::{trace_ray, resolve_ray_hit, sample_light_sources, RAY_T_MIN, RAY_T_MAX}
+#import bevy_pbr::solari::bindings::{trace_ray, resolve_ray_hit, sample_light_sources, trace_light_source, RAY_T_MIN, RAY_T_MAX}
 #import bevy_pbr::utils::{rand_f, rand_range_u}
 #import bevy_core_pipeline::tonemapping::tonemapping_luminance
 
@@ -54,12 +54,11 @@ fn sample_direct_diffuse(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
 
     rng = reservoir.light_rng;
-    var sample = sample_light_sources(reservoir.light_id, light_count, position, world_normal, &rng);
-    sample.radiance *= 0.0; // TODO: Check visibility
+    var radiance = trace_light_source(reservoir.light_id, light_count, position, world_normal, &rng);
 
-    let p_hat = tonemapping_luminance(sample.radiance);
+    let p_hat = tonemapping_luminance(radiance);
     let w = reservoir.weight_sum / (p_hat * f32(reservoir.sample_count));
     reservoir.light_weight = select(0.0, w, p_hat > 0.0);
 
-    sample.radiance *= reservoir.light_weight;
+    radiance *= reservoir.light_weight;
 }

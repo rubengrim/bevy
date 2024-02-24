@@ -200,14 +200,29 @@ fn sample_directional_light(id: u32, ray_origin: vec3<f32>, state: ptr<function,
     var ray_direction = vec3(vec2(cos(phi), sin(phi)) * sin_theta, cos_theta);
     ray_direction = generate_tbn(light.direction_to_light) * ray_direction;
 
-    // let ray = RayDesc(RAY_FLAG_TERMINATE_ON_FIRST_HIT, RAY_NO_CULL, RAY_T_MIN, RAY_T_MAX, ray_origin, ray_direction);
-    // var rq: ray_query;
-    // rayQueryInitialize(&rq, tlas, ray);
-    // rayQueryProceed(&rq);
-    // let ray_hit = rayQueryGetCommittedIntersection(&rq);
-    // let light_visible = f32(ray_hit.kind == RAY_QUERY_INTERSECTION_NONE);
-
     return LightSample(light.color.rgb, pdf);
+}
+
+fn trace_directional_light(id: u32, ray_origin: vec3<f32>, state: ptr<function, u32>) -> vec3<f32> {
+    let light = directional_lights[id];
+
+    let cos_theta_max = 0.99999048072;
+
+    let r = rand_vec2f(state);
+    let cos_theta = (1.0 - r.x) + r.x * cos_theta_max;
+    let sin_theta = sqrt(1.0 - cos_theta * cos_theta);
+    let phi = r.y * 2.0 * PI;
+    var ray_direction = vec3(vec2(cos(phi), sin(phi)) * sin_theta, cos_theta);
+    ray_direction = generate_tbn(light.direction_to_light) * ray_direction;
+
+    let ray = RayDesc(RAY_FLAG_TERMINATE_ON_FIRST_HIT, RAY_NO_CULL, RAY_T_MIN, RAY_T_MAX, ray_origin, ray_direction);
+    var rq: ray_query;
+    rayQueryInitialize(&rq, tlas, ray);
+    rayQueryProceed(&rq);
+    let ray_hit = rayQueryGetCommittedIntersection(&rq);
+    let light_visible = f32(ray_hit.kind == RAY_QUERY_INTERSECTION_NONE);
+
+    return light.color.rgb * light_visible;
 }
 
 fn sample_emissive_triangle(object_id: u32, triangle_id: u32, ray_origin: vec3<f32>, origin_world_normal: vec3<f32>, state: ptr<function, u32>) -> LightSample {
@@ -225,15 +240,30 @@ fn sample_emissive_triangle(object_id: u32, triangle_id: u32, ray_origin: vec3<f
     let light_distance_squared = light_distance * light_distance;
     let radiance = light_hit.material.emissive.rgb * cos_theta_origin * (cos_theta_light / light_distance_squared);
 
-    // let ray_t_max = light_distance - RAY_T_MIN;
-    // let ray = RayDesc(RAY_FLAG_TERMINATE_ON_FIRST_HIT, RAY_NO_CULL, RAY_T_MIN, ray_t_max, ray_origin, ray_direction);
-    // var rq: ray_query;
-    // rayQueryInitialize(&rq, tlas, ray);
-    // rayQueryProceed(&rq);
-    // let ray_hit = rayQueryGetCommittedIntersection(&rq);
-    // let light_visible = f32(ray_hit.kind == RAY_QUERY_INTERSECTION_NONE);
-
     return LightSample(radiance, pdf);
+}
+
+fn trace_emissive_triangle(object_id: u32, triangle_id: u32, ray_origin: vec3<f32>, origin_world_normal: vec3<f32>, state: ptr<function, u32>) -> LightSample {
+    var barycentrics = rand_vec2f(state);
+    if barycentrics.x + barycentrics.y > 1.0 { barycentrics = 1.0 - barycentrics; }
+    let light_hit = resolve_ray_hit_inner(object_id, triangle_id, barycentrics);
+
+    let light_distance = distance(ray_origin, light_hit.world_position);
+    let ray_direction = (light_hit.world_position - ray_origin) / light_distance;
+    let cos_theta_origin = saturate(dot(ray_direction, origin_world_normal));
+    let cos_theta_light = saturate(dot(-ray_direction, light_hit.world_normal));
+    let light_distance_squared = light_distance * light_distance;
+    let radiance = light_hit.material.emissive.rgb * cos_theta_origin * (cos_theta_light / light_distance_squared);
+
+    let ray_t_max = light_distance - RAY_T_MIN;
+    let ray = RayDesc(RAY_FLAG_TERMINATE_ON_FIRST_HIT, RAY_NO_CULL, RAY_T_MIN, ray_t_max, ray_origin, ray_direction);
+    var rq: ray_query;
+    rayQueryInitialize(&rq, tlas, ray);
+    rayQueryProceed(&rq);
+    let ray_hit = rayQueryGetCommittedIntersection(&rq);
+    let light_visible = f32(ray_hit.kind == RAY_QUERY_INTERSECTION_NONE);
+
+    return radiance * light_visible;
 }
 
 fn sample_light_sources(light_id: u32, light_count: u32, ray_origin: vec3<f32>, origin_world_normal: vec3<f32>, state: ptr<function, u32>) -> LightSample {
@@ -249,4 +279,13 @@ fn sample_light_sources(light_id: u32, light_count: u32, ray_origin: vec3<f32>, 
     sample.pdf /= f32(light_count);
 
     return sample;
+}
+
+fn trace_light_source(light_id: u32, ray_origin: vec3<f32>, origin_world_normal: vec3<f32>, state: ptr<function, u32>) -> vec3<f32> {
+    let light = light_sources[light_id];
+    if light.kind == LIGHT_SOURCE_DIRECTIONAL {
+        return trace_directional_light(light.id, ray_origin, state);
+    } else {
+        return trace_emissive_triangle(light.id, light.kind, ray_origin, origin_world_normal, state);
+    }
 }
