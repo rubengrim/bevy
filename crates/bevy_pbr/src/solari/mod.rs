@@ -1,6 +1,8 @@
 mod asset_binder;
 mod blas_manager;
-mod extract_asset_events;
+mod extract_assets;
+mod fallback_blas_builder;
+mod fallback_tlas_builder;
 mod gpu_types;
 mod path_tracer;
 mod scene_binder;
@@ -9,8 +11,9 @@ mod solari;
 use self::{
     asset_binder::{prepare_asset_binding_arrays, AssetBindings},
     blas_manager::{prepare_new_blas, BlasManager},
-    extract_asset_events::{
-        extract_asset_events, ExtractAssetEventsSystemState, ExtractedAssetEvents,
+    extract_assets::{
+        extract_asset_events, extract_changed_meshes, ExtractAssetEventsSystemState,
+        ExtractedAssetEvents, ExtractedChangedMeshes,
     },
     graph::LabelsSolari,
     path_tracer::{prepare_path_tracer_accumulation_texture, PathTracerNode},
@@ -24,12 +27,13 @@ use bevy_core_pipeline::core_3d::graph::{Core3d, Node3d};
 use bevy_ecs::{
     component::Component,
     schedule::{common_conditions::any_with_component, IntoSystemConfigs},
-    system::Resource,
+    system::{Res, Resource},
 };
 use bevy_render::{
     extract_component::{ExtractComponent, ExtractComponentPlugin},
+    extract_resource::ExtractResource,
     mesh::Mesh,
-    render_asset::prepare_assets,
+    render_asset::{prepare_assets, RenderAssets},
     render_graph::{RenderGraphApp, ViewNodeRunner},
     render_resource::Shader,
     renderer::RenderDevice,
@@ -38,6 +42,7 @@ use bevy_render::{
     view::Msaa,
     ExtractSchedule, Render, RenderApp, RenderSet,
 };
+use bevy_utils::tracing::{info, warn};
 
 pub mod graph {
     use bevy_render::render_graph::RenderLabel;
@@ -83,11 +88,19 @@ impl Plugin for SolariPlugin {
     }
 
     fn finish(&self, app: &mut App) {
-        match app.world.get_resource::<RenderDevice>() {
+        let backend_type = match app.world.get_resource::<RenderDevice>() {
+            Some(render_device)
+                if render_device
+                    .features()
+                    .contains(Self::fallback_required_features()) =>
+            {
+                SolariRayAccelerationBackendType::Software
+            }
             Some(render_device) if render_device.features().contains(Self::required_features()) => {
+                SolariRayAccelerationBackendType::Hardware
             }
             _ => return,
-        }
+        };
 
         app.insert_resource(SolariSupported)
             .init_resource::<ExtractAssetEventsSystemState>()
@@ -95,7 +108,9 @@ impl Plugin for SolariPlugin {
 
         let render_app = app.get_sub_app_mut(RenderApp).unwrap();
         render_app
+            .insert_resource(backend_type.clone())
             .init_resource::<ExtractedAssetEvents>()
+            .init_resource::<ExtractedChangedMeshes>()
             .init_resource::<ExtractedScene>()
             .init_resource::<BlasManager>()
             .init_resource::<AssetBindings>()
@@ -107,13 +122,13 @@ impl Plugin for SolariPlugin {
             .add_systems(
                 Render,
                 (
-                    prepare_new_blas
-                        .in_set(RenderSet::PrepareAssets)
-                        .after(prepare_assets::<Mesh>),
                     prepare_asset_binding_arrays
                         .in_set(RenderSet::PrepareAssets)
                         .after(prepare_assets::<Mesh>)
                         .after(prepare_assets::<Image>),
+                    prepare_new_blas
+                        .in_set(RenderSet::PrepareAssets)
+                        .after(prepare_assets::<Mesh>),
                     prepare_path_tracer_accumulation_texture.in_set(RenderSet::PrepareResources),
                     prepare_view_resources.in_set(RenderSet::PrepareResources),
                     prepare_scene_bindings.in_set(RenderSet::PrepareBindGroups),
@@ -125,7 +140,15 @@ impl Plugin for SolariPlugin {
                 LabelsSolari::PathTracer,
             )
             .add_render_graph_node::<ViewNodeRunner<SolariNode>>(Core3d, LabelsSolari::Solari)
-            .add_render_graph_edges(Core3d, (LabelsSolari::PathTracer, Node3d::EndMainPass))
+            // .add_render_graph_edges(Core3d, (LabelsSolari::PathTracer, Node3d::EndMainPass))
+            .add_render_graph_edges(
+                Core3d,
+                (
+                    Node3d::EndMainPass,
+                    LabelsSolari::PathTracer,
+                    Node3d::Tonemapping,
+                ),
+            )
             .add_render_graph_edges(
                 Core3d,
                 (
@@ -134,11 +157,28 @@ impl Plugin for SolariPlugin {
                     Node3d::EndMainPass,
                 ),
             );
+
+        if backend_type == SolariRayAccelerationBackendType::Software {
+            render_app.add_systems(
+                ExtractSchedule,
+                extract_changed_meshes.after(extract_asset_events),
+            );
+        }
     }
 }
 
 impl SolariPlugin {
-    /// TODO: Docs
+    // TODO: Clean up
+    pub fn fallback_required_features() -> WgpuFeatures {
+        WgpuFeatures::TEXTURE_BINDING_ARRAY
+            | WgpuFeatures::BUFFER_BINDING_ARRAY
+            | WgpuFeatures::STORAGE_RESOURCE_BINDING_ARRAY
+            | WgpuFeatures::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING
+            | WgpuFeatures::PARTIALLY_BOUND_BINDING_ARRAY
+            | WgpuFeatures::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES
+            | WgpuFeatures::PUSH_CONSTANTS
+    }
+
     pub fn required_features() -> WgpuFeatures {
         WgpuFeatures::RAY_TRACING_ACCELERATION_STRUCTURE
             | WgpuFeatures::RAY_QUERY
@@ -150,6 +190,12 @@ impl SolariPlugin {
             | WgpuFeatures::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES
             | WgpuFeatures::PUSH_CONSTANTS
     }
+}
+
+#[derive(Resource, ExtractResource, Clone, PartialEq, Eq)]
+pub enum SolariRayAccelerationBackendType {
+    Hardware,
+    Software,
 }
 
 /// TODO: Docs

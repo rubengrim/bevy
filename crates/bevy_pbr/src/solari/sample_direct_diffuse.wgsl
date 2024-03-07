@@ -28,37 +28,38 @@ fn update_reservoir(reservoir: ptr<function, Reservoir>, light_id: u32, light_rn
 
 @compute @workgroup_size(8, 8, 1)
 fn sample_direct_diffuse(@builtin(global_invocation_id) global_id: vec3<u32>) {
-    if any(global_id.xy >= vec2u(view.viewport.zw)) {
-        return;
-    }
+    // This wouldn't compile, assuming it's not finished.
+    // if any(global_id.xy >= vec2u(view.viewport.zw)) {
+    //     return;
+    // }
 
-    let pixel_index = global_id.x + global_id.y * u32(view.viewport.z);
-    let frame_index = globals.frame_count * 5782582u;
-    var rng = pixel_index + frame_index;
+    // let pixel_index = global_id.x + global_id.y * u32(view.viewport.z);
+    // let frame_index = globals.frame_count * 5782582u;
+    // var rng = pixel_index + frame_index;
 
-    let position = vec3(0.0); // TODO
-    let world_normal = vec3(0.0); // TODO
+    // let position = vec3(0.0); // TODO
+    // let world_normal = vec3(0.0); // TODO
 
-    var reservoir = Resevoir(0u, 0u, 0.0, 0.0, 0u);
-    let light_count = arrayLength(&light_sources);
-    for (var i = 0u; i < 32u; i++) {
-        let light_id = rand_range_u(light_count, &rng);
-        let light = light_sources[light_id];
+    // var reservoir = Reservoir(0u, 0u, 0.0, 0.0, 0u);
+    // let light_count = arrayLength(&light_sources);
+    // for (var i = 0u; i < 32u; i++) {
+    //     let light_id = rand_range_u(light_count, &rng);
+    //     let light = light_sources[light_id];
 
-        let light_rng = rng;
-        let sample = sample_light_sources(light_id, light_count, position, world_normal, &rng);
-        let p_hat = tonemapping_luminance(sample.radiance);
-        let light_weight = p_hat / sample.pdf;
+    //     let light_rng = rng;
+    //     let sample = sample_light_sources(light_id, light_count, position, world_normal, &rng);
+    //     let p_hat = tonemapping_luminance(sample.radiance);
+    //     let light_weight = p_hat / sample.pdf;
 
-        update_reservoir(&reservoir, light_id, light_rng, light_weight, &rng);
-    }
+    //     update_reservoir(&reservoir, light_id, light_rng, light_weight, &rng);
+    // }
 
-    rng = reservoir.light_rng;
-    var radiance = trace_light_source(reservoir.light_id, light_count, position, world_normal, &rng);
+    // rng = reservoir.light_rng;
+    // var radiance = trace_light_source(reservoir.light_id, light_count, position, world_normal, &rng);
 
-    let p_hat = tonemapping_luminance(radiance);
-    let w = reservoir.weight_sum / (p_hat * f32(reservoir.sample_count));
-    reservoir.light_weight = select(0.0, w, p_hat > 0.0);
+    // let p_hat = tonemapping_luminance(radiance);
+    // let w = reservoir.weight_sum / (p_hat * f32(reservoir.sample_count));
+    // reservoir.light_weight = select(0.0, w, p_hat > 0.0);
 
-    radiance *= reservoir.light_weight;
+    // radiance *= reservoir.light_weight;
 }

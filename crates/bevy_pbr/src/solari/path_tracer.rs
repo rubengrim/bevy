@@ -1,6 +1,6 @@
 use super::{
-    asset_binder::AssetBindings, scene_binder::SceneBindings, SolariSettings,
-    SOLARI_PATH_TRACER_SHADER_HANDLE,
+    asset_binder::AssetBindings, scene_binder::SceneBindings, SolariRayAccelerationBackendType,
+    SolariSettings, SOLARI_PATH_TRACER_SHADER_HANDLE,
 };
 use bevy_ecs::{
     component::Component,
@@ -111,6 +111,13 @@ impl FromWorld for PathTracerNode {
             ),
         );
 
+        let mut shader_defs = Vec::new();
+        if *world.resource::<SolariRayAccelerationBackendType>()
+            == SolariRayAccelerationBackendType::Software
+        {
+            shader_defs.push("SOFTWARE_RAY_ACCELERATION_FALLBACK".into())
+        }
+
         let pipeline = pipeline_cache.queue_compute_pipeline(ComputePipelineDescriptor {
             label: Some("solari_path_tracer_pipeline".into()),
             layout: vec![
@@ -120,7 +127,7 @@ impl FromWorld for PathTracerNode {
             ],
             push_constant_ranges: vec![],
             shader: SOLARI_PATH_TRACER_SHADER_HANDLE,
-            shader_defs: vec![],
+            shader_defs,
             entry_point: "path_trace".into(),
         });
 

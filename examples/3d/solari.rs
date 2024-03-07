@@ -9,12 +9,23 @@ use bevy::{
     prelude::*,
     render::camera::CameraMainTextureUsages,
 };
+use bevy_internal::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use camera_controller::{CameraController, CameraControllerPlugin};
 use std::f32::consts::PI;
 
 fn main() {
     App::new()
-        .add_plugins((DefaultPlugins, SolariPlugin, CameraControllerPlugin))
+        .add_plugins((
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    present_mode: bevy_internal::window::PresentMode::Immediate,
+                    ..default()
+                }),
+                ..default()
+            }),
+            SolariPlugin,
+            CameraControllerPlugin,
+        ))
         .add_systems(
             Startup,
             (
@@ -26,10 +37,21 @@ fn main() {
             Update,
             toggle_solari.run_if(resource_exists::<SolariSupported>),
         )
+        .add_plugins((LogDiagnosticsPlugin::default(), FrameTimeDiagnosticsPlugin))
         .run();
 }
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn setup(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut mesh_assets: ResMut<Assets<Mesh>>,
+    mut material_assets: ResMut<Assets<StandardMaterial>>,
+) {
+    // commands.spawn(SceneBundle {
+    //     scene: asset_server.load("models/solari_cube.glb#Scene0"),
+    //     transform: Transform::from_rotation(Quat::from_euler(EulerRot::YZX, PI / 6.0, 0.0, 0.0)),
+    //     ..default()
+    // });
     commands.spawn(SceneBundle {
         scene: asset_server.load("models/CornellBox/box_modified.glb#Scene0"),
         ..default()
@@ -67,7 +89,9 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         DeferredPrepass,
         DepthPrepass,
         MotionVectorPrepass,
-        SolariSettings::default(),
+        SolariSettings {
+            debug_path_tracer: true,
+        },
         CameraController::default(),
     ));
 }
@@ -101,7 +125,10 @@ fn toggle_solari(
         if solari_enabled {
             commands.entity(entity).remove::<SolariSettings>();
         } else {
-            commands.entity(entity).insert(SolariSettings::default());
+            commands.entity(entity).insert(SolariSettings {
+                debug_path_tracer: true,
+            });
+            // commands.entity(entity).insert(SolariSettings::default());
         }
     }
 }

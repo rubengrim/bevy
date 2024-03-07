@@ -3,10 +3,10 @@ use crate::StandardMaterial;
 use bevy_asset::{AssetEvent, AssetId, Assets, Handle};
 use bevy_ecs::{
     event::EventReader,
-    system::{ResMut, Resource, SystemState},
+    system::{Res, ResMut, Resource, SystemState},
     world::{FromWorld, Mut, World},
 };
-use bevy_render::{mesh::Mesh, texture::Image, MainWorld};
+use bevy_render::{mesh::Mesh, texture::Image, Extract, MainWorld};
 use bevy_utils::{HashMap, HashSet};
 
 #[derive(Resource, Default)]
@@ -18,6 +18,23 @@ pub struct ExtractedAssetEvents {
     materials_changed: HashSet<AssetId<StandardMaterial>>,
     materials_removed: Vec<AssetId<StandardMaterial>>,
     pub materials: HashMap<AssetId<StandardMaterial>, SolariMaterial>,
+}
+
+// Used for fallback BLAS creation
+#[derive(Resource, Default)]
+pub struct ExtractedChangedMeshes(pub HashMap<AssetId<Mesh>, Mesh>);
+
+pub fn extract_changed_meshes(
+    asset_events: Res<ExtractedAssetEvents>,
+    mesh_assets: Extract<Res<Assets<Mesh>>>,
+    mut changed_meshes: ResMut<ExtractedChangedMeshes>,
+) {
+    changed_meshes.0.clear();
+    for mesh_id in asset_events.meshes_changed.iter() {
+        changed_meshes
+            .0
+            .insert(*mesh_id, mesh_assets.get(*mesh_id).unwrap().clone());
+    }
 }
 
 pub fn extract_asset_events(

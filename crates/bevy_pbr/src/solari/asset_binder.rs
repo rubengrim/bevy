@@ -1,4 +1,4 @@
-use super::extract_asset_events::ExtractedAssetEvents;
+use super::extract_assets::ExtractedAssetEvents;
 use bevy_asset::AssetId;
 use bevy_ecs::{
     system::{Res, ResMut, Resource},

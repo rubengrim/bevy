@@ -1,8 +1,14 @@
 use super::{
     asset_binder::AssetBindings,
     blas_manager::BlasManager,
-    extract_asset_events::ExtractedAssetEvents,
+    extract_assets::ExtractedAssetEvents,
+    fallback_blas_builder::{FallbackBlasNode, GpuSolariMeshPrimitive, SolariMeshPrimitive},
+    fallback_tlas_builder::{
+        build_fallback_tlas, FallbackTlas, FallbackTlasInstance, FallbackTlasNode,
+        GpuFallbackTlasInstance,
+    },
     gpu_types::{DirectionalLight, GpuSolariMaterial, LightSource},
+    SolariRayAccelerationBackendType,
 };
 use crate::{ExtractedDirectionalLight, StandardMaterial};
 use bevy_asset::{AssetId, Handle};
@@ -44,30 +50,55 @@ pub fn extract_scene(
 pub struct SceneBindings {
     pub bind_group_layout: BindGroupLayout,
     pub bind_group: Option<BindGroup>,
-    // TODO: Needed for now because the bind group isin't properly keeping the tlas alive
+    // TODO: Needed for now because the bind group isn't properly keeping the tlas alive
     tlas: Option<TlasPackage>,
+    fallback_tlas: Option<FallbackTlas>,
 }
 
 impl FromWorld for SceneBindings {
     fn from_world(world: &mut World) -> Self {
         let render_device = world.resource::<RenderDevice>();
+        let backend_type = world.resource::<SolariRayAccelerationBackendType>();
         Self {
-            bind_group_layout: render_device.create_bind_group_layout(
-                "solari_scene_bind_group_layout",
-                &BindGroupLayoutEntries::sequential(
-                    ShaderStages::COMPUTE,
-                    (
-                        BindingType::AccelerationStructure,
-                        storage_buffer_read_only::<u32>(false),
-                        storage_buffer_read_only::<Mat4>(false),
-                        storage_buffer_read_only::<GpuSolariMaterial>(false),
-                        storage_buffer_read_only::<LightSource>(false),
-                        storage_buffer_read_only::<DirectionalLight>(false),
+            bind_group_layout: match backend_type {
+                SolariRayAccelerationBackendType::Hardware => render_device
+                    .create_bind_group_layout(
+                        "solari_scene_bind_group_layout",
+                        &BindGroupLayoutEntries::sequential(
+                            ShaderStages::COMPUTE,
+                            (
+                                // TODO
+                                storage_buffer_read_only::<u32>(false),
+                                storage_buffer_read_only::<Mat4>(false),
+                                storage_buffer_read_only::<GpuSolariMaterial>(false),
+                                storage_buffer_read_only::<LightSource>(false),
+                                storage_buffer_read_only::<DirectionalLight>(false),
+                            ),
+                        ),
                     ),
-                ),
-            ),
+                SolariRayAccelerationBackendType::Software => render_device
+                    .create_bind_group_layout(
+                        "solari_scene_bind_group_layout",
+                        &BindGroupLayoutEntries::sequential(
+                            ShaderStages::COMPUTE,
+                            (
+                                storage_buffer_read_only::<u32>(false),
+                                storage_buffer_read_only::<Mat4>(false),
+                                storage_buffer_read_only::<GpuSolariMaterial>(false),
+                                storage_buffer_read_only::<LightSource>(false),
+                                storage_buffer_read_only::<DirectionalLight>(false),
+                                storage_buffer_read_only::<FallbackTlasNode>(false),
+                                storage_buffer_read_only::<GpuFallbackTlasInstance>(false),
+                                storage_buffer_read_only::<u32>(false),
+                                storage_buffer_read_only::<FallbackBlasNode>(false),
+                                storage_buffer_read_only::<GpuSolariMeshPrimitive>(false),
+                            ),
+                        ),
+                    ),
+            },
             bind_group: None,
             tlas: None,
+            fallback_tlas: None,
         }
     }
 }
@@ -80,6 +111,7 @@ pub fn prepare_scene_bindings(
     scene: Res<ExtractedScene>,
     asset_events: Res<ExtractedAssetEvents>,
     blas_manager: Res<BlasManager>,
+    backend_type: Res<SolariRayAccelerationBackendType>,
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
 ) {
@@ -120,103 +152,240 @@ pub fn prepare_scene_bindings(
         });
     }
 
-    // Create TLAS
-    let mut tlas = TlasPackage::new(
-        render_device
-            .wgpu_device()
-            .create_tlas(&CreateTlasDescriptor {
-                label: Some("tlas"),
-                flags: AccelerationStructureFlags::PREFER_FAST_TRACE,
-                update_mode: AccelerationStructureUpdateMode::Build,
-                max_instances: scene.entities.len() as u32,
-            }),
-        scene.entities.len() as u32,
-    );
+    match *backend_type {
+        SolariRayAccelerationBackendType::Hardware => {
+            // Create TLAS
+            let mut tlas = TlasPackage::new(
+                render_device
+                    .wgpu_device()
+                    .create_tlas(&CreateTlasDescriptor {
+                        label: Some("tlas"),
+                        flags: AccelerationStructureFlags::PREFER_FAST_TRACE,
+                        update_mode: AccelerationStructureUpdateMode::Build,
+                        max_instances: scene.entities.len() as u32,
+                    }),
+                scene.entities.len() as u32,
+            );
 
-    // Build each entity into the TLAS and push its transform/mesh_id/material_id to a GPU buffer
-    let mut object_id = 0;
-    let mut transforms = Vec::with_capacity(scene.entities.len());
-    let mut mesh_material_ids = Vec::with_capacity(scene.entities.len());
-    for (mesh_id, material_id, transform) in &scene.entities {
-        if let (Some((blas, triangle_count)), Some(mesh_id), Some(material_id)) = (
-            blas_manager.get_blas_and_triangle_count(mesh_id),
-            asset_bindings.mesh_indices.get(mesh_id),
-            material_ids.get(material_id),
-        ) {
-            let transform = transform.compute_matrix();
-            transforms.push(transform);
+            // Build each entity into the TLAS and push its transform/mesh_id/material_id to a GPU buffer
+            let mut object_id = 0;
+            let mut transforms = Vec::with_capacity(scene.entities.len());
+            let mut mesh_material_ids = Vec::with_capacity(scene.entities.len());
+            for (mesh_id, material_id, transform) in &scene.entities {
+                if let (Some((blas, triangle_count)), Some(mesh_id), Some(material_id)) = (
+                    blas_manager.get_blas_and_triangle_count(mesh_id),
+                    asset_bindings.mesh_indices.get(mesh_id),
+                    material_ids.get(material_id),
+                ) {
+                    let transform = transform.compute_matrix();
+                    transforms.push(transform);
 
-            // TODO: Check for ID overflow
-            mesh_material_ids.push((*mesh_id << 16) | *material_id);
+                    // TODO: Check for ID overflow
+                    mesh_material_ids.push((*mesh_id << 16) | *material_id);
 
-            // For emissive meshes, push each triangle to the light sources buffer
-            let material = &materials[*material_id as usize];
-            if material.emissive != [0.0; 4] || material.emissive_texture_id != u32::MAX {
-                for triangle_id in 0..*triangle_count {
-                    light_sources.push(LightSource::emissive_triangle(object_id, triangle_id));
+                    // For emissive meshes, push each triangle to the light sources buffer
+                    let material = &materials[*material_id as usize];
+                    if material.emissive != [0.0; 4] || material.emissive_texture_id != u32::MAX {
+                        for triangle_id in 0..*triangle_count {
+                            light_sources
+                                .push(LightSource::emissive_triangle(object_id, triangle_id));
+                        }
+                    }
+
+                    *tlas.get_mut_single(object_id as usize).unwrap() = Some(TlasInstance::new(
+                        blas,
+                        tlas_transform(&transform),
+                        object_id, // TODO: Max 24 bits
+                        0xFF,
+                    ));
+
+                    object_id += 1;
                 }
             }
 
-            *tlas.get_mut_single(object_id as usize).unwrap() = Some(TlasInstance::new(
-                blas,
-                tlas_transform(&transform),
-                object_id, // TODO: Max 24 bits
-                0xFF,
+            // Build TLAS
+            let mut command_encoder =
+                render_device.create_command_encoder(&CommandEncoderDescriptor {
+                    label: Some("build_tlas_command_encoder"),
+                });
+            command_encoder.build_acceleration_structures(&[], iter::once(&tlas));
+            render_queue.submit([command_encoder.finish()]);
+
+            // Upload GPU buffers
+            let mesh_material_ids = &new_storage_buffer(
+                mesh_material_ids,
+                "solari_mesh_material_ids",
+                &render_device,
+                &render_queue,
+            );
+            let transforms = new_storage_buffer(
+                transforms,
+                "solari_transforms",
+                &render_device,
+                &render_queue,
+            );
+            let materials =
+                new_storage_buffer(materials, "solari_materials", &render_device, &render_queue);
+            let light_sources = new_storage_buffer(
+                light_sources,
+                "solari_light_sources",
+                &render_device,
+                &render_queue,
+            );
+            let directional_lights = new_storage_buffer(
+                directional_lights,
+                "solari_directional_lights",
+                &render_device,
+                &render_queue,
+            );
+
+            // Create a bind group for the created resources
+            scene_bindings.bind_group = Some(render_device.create_bind_group(
+                "solari_scene_bind_group",
+                &scene_bindings.bind_group_layout,
+                &BindGroupEntries::sequential((
+                    tlas.as_binding(),
+                    mesh_material_ids.binding().unwrap(),
+                    transforms.binding().unwrap(),
+                    materials.binding().unwrap(),
+                    light_sources.binding().unwrap(),
+                    directional_lights.binding().unwrap(),
+                )),
+            ));
+            scene_bindings.tlas = Some(tlas);
+        }
+        SolariRayAccelerationBackendType::Software => {
+            // Build each entity into the TLAS instance and push its transform/mesh_id/material_id to a GPU buffer
+            let mut object_id = 0;
+            let mut transforms = Vec::with_capacity(scene.entities.len());
+            let mut mesh_material_ids = Vec::with_capacity(scene.entities.len());
+            let mut tlas_instances = Vec::new();
+            let mut blas_nodes = Vec::new();
+            let mut primitives = Vec::new();
+            for (mesh_id, material_id, transform) in &scene.entities {
+                if let (Some((blas, triangle_count)), Some(mesh_id), Some(material_id)) = (
+                    blas_manager.get_fallback_blas_and_triangle_count(mesh_id),
+                    asset_bindings.mesh_indices.get(mesh_id),
+                    material_ids.get(material_id),
+                ) {
+                    let transform = transform.compute_matrix();
+                    transforms.push(transform);
+
+                    // TODO: Check for ID overflow
+                    mesh_material_ids.push((*mesh_id << 16) | *material_id);
+
+                    // For emissive meshes, push each triangle to the light sources buffer
+                    let material = &materials[*material_id as usize];
+                    if material.emissive != [0.0; 4] || material.emissive_texture_id != u32::MAX {
+                        for triangle_id in 0..*triangle_count {
+                            light_sources
+                                .push(LightSource::emissive_triangle(object_id, triangle_id));
+                        }
+                    }
+
+                    let blas_node_offset = blas_nodes.len() as u32;
+                    blas_nodes.extend(blas.nodes.clone());
+                    let primitive_offset = primitives.len() as u32;
+                    primitives.extend(blas.primitives.clone());
+
+                    tlas_instances.push(FallbackTlasInstance::new(
+                        blas,
+                        transform,
+                        blas_node_offset,
+                        primitive_offset,
+                    ));
+
+                    object_id += 1;
+                }
+            }
+
+            let tlas = build_fallback_tlas(&tlas_instances);
+
+            // Upload GPU buffers
+            let mesh_material_ids = &new_storage_buffer(
+                mesh_material_ids,
+                "solari_mesh_material_ids",
+                &render_device,
+                &render_queue,
+            );
+            let transforms = new_storage_buffer(
+                transforms,
+                "solari_transforms",
+                &render_device,
+                &render_queue,
+            );
+            let materials =
+                new_storage_buffer(materials, "solari_materials", &render_device, &render_queue);
+            let light_sources = new_storage_buffer(
+                light_sources,
+                "solari_light_sources",
+                &render_device,
+                &render_queue,
+            );
+            let directional_lights = new_storage_buffer(
+                directional_lights,
+                "solari_directional_lights",
+                &render_device,
+                &render_queue,
+            );
+            let tlas_nodes = new_storage_buffer(
+                tlas.nodes.clone(),
+                "solari_fallback_tlas_nodes",
+                &render_device,
+                &render_queue,
+            );
+            let tlas_instances = new_storage_buffer(
+                tlas_instances
+                    .iter()
+                    .map(|instance| GpuFallbackTlasInstance::from(*instance))
+                    .collect::<Vec<GpuFallbackTlasInstance>>(),
+                "solari_fallback_tlas_instances",
+                &render_device,
+                &render_queue,
+            );
+            let tlas_indices = new_storage_buffer(
+                tlas.instance_indices.clone(),
+                "solari_fallback_tlas_indices",
+                &render_device,
+                &render_queue,
+            );
+            let blas_nodes = new_storage_buffer(
+                blas_nodes,
+                "solari_blas_nodes",
+                &render_device,
+                &render_queue,
+            );
+            let primitives = new_storage_buffer(
+                primitives
+                    .iter()
+                    .map(|p| GpuSolariMeshPrimitive::from(*p))
+                    .collect::<Vec<GpuSolariMeshPrimitive>>(),
+                "solari_mesh_primitives",
+                &render_device,
+                &render_queue,
+            );
+
+            // Create a bind group for the created resources
+            scene_bindings.bind_group = Some(render_device.create_bind_group(
+                "solari_scene_bind_group",
+                &scene_bindings.bind_group_layout,
+                &BindGroupEntries::sequential((
+                    mesh_material_ids.binding().unwrap(),
+                    transforms.binding().unwrap(),
+                    materials.binding().unwrap(),
+                    light_sources.binding().unwrap(),
+                    directional_lights.binding().unwrap(),
+                    tlas_nodes.binding().unwrap(),
+                    tlas_instances.binding().unwrap(),
+                    tlas_indices.binding().unwrap(),
+                    blas_nodes.binding().unwrap(),
+                    primitives.binding().unwrap(),
+                )),
             ));
 
-            object_id += 1;
+            scene_bindings.fallback_tlas = Some(tlas);
         }
     }
-
-    // Build TLAS
-    let mut command_encoder = render_device.create_command_encoder(&CommandEncoderDescriptor {
-        label: Some("build_tlas_command_encoder"),
-    });
-    command_encoder.build_acceleration_structures(&[], iter::once(&tlas));
-    render_queue.submit([command_encoder.finish()]);
-
-    // Upload GPU buffers
-    let mesh_material_ids = &new_storage_buffer(
-        mesh_material_ids,
-        "solari_mesh_material_ids",
-        &render_device,
-        &render_queue,
-    );
-    let transforms = new_storage_buffer(
-        transforms,
-        "solari_transforms",
-        &render_device,
-        &render_queue,
-    );
-    let materials =
-        new_storage_buffer(materials, "solari_materials", &render_device, &render_queue);
-    let light_sources = new_storage_buffer(
-        light_sources,
-        "solari_light_sources",
-        &render_device,
-        &render_queue,
-    );
-    let directional_lights = new_storage_buffer(
-        directional_lights,
-        "solari_directional_lights",
-        &render_device,
-        &render_queue,
-    );
-
-    // Create a bind group for the created resources
-    scene_bindings.bind_group = Some(render_device.create_bind_group(
-        "solari_scene_bind_group",
-        &scene_bindings.bind_group_layout,
-        &BindGroupEntries::sequential((
-            tlas.as_binding(),
-            mesh_material_ids.binding().unwrap(),
-            transforms.binding().unwrap(),
-            materials.binding().unwrap(),
-            light_sources.binding().unwrap(),
-            directional_lights.binding().unwrap(),
-        )),
-    ));
-    scene_bindings.tlas = Some(tlas);
 }
 
 fn new_storage_buffer<T: ShaderSize + WriteInto>(

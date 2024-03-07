@@ -27,6 +27,22 @@ struct ResolvedRayHit {
     triangle_area: f32,
 }
 
+struct RayHit {
+    // Is a hit within the given ray t min/max
+    is_valid_hit: bool,
+    object_id: u32,
+    triangle_id: u32,
+    // Holds u and v. w is obtained using w = 1 - u - v
+    barycentrics: vec2f,
+}
+
+struct Ray {
+    origin: vec3f,
+    direction: vec3f,
+    t: f32,
+    hit_data: RayHit,
+}
+
 struct LightSource {
     kind: u32,
     id: u32,
@@ -52,6 +68,49 @@ struct Vertex {
     tangent: vec4<f32>,
 }
 
+struct FallbackBlasNode {
+    aabb_min: vec3<f32>,
+    a_or_first_primitive: u32,
+    aabb_max: vec3<f32>,
+    primitive_count: u32,
+}
+
+struct Primitive {
+    p1_: vec3<f32>,
+    // The BLAS builder needs to sort the primitive buffer, so we keep track of the triangle corresponding to this primitive
+    corresponding_triangle_id: u32,
+    p2_: vec3<f32>,
+    padding1_: u32,
+    p3_: vec3<f32>,
+    padding2_: u32,
+}
+
+struct FallbackTlasNode {
+    aabb_min: vec3<f32>,
+    a_or_first_instance: u32,
+    aabb_max: vec3<f32>,
+    instance_count: u32,
+}
+
+struct FallbackTlasInstance {
+    object_world: mat4x4f,
+    world_object: mat4x4f,
+    primitive_offset: u32, // Offset into `primitives`
+    primitive_count: u32,
+    blas_node_offset: u32, // Offset into `blas_nodes`
+    _padding: u32,
+}
+
+// struct RayHitRecord {
+//     t: f32,
+//     tlas_instance_index: u32,
+//     primitive_index: u32,
+//     // Barycentric coordinates of hit position
+//     u: f32,
+//     v: f32,
+// }
+
+
 struct VertexBuffer { vertices: array<PackedVertex> }
 
 struct IndexBuffer { indices: array<u32> }
@@ -61,23 +120,53 @@ struct IndexBuffer { indices: array<u32> }
 @group(0) @binding(2) var textures: binding_array<texture_2d<f32>>;
 @group(0) @binding(3) var samplers: binding_array<sampler>;
 
+#ifdef SOFTWARE_RAY_ACCELERATION_FALLBACK
+@group(1) @binding(0) var<storage> mesh_material_ids: array<u32>;
+@group(1) @binding(1) var<storage> transforms: array<mat4x4<f32>>;
+@group(1) @binding(2) var<storage> materials: array<Material>;
+@group(1) @binding(3) var<storage> light_sources: array<LightSource>;
+@group(1) @binding(4) var<storage> directional_lights: array<DirectionalLight>;
+@group(1) @binding(5) var<storage> tlas_nodes: array<FallbackTlasNode>;
+@group(1) @binding(6) var<storage> tlas_instances: array<FallbackTlasInstance>;
+@group(1) @binding(7) var<storage> tlas_instance_indices: array<u32>;
+@group(1) @binding(8) var<storage> blas_nodes: array<FallbackBlasNode>;
+@group(1) @binding(9) var<storage> primitives: array<Primitive>;
+#else
 @group(1) @binding(0) var tlas: acceleration_structure;
 @group(1) @binding(1) var<storage> mesh_material_ids: array<u32>;
 @group(1) @binding(2) var<storage> transforms: array<mat4x4<f32>>;
 @group(1) @binding(3) var<storage> materials: array<Material>;
 @group(1) @binding(4) var<storage> light_sources: array<LightSource>;
 @group(1) @binding(5) var<storage> directional_lights: array<DirectionalLight>;
+#endif
 
 const RAY_T_MIN = 0.001;
 const RAY_T_MAX = 100000.0;
 const RAY_NO_CULL = 0xFFu;
 
-fn trace_ray(ray_origin: vec3<f32>, ray_direction: vec3<f32>, ray_t_min: f32, ray_t_max: f32) -> RayIntersection {
-    let ray = RayDesc(RAY_FLAG_NONE, RAY_NO_CULL, ray_t_min, ray_t_max, ray_origin, ray_direction);
-    var rq: ray_query;
-    rayQueryInitialize(&rq, tlas, ray);
-    rayQueryProceed(&rq);
-    return rayQueryGetCommittedIntersection(&rq);
+fn trace_ray(ray_origin: vec3<f32>, ray_direction: vec3<f32>, ray_t_min: f32, ray_t_max: f32) -> RayHit {
+    #ifdef SOFTWARE_RAY_ACCELERATION_FALLBACK
+        var ray = Ray(ray_origin + 0.0001 * ray_direction, ray_direction, 1e30, RayHit());
+        traverse_tlas(&ray);
+        // NOTE: Checking against t_min/t_max here isn't ideal, but should work for now. See ray_tray_triangle_intersect() for info.
+        if ray.t > ray_t_min && ray.t < ray_t_max {
+            ray.hit_data.is_valid_hit = true;
+        } else {
+            ray.hit_data.is_valid_hit = false;
+        }
+        return ray.hit_data;
+    #else
+        let ray = RayDesc(RAY_FLAG_NONE, RAY_NO_CULL, ray_t_min, ray_t_max, ray_origin, ray_direction);
+        var rq: ray_query;
+        rayQueryInitialize(&rq, tlas, ray);
+        rayQueryProceed(&rq);
+        let ray_hit_internal = rayQueryGetCommittedIntersection(&rq);
+        if ray_hit_internal.kind == RAY_QUERY_INTERSECTION_NONE {
+            return RayHit(false, 0u, 0u, vec2f(0.0));
+        } else {
+            return RayHit(true, ray_hit_internal.instance_custom_index, ray_hit_internal.primitive_index, ray_hit_internal.barycentrics);
+        }
+    #endif
 }
 
 fn unpack_vertex(packed: PackedVertex) -> Vertex {
@@ -151,8 +240,8 @@ fn resolve_ray_hit_inner(object_id: u32, triangle_id: u32, barycentrics_input: v
     return ResolvedRayHit(world_position, world_normal, geometric_world_normal, uv, resolved_material, triangle_area);
 }
 
-fn resolve_ray_hit(ray_hit: RayIntersection) -> ResolvedRayHit {
-    return resolve_ray_hit_inner(ray_hit.instance_custom_index, ray_hit.primitive_index, ray_hit.barycentrics);
+fn resolve_ray_hit(ray_hit: RayHit) -> ResolvedRayHit {
+    return resolve_ray_hit_inner(ray_hit.object_id, ray_hit.triangle_id, ray_hit.barycentrics);
 }
 
 // https://www.realtimerendering.com/raytracinggems/unofficial_RayTracingGems_v1.9.pdf#0004286901.INDD%3ASec28%3A303
@@ -215,12 +304,13 @@ fn trace_directional_light(id: u32, ray_origin: vec3<f32>, state: ptr<function, 
     var ray_direction = vec3(vec2(cos(phi), sin(phi)) * sin_theta, cos_theta);
     ray_direction = generate_tbn(light.direction_to_light) * ray_direction;
 
-    let ray = RayDesc(RAY_FLAG_TERMINATE_ON_FIRST_HIT, RAY_NO_CULL, RAY_T_MIN, RAY_T_MAX, ray_origin, ray_direction);
-    var rq: ray_query;
-    rayQueryInitialize(&rq, tlas, ray);
-    rayQueryProceed(&rq);
-    let ray_hit = rayQueryGetCommittedIntersection(&rq);
-    let light_visible = f32(ray_hit.kind == RAY_QUERY_INTERSECTION_NONE);
+    // let ray = RayDesc(RAY_FLAG_TERMINATE_ON_FIRST_HIT, RAY_NO_CULL, RAY_T_MIN, RAY_T_MAX, ray_origin, ray_direction);
+    // var rq: ray_query;
+    // rayQueryInitialize(&rq, tlas, ray);
+    // rayQueryProceed(&rq);
+    // let ray_hit = rayQueryGetCommittedIntersection(&rq);
+    // let light_visible = f32(ray_hit.kind == RAY_QUERY_INTERSECTION_NONE);
+    let light_visible = true;
 
     return light.color.rgb * light_visible;
 }
@@ -256,12 +346,14 @@ fn trace_emissive_triangle(object_id: u32, triangle_id: u32, ray_origin: vec3<f3
     let radiance = light_hit.material.emissive.rgb * cos_theta_origin * (cos_theta_light / light_distance_squared);
 
     let ray_t_max = light_distance - RAY_T_MIN;
-    let ray = RayDesc(RAY_FLAG_TERMINATE_ON_FIRST_HIT, RAY_NO_CULL, RAY_T_MIN, ray_t_max, ray_origin, ray_direction);
-    var rq: ray_query;
-    rayQueryInitialize(&rq, tlas, ray);
-    rayQueryProceed(&rq);
-    let ray_hit = rayQueryGetCommittedIntersection(&rq);
-    let light_visible = f32(ray_hit.kind == RAY_QUERY_INTERSECTION_NONE);
+    // let ray = RayDesc(RAY_FLAG_TERMINATE_ON_FIRST_HIT, RAY_NO_CULL, RAY_T_MIN, ray_t_max, ray_origin, ray_direction);
+    // var rq: ray_query;
+    // rayQueryInitialize(&rq, tlas, ray);
+    // rayQueryProceed(&rq);
+    // let ray_hit = rayQueryGetCommittedIntersection(&rq);
+    // let light_visible = f32(ray_hit.kind == RAY_QUERY_INTERSECTION_NONE);
+
+    let light_visible = true;
 
     return radiance * light_visible;
 }
@@ -289,3 +381,302 @@ fn trace_light_source(light_id: u32, ray_origin: vec3<f32>, origin_world_normal:
         return trace_emissive_triangle(light.id, light.kind, ray_origin, origin_world_normal, state);
     }
 }
+
+// BEGIN: SOFTWARE FALLBACK RAY ACCELERATION
+
+// fn trace_ray_fallback(origin: vec3f, direction: vec3f) -> RayHit {
+//     var ray = Ray();
+//     ray.origin = origin + direction * 0.0001; // TODO: Should this really be handled here?
+//     ray.dir = direction;
+//     ray.record = RayHitRecord(1e30, 0u, 0u, 0.0, 0.0);
+
+//     traverse_tlas(&ray);
+
+//     return ray.record;
+// }
+
+// fn trace_ray_fallback_blas_only(origin: vec3f, direction: vec3f) -> RayHitRecord  {
+//     var ray = Ray();
+//     ray.origin = origin + direction * 0.0001; // TODO: Should this really be handled here?
+//     ray.dir = direction;
+//     ray.record = RayHitRecord(1e30, 0u, 0u, 0.0, 0.0);
+//     for (var i = 0u; i < 3; i += 1u) {
+//         traverse_blas(&ray, i);
+//     }
+
+//     return ray.record;
+// }
+
+// fn trace_ray_fallback_brute_force(origin: vec3f, direction: vec3f) -> RayHitRecord  {
+//     var ray = Ray();
+//     ray.origin = origin + direction * 0.0001; // TODO: Should this really be handled here?
+//     ray.dir = direction;
+//     ray.record = RayHitRecord(1e30, 0u, 0u, 0.0, 0.0);
+//     for (var instance_id = 0u; instance_id < 7u; instance_id += 1u) {
+//         let instance = tlas_instances[instance_id];
+//         for (var primitive_id = 0u; primitive_id < instance.primitive_count; primitive_id += 1u) {
+//             let p = primitives[instance.primitive_offset + primitive_id];
+//             let p1 = transform_position(instance.object_world, p.p1_);
+//             let p2 = transform_position(instance.object_world, p.p2_);
+//             let p3 = transform_position(instance.object_world, p.p3_);
+//             let p_world = Primitive(p1, primitive_id, p2, 0u, p3, 0u);
+//             ray_triangle_intersect_direct(&ray, p_world, instance_id);
+//             // ray_triangle_intersect(&ray, primitive_id, instance_id);
+//         }
+//     }
+
+//     return ray.record;
+// }
+
+fn get_blas_node(blas_id: u32, tlas_instance_id: u32) -> FallbackBlasNode {
+    let tlas_instance = tlas_instances[tlas_instance_id];
+    return blas_nodes[tlas_instance.blas_node_offset + blas_id];
+}
+
+fn get_primitive(primitive_id: u32, tlas_instance_id: u32) -> Primitive {
+    let tlas_instance = tlas_instances[tlas_instance_id];
+    return primitives[tlas_instance.primitive_offset + primitive_id];
+}
+
+fn traverse_tlas(ray: ptr<function, Ray>) {
+    // Abort on empty/invalid root node.
+    if tlas_nodes[0].a_or_first_instance == 0u && tlas_nodes[0].instance_count == 0u {
+        return;
+    }
+
+    var node_index = 0u;
+    var stack: array<u32, 32>;
+    var stack_ptr = 0;
+    // var iteration = 0;
+    // let max_iterations = 10000;
+    // while iteration < max_iterations {
+    loop {
+        // iteration += 1;
+        let node = tlas_nodes[node_index];
+        if node.instance_count > 0u { // Is leaf node.
+            for (var i: u32 = 0u; i < node.instance_count; i += 1u) {
+                let tlas_instance_index = tlas_instance_indices[node.a_or_first_instance + i];
+                traverse_blas(ray, tlas_instance_index);
+            }
+            if stack_ptr == 0 {
+                break;
+            } else {
+                stack_ptr -= 1;
+                node_index = stack[stack_ptr];
+            }
+            continue;
+        }
+
+        // Current node is an interior node, so visit child nodes in order.
+        var child_a_index = node.a_or_first_instance;
+        var child_b_index = child_a_index + 1u;
+       let child_a = tlas_nodes[child_a_index];
+        let child_b = tlas_nodes[child_b_index];
+        var dist_a = ray_aabb_intersect(ray, child_a.aabb_min, child_a.aabb_max);
+        var dist_b = ray_aabb_intersect(ray, child_b.aabb_min, child_b.aabb_max);
+        if dist_a > dist_b {
+            let d = dist_a;
+            dist_a = dist_b;
+            dist_b = d;
+            let c = child_a_index;
+            child_a_index = child_b_index;
+            child_b_index = c;
+        }
+        if dist_a == 1e30f {
+            // Missed both child nodes.
+            if stack_ptr == 0 {
+                break;
+            } else  {
+                stack_ptr -= 1;
+                node_index = stack[stack_ptr];
+            }
+        } else {
+            // Use near node next and push the far node if it's intersected by the ray.
+            node_index = child_a_index;
+            if dist_b != 1e30f {
+                stack[stack_ptr] = child_b_index;
+                stack_ptr += 1;
+            }
+        }
+    }
+}
+
+fn traverse_blas(ray: ptr<function, Ray>, tlas_instance_id: u32) {
+    // Transform ray to object/blas space.
+    let tlas_instance = tlas_instances[tlas_instance_id];
+    var ray_object = Ray();
+    ray_object.origin = transform_position(tlas_instance.world_object, (*ray).origin);
+    ray_object.direction = normalize(transform_direction(tlas_instance.world_object, (*ray).direction));
+    ray_object.t = 1e30;
+    ray_object.hit_data = RayHit();
+
+    var node_index = 0u;
+    // TODO: Decrease stack size? Will perform better but might not be enough for some large blas
+    var stack: array<u32, 32>;
+    var stack_ptr = 0;
+    // var iteration = 0;
+    // let max_iterations = 10000;
+    // while iteration < max_iterations {
+    loop {
+        // iteration += 1;
+        let node = get_blas_node(node_index, tlas_instance_id);
+        if node.primitive_count > 0u {
+            for (var i: u32 = 0u; i < node.primitive_count; i += 1u) {
+                ray_triangle_intersect(&ray_object, node.a_or_first_primitive + i, tlas_instance_id);
+            }
+            if stack_ptr == 0 {
+                break;
+            } else {
+                stack_ptr -= 1;
+                node_index = stack[stack_ptr];
+            }
+            continue;
+        }
+
+        var child_a_index = node.a_or_first_primitive;
+        var child_b_index = child_a_index + 1u;
+        let child_a = get_blas_node(child_a_index, tlas_instance_id);
+        let child_b = get_blas_node(child_b_index, tlas_instance_id);
+        var dist_a = ray_aabb_intersect(&ray_object, child_a.aabb_min, child_a.aabb_max);
+        var dist_b = ray_aabb_intersect(&ray_object, child_b.aabb_min, child_b.aabb_max);
+        if dist_a > dist_b {
+            let d = dist_a;
+            dist_a = dist_b;
+            dist_b = d;
+            let c = child_a_index;
+            child_a_index = child_b_index;
+            child_b_index = c;
+        }
+        if dist_a == 1e30f {
+            // Missed both child nodes.
+            if stack_ptr == 0 {
+                break;
+            } else  {
+                stack_ptr -= 1;
+                node_index = stack[stack_ptr];
+            }
+        } else {
+            // Use near node next and push the far node if it's intersected by the ray.
+            node_index = child_a_index;
+            if dist_b != 1e30f {
+                stack[stack_ptr] = child_b_index;
+                stack_ptr += 1;
+            }
+        }
+    }
+
+    let hit_position_object = ray_object.origin + ray_object.t * ray_object.direction;
+    let hit_position_world = transform_position(tlas_instance.object_world, hit_position_object);
+    let new_t_world = length(hit_position_world - (*ray).origin);
+
+    if new_t_world < (*ray).t {
+        (*ray).t = new_t_world;
+        (*ray).hit_data = ray_object.hit_data;
+    }
+}
+
+fn ray_aabb_intersect(ray: ptr<function, Ray>, aabb_min: vec3<f32>, aabb_max: vec3<f32>) -> f32 {
+    let t_x_1 = (aabb_min.x - (*ray).origin.x) / (*ray).direction.x;
+    let t_x_2 = (aabb_max.x - (*ray).origin.x) / (*ray).direction.x;
+    var t_min = min(t_x_1, t_x_2); 
+    var t_max = max(t_x_1, t_x_2); 
+
+    let t_y_1 = (aabb_min.y - (*ray).origin.y) / (*ray).direction.y;
+    let t_y_2 = (aabb_max.y - (*ray).origin.y) / (*ray).direction.y;
+    t_min = max(t_min, min(t_y_1, t_y_2)); 
+    t_max = min(t_max, max(t_y_1, t_y_2)); 
+
+    let t_z_1 = (aabb_min.z - (*ray).origin.z) / (*ray).direction.z;
+    let t_z_2 = (aabb_max.z - (*ray).origin.z) / (*ray).direction.z;
+    t_min = max(t_min, min(t_z_1, t_z_2)); 
+    t_max = min(t_max, max(t_z_1, t_z_2)); 
+
+    if (t_max >= t_min && t_min < (*ray).t && t_max > 0.0) {
+        return t_min;
+    } else {
+        return 1e30f;
+    }
+}
+
+// Moeller-Trumbore ray/triangle intersection algorithm
+// Updates ray hit record if new t is smaller
+fn ray_triangle_intersect(ray: ptr<function, Ray>, primitive_id: u32, tlas_instance_id: u32) {
+    let primitive = get_primitive(primitive_id, tlas_instance_id);
+    let edge_1 = primitive.p2_ - primitive.p1_;
+    let edge_2 = primitive.p3_- primitive.p1_;
+    let h = cross((*ray).direction, edge_2);
+    let a = dot(edge_1, h);
+    if abs(a) < 0.0001 { // Ray parallel to triangle
+        return;
+    }
+    let f = 1.0 / a;
+    let s = (*ray).origin - primitive.p1_;
+    let u = f * dot(s, h);
+    if u < 0.0 || u > 1.0 {
+        return;
+    }
+    let q = cross(s, edge_1);
+    let v = f * dot((*ray).direction, q);
+    if v < 0.0 || u + v > 1.0 {
+        return;
+    }
+    let t = f * dot(edge_2, q);
+    // NOTE: No check against the ray_t_min/ray_t_max supplied to trace_ray() is done here since that would require transforming the min/max values to object space.
+    // That check SHOULD be done since we might override an allowed hit with a unallowed but closer hit, but it's not straight forward to transform 
+    // t values like that (with performance and non-uniform object scaling considered).
+    if t < (*ray).t && t >= 0.0001 {
+        (*ray).t = t;
+        (*ray).hit_data.object_id = tlas_instance_id;
+        (*ray).hit_data.triangle_id = primitive.corresponding_triangle_id;
+        (*ray).hit_data.barycentrics = vec2f(u, v);
+    }
+}
+
+// Moeller-Trumbore ray/triangle intersection algorithm
+// Updates ray hit record if new t is smaller
+// fn ray_triangle_intersect_direct(ray: ptr<function, Ray>, primitive: Primitive, tlas_instance_index: u32) {
+//     let edge_1 = primitive.p2_ - primitive.p1_;
+//     let edge_2 = primitive.p3_- primitive.p1_;
+//     let h = cross((*ray).dir, edge_2);
+//     let a = dot(edge_1, h);
+//     // if a > -0.0001 && a < 0.0001 { // Ray parallel to triangle
+//     if abs(a) < 0.0001 { // Ray parallel to triangle
+//         return;
+//     }
+//     let f = 1.0 / a;
+//     let s = (*ray).origin - primitive.p1_;
+//     let u = f * dot(s, h);
+//     if u < 0.0 || u > 1.0 {
+//         return;
+//     }
+//     let q = cross(s, edge_1);
+//     let v = f * dot((*ray).dir, q);
+//     if v < 0.0 || u + v > 1.0 {
+//         return;
+//     }
+//     let t = f * dot(edge_2, q);
+//     if t > 0.001 && t < (*ray).record.t  {
+//         (*ray).record.t = t;
+//         (*ray).record.tlas_instance_index = tlas_instance_index;
+//         (*ray).record.primitive_index = primitive.corresponding_triangle_id;
+//         (*ray).record.u = u;
+//         (*ray).record.v = v;
+//     }
+// }
+
+fn transform_position(m: mat4x4f, p: vec3f) -> vec3f {
+    let h = m * vec4f(p, 1.0);
+    return h.xyz / h.w;
+}
+
+fn transform_direction(m: mat4x4f, p: vec3f) -> vec3f {
+    let h = m * vec4f(p, 0.0);
+    return h.xyz;
+}
+
+fn transform_normal(m: mat4x4f, p: vec3f) -> vec3f {
+    let h = transpose(m) * vec4f(p, 0.0);
+    return h.xyz;
+}
+
+// END: SOFTWARE FALLBACK RAY ACCELERATION
