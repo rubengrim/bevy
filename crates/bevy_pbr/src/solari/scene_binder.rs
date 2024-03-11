@@ -2,7 +2,7 @@ use super::{
     asset_binder::AssetBindings,
     blas_manager::BlasManager,
     extract_assets::ExtractedAssetEvents,
-    fallback_blas_builder::{FallbackBlasNode, GpuSolariMeshPrimitive, SolariMeshPrimitive},
+    fallback_blas_builder::{FallbackBlasNode, GpuSolariMeshPrimitive},
     fallback_tlas_builder::{
         build_fallback_tlas, FallbackTlas, FallbackTlasInstance, FallbackTlasNode,
         GpuFallbackTlasInstance,
@@ -67,7 +67,6 @@ impl FromWorld for SceneBindings {
                         &BindGroupLayoutEntries::sequential(
                             ShaderStages::COMPUTE,
                             (
-                                // TODO
                                 storage_buffer_read_only::<u32>(false),
                                 storage_buffer_read_only::<Mat4>(false),
                                 storage_buffer_read_only::<GpuSolariMaterial>(false),

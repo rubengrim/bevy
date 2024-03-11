@@ -16,14 +16,8 @@ use std::f32::consts::PI;
 fn main() {
     App::new()
         .add_plugins((
-            DefaultPlugins.set(WindowPlugin {
-                primary_window: Some(Window {
-                    present_mode: bevy_internal::window::PresentMode::Immediate,
-                    ..default()
-                }),
-                ..default()
-            }),
-            SolariPlugin,
+            DefaultPlugins,
+            SolariPlugin::default(),
             CameraControllerPlugin,
         ))
         .add_systems(
@@ -41,17 +35,7 @@ fn main() {
         .run();
 }
 
-fn setup(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut mesh_assets: ResMut<Assets<Mesh>>,
-    mut material_assets: ResMut<Assets<StandardMaterial>>,
-) {
-    // commands.spawn(SceneBundle {
-    //     scene: asset_server.load("models/solari_cube.glb#Scene0"),
-    //     transform: Transform::from_rotation(Quat::from_euler(EulerRot::YZX, PI / 6.0, 0.0, 0.0)),
-    //     ..default()
-    // });
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(SceneBundle {
         scene: asset_server.load("models/CornellBox/box_modified.glb#Scene0"),
         ..default()
@@ -128,7 +112,6 @@ fn toggle_solari(
             commands.entity(entity).insert(SolariSettings {
                 debug_path_tracer: true,
             });
-            // commands.entity(entity).insert(SolariSettings::default());
         }
     }
 }

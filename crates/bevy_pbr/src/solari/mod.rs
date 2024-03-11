@@ -27,13 +27,13 @@ use bevy_core_pipeline::core_3d::graph::{Core3d, Node3d};
 use bevy_ecs::{
     component::Component,
     schedule::{common_conditions::any_with_component, IntoSystemConfigs},
-    system::{Res, Resource},
+    system::Resource,
 };
 use bevy_render::{
     extract_component::{ExtractComponent, ExtractComponentPlugin},
     extract_resource::ExtractResource,
     mesh::Mesh,
-    render_asset::{prepare_assets, RenderAssets},
+    render_asset::prepare_assets,
     render_graph::{RenderGraphApp, ViewNodeRunner},
     render_resource::Shader,
     renderer::RenderDevice,
@@ -42,7 +42,6 @@ use bevy_render::{
     view::Msaa,
     ExtractSchedule, Render, RenderApp, RenderSet,
 };
-use bevy_utils::tracing::{info, warn};
 
 pub mod graph {
     use bevy_render::render_graph::RenderLabel;
@@ -60,7 +59,18 @@ const SOLARI_SAMPLE_DIRECT_DIFFUSE_SHADER_HANDLE: Handle<Shader> =
     Handle::weak_from_u128(3717171717171717);
 
 /// TODO: Docs
-pub struct SolariPlugin;
+pub struct SolariPlugin {
+    // This is overridden if the supplied type isn't supported by the hardware.
+    pub preferred_ray_acceleration_backend_type: SolariRayAccelerationBackendType,
+}
+
+impl Default for SolariPlugin {
+    fn default() -> Self {
+        Self {
+            preferred_ray_acceleration_backend_type: SolariRayAccelerationBackendType::Hardware,
+        }
+    }
+}
 
 impl Plugin for SolariPlugin {
     fn build(&self, app: &mut App) {
@@ -88,16 +98,27 @@ impl Plugin for SolariPlugin {
     }
 
     fn finish(&self, app: &mut App) {
-        let backend_type = match app.world.get_resource::<RenderDevice>() {
-            Some(render_device)
-                if render_device
-                    .features()
-                    .contains(Self::fallback_required_features()) =>
-            {
+        let render_device = app.world.get_resource::<RenderDevice>().unwrap();
+        let has_minimal_features = render_device
+            .features()
+            .contains(Self::required_minimal_features());
+        let has_hardware_acceleration_features = render_device
+            .features()
+            .contains(Self::required_hardware_acceleration_features());
+
+        let backend_type = match self.preferred_ray_acceleration_backend_type {
+            SolariRayAccelerationBackendType::Software if has_minimal_features => {
                 SolariRayAccelerationBackendType::Software
             }
-            Some(render_device) if render_device.features().contains(Self::required_features()) => {
+            SolariRayAccelerationBackendType::Hardware
+                if has_minimal_features && has_hardware_acceleration_features =>
+            {
                 SolariRayAccelerationBackendType::Hardware
+            }
+            SolariRayAccelerationBackendType::Hardware
+                if has_minimal_features && !has_hardware_acceleration_features =>
+            {
+                SolariRayAccelerationBackendType::Software
             }
             _ => return,
         };
@@ -168,8 +189,7 @@ impl Plugin for SolariPlugin {
 }
 
 impl SolariPlugin {
-    // TODO: Clean up
-    pub fn fallback_required_features() -> WgpuFeatures {
+    pub fn required_minimal_features() -> WgpuFeatures {
         WgpuFeatures::TEXTURE_BINDING_ARRAY
             | WgpuFeatures::BUFFER_BINDING_ARRAY
             | WgpuFeatures::STORAGE_RESOURCE_BINDING_ARRAY
@@ -179,16 +199,8 @@ impl SolariPlugin {
             | WgpuFeatures::PUSH_CONSTANTS
     }
 
-    pub fn required_features() -> WgpuFeatures {
-        WgpuFeatures::RAY_TRACING_ACCELERATION_STRUCTURE
-            | WgpuFeatures::RAY_QUERY
-            | WgpuFeatures::TEXTURE_BINDING_ARRAY
-            | WgpuFeatures::BUFFER_BINDING_ARRAY
-            | WgpuFeatures::STORAGE_RESOURCE_BINDING_ARRAY
-            | WgpuFeatures::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING
-            | WgpuFeatures::PARTIALLY_BOUND_BINDING_ARRAY
-            | WgpuFeatures::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES
-            | WgpuFeatures::PUSH_CONSTANTS
+    pub fn required_hardware_acceleration_features() -> WgpuFeatures {
+        WgpuFeatures::RAY_TRACING_ACCELERATION_STRUCTURE | WgpuFeatures::RAY_QUERY
     }
 }
 
