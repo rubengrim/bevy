@@ -60,14 +60,14 @@ const SOLARI_SAMPLE_DIRECT_DIFFUSE_SHADER_HANDLE: Handle<Shader> =
 
 /// TODO: Docs
 pub struct SolariPlugin {
-    // This is overridden if the supplied type isn't supported by the hardware.
-    pub preferred_ray_acceleration_backend_type: SolariRayAccelerationBackendType,
+    // This is overridden if the given type isn't supported by the hardware.
+    pub preferred_ray_backend_type: SolariRayAccelerationBackendType,
 }
 
 impl Default for SolariPlugin {
     fn default() -> Self {
         Self {
-            preferred_ray_acceleration_backend_type: SolariRayAccelerationBackendType::Hardware,
+            preferred_ray_backend_type: SolariRayAccelerationBackendType::Hardware,
         }
     }
 }
@@ -106,7 +106,7 @@ impl Plugin for SolariPlugin {
             .features()
             .contains(Self::required_hardware_acceleration_features());
 
-        let backend_type = match self.preferred_ray_acceleration_backend_type {
+        let backend_type = match self.preferred_ray_backend_type {
             SolariRayAccelerationBackendType::Software if has_minimal_features => {
                 SolariRayAccelerationBackendType::Software
             }
