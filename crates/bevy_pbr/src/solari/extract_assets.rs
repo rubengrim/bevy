@@ -20,7 +20,7 @@ pub struct ExtractedAssetEvents {
     pub materials: HashMap<AssetId<StandardMaterial>, SolariMaterial>,
 }
 
-// Used for fallback BLAS creation
+// Mesh data required by the software BLAS builder. `GpuMesh` only stores gpu buffers so the actual `Mesh` needs to be extracted.
 #[derive(Resource, Default)]
 pub struct ExtractedChangedMeshes(pub HashMap<AssetId<Mesh>, Mesh>);
 

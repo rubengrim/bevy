@@ -20,6 +20,7 @@ use bevy_render::{
     texture::{CachedTexture, TextureCache},
     view::{ViewTarget, ViewUniform, ViewUniformOffset, ViewUniforms},
 };
+use bevy_utils::tracing::info;
 
 pub struct PathTracerNode {
     bind_group_layout: BindGroupLayout,
@@ -79,6 +80,7 @@ impl ViewNode for PathTracerNode {
             label: Some("solari_path_tracer"),
             timestamp_writes: None,
         });
+
         pass.set_pipeline(pipeline);
         pass.set_bind_group(0, asset_bindings, &[]);
         pass.set_bind_group(1, scene_bindings, &[]);

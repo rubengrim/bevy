@@ -2,22 +2,27 @@ use super::{
     asset_binder::mesh_solari_compatible,
     extract_assets::{ExtractedAssetEvents, ExtractedChangedMeshes},
     fallback_blas_builder::{build_fallback_blas, FallbackBlas},
+    gpu_types::SolariTriangleMeshPrimitive,
+    sbvh::*,
     SolariRayAccelerationBackendType,
 };
 use bevy_asset::AssetId;
 use bevy_ecs::system::{Res, ResMut, Resource};
+use bevy_math::{bounding::Aabb3d, Quat, Vec3};
 use bevy_render::{
-    mesh::{GpuBufferInfo, GpuMesh, Mesh},
+    mesh::{GpuBufferInfo, GpuMesh, Indices, Mesh, VertexAttributeValues},
     render_asset::RenderAssets,
     render_resource::*,
     renderer::{RenderDevice, RenderQueue},
 };
-use bevy_utils::HashMap;
+use bevy_utils::{tracing::warn, HashMap};
 
 #[derive(Resource, Default)]
 pub struct BlasManager {
     blas_data: HashMap<AssetId<Mesh>, (Blas, u32)>,
-    fallback_blas_data: HashMap<AssetId<Mesh>, (FallbackBlas, u32)>,
+    // `Sbvh` is a hierarchy over arbitrary primitive types and only stores indices into the primitive buffer,
+    // so store the actual triangle primitives separately
+    fallback_blas_data: HashMap<AssetId<Mesh>, (Sbvh, Vec<SolariTriangleMeshPrimitive>)>,
 }
 
 impl BlasManager {
@@ -25,10 +30,10 @@ impl BlasManager {
         self.blas_data.get(mesh)
     }
 
-    pub fn get_fallback_blas_and_triangle_count(
+    pub fn get_fallback_blas_and_primitives(
         &self,
         mesh: &AssetId<Mesh>,
-    ) -> Option<&(FallbackBlas, u32)> {
+    ) -> Option<&(Sbvh, Vec<SolariTriangleMeshPrimitive>)> {
         self.fallback_blas_data.get(mesh)
     }
 }
@@ -101,11 +106,63 @@ pub fn prepare_new_blas(
             render_queue.submit([command_encoder.finish()]);
         }
         SolariRayAccelerationBackendType::Software => {
-            // TODO: Check for mesh compatibility like how it's done above with `GpuMesh`es
+            // TODO: Check for mesh compatibility with solari
             for (id, mesh) in changed_meshes.0.iter() {
-                if let Some(blas) = build_fallback_blas(mesh) {
-                    blas_manager.fallback_blas_data.insert(id.clone(), blas);
+                // if let Some(blas) = build_fallback_blas(mesh) {
+                //     blas_manager.fallback_blas_data.insert(id.clone(), blas);
+                // }
+
+                let positions = mesh
+                    .attribute(Mesh::ATTRIBUTE_POSITION)
+                    .and_then(VertexAttributeValues::as_float3)
+                    .unwrap()
+                    .iter()
+                    .map(|p| Vec3::from_array(*p))
+                    .collect::<Vec<Vec3>>();
+
+                let indices: Vec<u32> = match mesh.indices() {
+                    Some(Indices::U16(values)) => {
+                        values.iter().map(|v| *v as u32).collect::<Vec<u32>>()
+                    }
+                    Some(Indices::U32(values)) => values.clone(),
+                    None => {
+                        warn!("Can't build BLAS for mesh with no index buffer.");
+                        continue;
+                    }
+                };
+
+                let mut triangle_primitives = vec![];
+                let mut bvh_primitives = vec![];
+                for primitive_id in 0..(indices.len() / 3) {
+                    let i_0 = primitive_id * 3;
+                    let v_0 = indices[i_0] as usize;
+                    let v_1 = indices[i_0 + 1] as usize;
+                    let v_2 = indices[i_0 + 2] as usize;
+                    let positions = [positions[v_0], positions[v_1], positions[v_2]];
+
+                    let bounds = Aabb3d::from_point_cloud(Vec3::ZERO, Quat::IDENTITY, &positions);
+                    let centroid = 0.5 * (bounds.max + bounds.min);
+
+                    triangle_primitives.push(SolariTriangleMeshPrimitive {
+                        p1: positions[0],
+                        _padding1: 0,
+                        p2: positions[1],
+                        _padding2: 0,
+                        p3: positions[2],
+                        _padding3: 0,
+                    });
+
+                    bvh_primitives.push(BvhPrimitive {
+                        bounds,
+                        centroid,
+                        primitive_id: primitive_id as u32,
+                    });
                 }
+
+                let sbvh = build_sbvh(bvh_primitives);
+                blas_manager
+                    .fallback_blas_data
+                    .insert(id.clone(), (sbvh, triangle_primitives));
             }
         }
     }

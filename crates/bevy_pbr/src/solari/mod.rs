@@ -5,6 +5,7 @@ mod fallback_blas_builder;
 mod fallback_tlas_builder;
 mod gpu_types;
 mod path_tracer;
+mod sbvh;
 mod scene_binder;
 mod solari;
 
@@ -204,7 +205,7 @@ impl SolariPlugin {
     }
 }
 
-#[derive(Resource, ExtractResource, Clone, PartialEq, Eq)]
+#[derive(Resource, Clone, PartialEq)]
 pub enum SolariRayAccelerationBackendType {
     Hardware,
     Software,

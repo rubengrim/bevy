@@ -40,6 +40,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         scene: asset_server.load("models/CornellBox/box_modified.glb#Scene0"),
         ..default()
     });
+    // commands.spawn(SceneBundle {
+    //     scene: asset_server.load("models/solari_cube_ico.glb#Scene0"),
+    //     ..default()
+    // });
 
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {

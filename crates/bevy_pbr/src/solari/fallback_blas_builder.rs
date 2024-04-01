@@ -323,15 +323,13 @@ fn find_best_split_plane(
 fn calculate_node_aabb(node: &mut FallbackBlasNode, primitives: &Vec<SolariMeshPrimitive>) {
     node.aabb_min = Vec3::MAX;
     node.aabb_max = Vec3::MIN;
-    for i in 0..node.primitive_count {
-        let primitive_index = (node.a_or_first_primitive + i) as usize;
+    for i in node.a_or_first_primitive..(node.a_or_first_primitive + node.primitive_count - 1) {
+        node.aabb_min = node.aabb_min.min(primitives[i as usize].positions[0]);
+        node.aabb_min = node.aabb_min.min(primitives[i as usize].positions[1]);
+        node.aabb_min = node.aabb_min.min(primitives[i as usize].positions[2]);
 
-        node.aabb_min = node.aabb_min.min(primitives[primitive_index].positions[0]);
-        node.aabb_min = node.aabb_min.min(primitives[primitive_index].positions[1]);
-        node.aabb_min = node.aabb_min.min(primitives[primitive_index].positions[2]);
-
-        node.aabb_max = node.aabb_max.max(primitives[primitive_index].positions[0]);
-        node.aabb_max = node.aabb_max.max(primitives[primitive_index].positions[1]);
-        node.aabb_max = node.aabb_max.max(primitives[primitive_index].positions[2]);
+        node.aabb_max = node.aabb_max.max(primitives[i as usize].positions[0]);
+        node.aabb_max = node.aabb_max.max(primitives[i as usize].positions[1]);
+        node.aabb_max = node.aabb_max.max(primitives[i as usize].positions[2]);
     }
 }

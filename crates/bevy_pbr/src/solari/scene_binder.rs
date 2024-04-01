@@ -7,7 +7,11 @@ use super::{
         build_fallback_tlas, FallbackTlas, FallbackTlasInstance, FallbackTlasNode,
         GpuFallbackTlasInstance,
     },
-    gpu_types::{DirectionalLight, GpuSolariMaterial, LightSource},
+    gpu_types::{
+        DirectionalLight, GpuSbvhNode, GpuSolariMaterial, LightSource, NewFallbackTlasInstance,
+        SolariTriangleMeshPrimitive,
+    },
+    sbvh::{build_sbvh, BvhPrimitive, Sbvh},
     SolariRayAccelerationBackendType,
 };
 use crate::{ExtractedDirectionalLight, StandardMaterial};
@@ -16,7 +20,7 @@ use bevy_ecs::{
     system::{Query, Res, ResMut, Resource},
     world::{FromWorld, World},
 };
-use bevy_math::Mat4;
+use bevy_math::{bounding::Aabb3d, Mat4, Vec3, Vec4, Vec4Swizzles};
 use bevy_render::{
     mesh::Mesh,
     render_resource::{binding_types::storage_buffer_read_only, encase::internal::WriteInto, *},
@@ -90,7 +94,8 @@ impl FromWorld for SceneBindings {
                                 storage_buffer_read_only::<GpuFallbackTlasInstance>(false),
                                 storage_buffer_read_only::<u32>(false),
                                 storage_buffer_read_only::<FallbackBlasNode>(false),
-                                storage_buffer_read_only::<GpuSolariMeshPrimitive>(false),
+                                storage_buffer_read_only::<SolariTriangleMeshPrimitive>(false),
+                                storage_buffer_read_only::<u32>(false),
                             ),
                         ),
                     ),
@@ -259,11 +264,13 @@ pub fn prepare_scene_bindings(
             let mut transforms = Vec::with_capacity(scene.entities.len());
             let mut mesh_material_ids = Vec::with_capacity(scene.entities.len());
             let mut tlas_instances = Vec::new();
+            let mut tlas_bvh_primitives = Vec::new();
             let mut blas_nodes = Vec::new();
             let mut primitives = Vec::new();
+            let mut primitive_indices = Vec::new();
             for (mesh_id, material_id, transform) in &scene.entities {
-                if let (Some((blas, triangle_count)), Some(mesh_id), Some(material_id)) = (
-                    blas_manager.get_fallback_blas_and_triangle_count(mesh_id),
+                if let (Some((sbvh, mesh_primitives)), Some(mesh_id), Some(material_id)) = (
+                    blas_manager.get_fallback_blas_and_primitives(mesh_id),
                     asset_bindings.mesh_indices.get(mesh_id),
                     material_ids.get(material_id),
                 ) {
@@ -276,29 +283,36 @@ pub fn prepare_scene_bindings(
                     // For emissive meshes, push each triangle to the light sources buffer
                     let material = &materials[*material_id as usize];
                     if material.emissive != [0.0; 4] || material.emissive_texture_id != u32::MAX {
-                        for triangle_id in 0..*triangle_count {
-                            light_sources
-                                .push(LightSource::emissive_triangle(object_id, triangle_id));
+                        for triangle_id in 0..primitives.len() {
+                            light_sources.push(LightSource::emissive_triangle(
+                                object_id,
+                                triangle_id as u32,
+                            ));
                         }
                     }
 
                     let blas_node_offset = blas_nodes.len() as u32;
-                    blas_nodes.extend(blas.nodes.clone());
+                    blas_nodes.extend(sbvh.nodes.clone());
                     let primitive_offset = primitives.len() as u32;
-                    primitives.extend(blas.primitives.clone());
+                    primitives.extend((*mesh_primitives).clone());
+                    primitive_indices.extend(sbvh.primitive_indices.clone());
 
-                    tlas_instances.push(FallbackTlasInstance::new(
-                        blas,
-                        transform,
-                        blas_node_offset,
+                    tlas_bvh_primitives.push(sbvh_to_bvh_primitive(sbvh, &transform, object_id));
+                    tlas_instances.push(NewFallbackTlasInstance {
+                        object_world: transform,
+                        world_object: transform.inverse(),
                         primitive_offset,
-                    ));
+                        primitive_count: primitives.len() as u32,
+                        blas_node_offset,
+                        _padding: 0,
+                    });
 
                     object_id += 1;
                 }
             }
 
-            let tlas = build_fallback_tlas(&tlas_instances);
+            // let tlas = build_fallback_tlas(&tlas_instances);
+            let tlas_sbvh = build_sbvh(tlas_bvh_primitives);
 
             // Upload GPU buffers
             let mesh_material_ids = &new_storage_buffer(
@@ -328,38 +342,42 @@ pub fn prepare_scene_bindings(
                 &render_queue,
             );
             let tlas_nodes = new_storage_buffer(
-                tlas.nodes.clone(),
+                tlas_sbvh
+                    .nodes
+                    .iter()
+                    .map(|n| GpuSbvhNode::from(n))
+                    .collect(),
                 "solari_fallback_tlas_nodes",
                 &render_device,
                 &render_queue,
             );
             let tlas_instances = new_storage_buffer(
-                tlas_instances
-                    .iter()
-                    .map(|instance| GpuFallbackTlasInstance::from(*instance))
-                    .collect::<Vec<GpuFallbackTlasInstance>>(),
+                tlas_instances,
                 "solari_fallback_tlas_instances",
                 &render_device,
                 &render_queue,
             );
             let tlas_indices = new_storage_buffer(
-                tlas.instance_indices.clone(),
+                tlas_sbvh.primitive_indices.clone(),
                 "solari_fallback_tlas_indices",
                 &render_device,
                 &render_queue,
             );
             let blas_nodes = new_storage_buffer(
-                blas_nodes,
+                blas_nodes.iter().map(|n| GpuSbvhNode::from(n)).collect(),
                 "solari_blas_nodes",
                 &render_device,
                 &render_queue,
             );
             let primitives = new_storage_buffer(
-                primitives
-                    .iter()
-                    .map(|p| GpuSolariMeshPrimitive::from(*p))
-                    .collect::<Vec<GpuSolariMeshPrimitive>>(),
+                primitives,
                 "solari_mesh_primitives",
+                &render_device,
+                &render_queue,
+            );
+            let primitive_indices = new_storage_buffer(
+                primitive_indices,
+                "solari_mesh_primitive_indices",
                 &render_device,
                 &render_queue,
             );
@@ -379,10 +397,12 @@ pub fn prepare_scene_bindings(
                     tlas_indices.binding().unwrap(),
                     blas_nodes.binding().unwrap(),
                     primitives.binding().unwrap(),
+                    primitive_indices.binding().unwrap(),
                 )),
             ));
 
-            scene_bindings.fallback_tlas = Some(tlas);
+            // scene_bindings.fallback_tlas = Some(tlas);
+            scene_bindings.fallback_tlas = None;
         }
     }
 }
@@ -403,4 +423,67 @@ fn tlas_transform(transform: &Mat4) -> [f32; 12] {
     transform.transpose().to_cols_array()[..12]
         .try_into()
         .unwrap()
+}
+
+// Converts an object space `Sbvh` (BLAS) instance to a world space `BvhPrimitive` used for TLAS creation
+fn sbvh_to_bvh_primitive(sbvh: &Sbvh, transform: &Mat4, id: u32) -> BvhPrimitive {
+    // Convert all the corners of the sbvh root node to world space.
+    // It's not possible to only consider the min and max corners because the instance could be rotated.
+    let b_min = sbvh.nodes[0].bounds.min;
+    let b_max = sbvh.nodes[0].bounds.max;
+    let corner_1 = transform
+        .mul_vec4(Vec4::new(b_min.x, b_min.y, b_min.z, 1.0))
+        .xyz();
+    let corner_2 = transform
+        .mul_vec4(Vec4::new(b_max.x, b_min.y, b_min.z, 1.0))
+        .xyz();
+    let corner_3 = transform
+        .mul_vec4(Vec4::new(b_min.x, b_max.y, b_min.z, 1.0))
+        .xyz();
+    let corner_4 = transform
+        .mul_vec4(Vec4::new(b_min.x, b_min.y, b_max.z, 1.0))
+        .xyz();
+    let corner_5 = transform
+        .mul_vec4(Vec4::new(b_max.x, b_max.y, b_min.z, 1.0))
+        .xyz();
+    let corner_6 = transform
+        .mul_vec4(Vec4::new(b_min.x, b_max.y, b_max.z, 1.0))
+        .xyz();
+    let corner_7 = transform
+        .mul_vec4(Vec4::new(b_max.x, b_min.y, b_max.z, 1.0))
+        .xyz();
+    let corner_8 = transform
+        .mul_vec4(Vec4::new(b_max.x, b_max.y, b_max.z, 1.0))
+        .xyz();
+
+    // Calculate bounds of world space root node
+    let mut bounds_world = Aabb3d {
+        min: Vec3::MAX,
+        max: Vec3::MIN,
+    };
+    bounds_world.min = bounds_world.min.min(corner_1);
+    bounds_world.min = bounds_world.min.min(corner_2);
+    bounds_world.min = bounds_world.min.min(corner_3);
+    bounds_world.min = bounds_world.min.min(corner_4);
+    bounds_world.min = bounds_world.min.min(corner_5);
+    bounds_world.min = bounds_world.min.min(corner_6);
+    bounds_world.min = bounds_world.min.min(corner_7);
+    bounds_world.min = bounds_world.min.min(corner_8);
+
+    bounds_world.max = bounds_world.max.max(corner_1);
+    bounds_world.max = bounds_world.max.max(corner_2);
+    bounds_world.max = bounds_world.max.max(corner_3);
+    bounds_world.max = bounds_world.max.max(corner_4);
+    bounds_world.max = bounds_world.max.max(corner_5);
+    bounds_world.max = bounds_world.max.max(corner_6);
+    bounds_world.max = bounds_world.max.max(corner_7);
+    bounds_world.max = bounds_world.max.max(corner_8);
+
+    let centroid = 0.5 * (bounds_world.min + bounds_world.max);
+
+    BvhPrimitive {
+        bounds: bounds_world,
+        centroid,
+        primitive_id: id,
+    }
 }

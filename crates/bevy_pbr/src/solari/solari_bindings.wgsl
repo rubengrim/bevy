@@ -70,12 +70,11 @@ struct Vertex {
 
 struct Primitive {
     p1_: vec3<f32>,
-    // The BLAS builder needs to sort the primitive buffer, so we keep track of the triangle that this primitive corresponds to
-    corresponding_triangle_id: u32,
-    p2_: vec3<f32>,
     _padding1_: u32,
-    p3_: vec3<f32>,
+    p2_: vec3<f32>,
     _padding2_: u32,
+    p3_: vec3<f32>,
+    _padding3_: u32,
 }
 
 struct FallbackBlasNode {
@@ -121,6 +120,7 @@ struct IndexBuffer { indices: array<u32> }
 @group(1) @binding(7) var<storage> tlas_instance_indices: array<u32>;
 @group(1) @binding(8) var<storage> blas_nodes: array<FallbackBlasNode>;
 @group(1) @binding(9) var<storage> primitives: array<Primitive>;
+@group(1) @binding(10) var<storage> primitive_indices: array<u32>;
 #else
 @group(1) @binding(0) var tlas: acceleration_structure;
 @group(1) @binding(1) var<storage> mesh_material_ids: array<u32>;
@@ -138,6 +138,7 @@ fn trace_ray(ray_origin: vec3<f32>, ray_direction: vec3<f32>, ray_t_min: f32, ra
     #ifdef SOFTWARE_RAY_ACCELERATION_FALLBACK
         var ray = Ray(ray_origin + 0.0001 * ray_direction, ray_direction, 1e30, RayHit());
         traverse_tlas(&ray);
+        // traverse_blas(&ray, 0u);
         // NOTE: Checking against t_min/t_max here isn't ideal, but should work in most cases. See ray_triangle_intersect() for info.
         if ray.t > ray_t_min - 0.0001 && ray.t < ray_t_max + 0.0001 {
             ray.hit_data.is_valid_hit = true;
@@ -165,6 +166,7 @@ fn trace_shadow_ray(ray_origin: vec3<f32>, ray_direction: vec3<f32>, ray_t_min: 
     #ifdef SOFTWARE_RAY_ACCELERATION_FALLBACK
         var ray = Ray(ray_origin + 0.0001 * ray_direction, ray_direction, 1e30, RayHit());
         traverse_tlas(&ray);
+        // traverse_blas(&ray, 0u);
         // NOTE: Checking against t_min/t_max here isn't ideal, but should work in most cases. See ray_triangle_intersect() for info.
         return ray.t > ray_t_min - 0.0001 && ray.t < ray_t_max + 0.0001;
     #else
@@ -384,7 +386,8 @@ fn get_blas_node(blas_id: u32, tlas_instance_id: u32) -> FallbackBlasNode {
 
 fn get_primitive(primitive_id: u32, tlas_instance_id: u32) -> Primitive {
     let tlas_instance = tlas_instances[tlas_instance_id];
-    return primitives[tlas_instance.primitive_offset + primitive_id];
+    let global_primitive_id = primitive_indices[tlas_instance.primitive_offset + primitive_id];
+    return primitives[tlas_instance.primitive_offset + global_primitive_id];
 }
 
 fn traverse_tlas(ray: ptr<function, Ray>) {
@@ -561,14 +564,17 @@ fn ray_triangle_intersect(ray: ptr<function, Ray>, primitive_id: u32, tlas_insta
         return;
     }
     let t = f * dot(edge_2, q);
-    // NOTE: No check against the ray_t_min/ray_t_max supplied to trace_ray() is done here since that would require transforming the min/max values to object space.
-    // That check SHOULD technically be done since now we might override an allowed hit with an unallowed but closer hit, but it's not straight forward to transform 
-    // t values like that (with performance and non-uniform object scaling in mind). We'll never override an allowed hit with an unallowed but further away hit though,
-    // so shadow rays aren't affected. Basically this shouldn't cause any problems
+    // NOTE: No check against the ray_t_min/ray_t_max supplied to trace_ray() is done here since 
+    // that would require transforming the min/max values to object space. That check SHOULD 
+    // technically be done since now we might override an allowed hit with an unallowed, but closer, hit. 
+    // We'll never override an allowed hit with an unallowed, but further away, hit though, so shadow 
+    // rays aren't affected. It's not straight forward to transform t values like that (with 
+    // performance and non-uniform object scaling in mind), but this shouldn't cause any problems.
     if t < (*ray).t && t >= 0.0001 {
         (*ray).t = t;
         (*ray).hit_data.object_id = tlas_instance_id;
-        (*ray).hit_data.triangle_id = primitive.corresponding_triangle_id;
+        let tlas_instance = tlas_instances[tlas_instance_id];
+        (*ray).hit_data.triangle_id = primitive_indices[tlas_instance.primitive_offset + primitive_id];
         (*ray).hit_data.barycentrics = vec2f(u, v);
     }
 }
